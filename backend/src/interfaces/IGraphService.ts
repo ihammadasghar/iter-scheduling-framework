@@ -1,7 +1,7 @@
 // Placeholder interface for the Memgraph graph computation layer.
 // Concrete implementation will be added in the Memgraph service ticket.
 
-import type { ScheduleClass, Conflict, MetricResult } from '../types/domain.js';
+import type { ScheduleClass, Conflict, MetricResult, MetricRule } from '../types/domain.js';
 
 export interface IGraphService {
   hydrate(simulationId: string, scheduleJson: string): Promise<void>;
@@ -12,5 +12,5 @@ export interface IGraphService {
   updateClass(simulationId: string, classId: string, patch: Partial<ScheduleClass>): Promise<ScheduleClass>;
   getSuggestions(simulationId: string, classId: string): Promise<readonly string[]>;
   queryConflicts(simulationId: string): Promise<readonly Conflict[]>;
-  evaluateMetrics(simulationId: string): Promise<readonly MetricResult[]>;
+  evaluateMetrics(simulationId: string, rules: readonly MetricRule[]): Promise<readonly MetricResult[]>;
 }

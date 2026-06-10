@@ -16,9 +16,11 @@ import type {
   Conflict,
   MetricResult,
 } from '../types/domain.js';
+import type { RulesJson } from '../types/rulesJson.js';
 
 const SOURCE_BRANCH = 'main';
 const SCHEDULE_JSON_PATH = 'schedule.json';
+const RULES_JSON_PATH = 'rules.json';
 
 export class SimulationService implements ISimulationService {
   constructor(
@@ -138,7 +140,19 @@ export class SimulationService implements ISimulationService {
     return this.graph.queryConflicts(simulationId);
   }
 
-  async getMetrics(_simulationId: string): Promise<readonly MetricResult[]> {
-    throw ApiError.notImplemented();
+  async getMetrics(simulationId: string): Promise<readonly MetricResult[]> {
+    const touched = this.registry.touch(simulationId);
+    if (!touched) {
+      throw ApiError.notFound('Simulation not found or expired');
+    }
+
+    const rulesJson = await this.github.readFile(SOURCE_BRANCH, RULES_JSON_PATH);
+    const rules = (JSON.parse(rulesJson) as RulesJson).metrics ?? [];
+
+    if (rules.length === 0) {
+      return [];
+    }
+
+    return this.graph.evaluateMetrics(simulationId, rules);
   }
 }

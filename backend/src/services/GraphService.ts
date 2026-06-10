@@ -1,8 +1,9 @@
 import { ApiError } from '../types/ApiError.js';
 import { parseScheduleJson, buildHydrationBatches } from '../utils/ScheduleHydrator.js';
+import { translateRule } from '../utils/MetricRuleTranslator.js';
 import type { IMemgraphClient } from '../clients/IMemgraphClient.js';
 import type { IGraphService } from '../interfaces/IGraphService.js';
-import type { ScheduleClass, Conflict, MetricResult } from '../types/domain.js';
+import type { ScheduleClass, Conflict, MetricResult, MetricRule } from '../types/domain.js';
 import type {
   ScheduleJson,
   RawCourse,
@@ -280,8 +281,19 @@ export class GraphService implements IGraphService {
     ];
   }
 
-  async evaluateMetrics(_simulationId: string): Promise<readonly MetricResult[]> {
-    throw ApiError.notImplemented();
+  async evaluateMetrics(simulationId: string, rules: readonly MetricRule[]): Promise<readonly MetricResult[]> {
+    const branchId = simulationId;
+    const results: MetricResult[] = [];
+
+    for (const rule of rules) {
+      const { cypher, unit } = translateRule(rule);
+      const rows = await this.client.run<{ value: unknown }>(cypher, { branchId });
+      const raw = rows[0]?.['value'];
+      const value = raw !== undefined && raw !== null ? Number(raw) : 0;
+      results.push({ name: rule.name, value, unit });
+    }
+
+    return results;
   }
 }
 

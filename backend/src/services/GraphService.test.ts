@@ -391,6 +391,85 @@ describe('GraphService', () => {
     });
   });
 
+  // ── evaluateMetrics ───────────────────────────────────────────────────────
+
+  describe('evaluateMetrics()', () => {
+    const CLASS_COUNT_RULE = {
+      id: 'mr-1', name: 'Class Count', target: 'Class', condition: 'count', threshold: 0,
+    };
+    const PROF_AVG_RULE = {
+      id: 'mr-2', name: 'Avg Classes/Day', target: 'Professor', condition: 'avg_classes_per_day', threshold: 0,
+    };
+
+    it('returns an empty array when given no rules', async () => {
+      const result = await service.evaluateMetrics(BRANCH_ID, []);
+      expect(result).toEqual([]);
+      expect(mockClient.run).not.toHaveBeenCalled();
+    });
+
+    it('calls client.run once per rule', async () => {
+      mockClient = {
+        run: vi.fn()
+          .mockResolvedValueOnce([{ value: 10 }])
+          .mockResolvedValueOnce([{ value: 2.5 }]),
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+
+      await service.evaluateMetrics(BRANCH_ID, [CLASS_COUNT_RULE, PROF_AVG_RULE]);
+
+      expect(mockClient.run).toHaveBeenCalledTimes(2);
+    });
+
+    it('passes branchId in params of every query', async () => {
+      mockClient = {
+        run: vi.fn().mockResolvedValue([{ value: 5 }]),
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+
+      await service.evaluateMetrics(BRANCH_ID, [CLASS_COUNT_RULE]);
+
+      const calls = (mockClient.run as ReturnType<typeof vi.fn>).mock.calls as Array<
+        [string, Record<string, unknown>]
+      >;
+      expect(calls[0]![1]['branchId']).toBe(BRANCH_ID);
+    });
+
+    it('returns MetricResult with correct name, value, and unit', async () => {
+      mockClient = {
+        run: vi.fn().mockResolvedValue([{ value: 42 }]),
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+
+      const result = await service.evaluateMetrics(BRANCH_ID, [CLASS_COUNT_RULE]);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({ name: 'Class Count', value: 42, unit: 'classes' });
+    });
+
+    it('defaults value to 0 when the query returns no rows', async () => {
+      mockClient = {
+        run: vi.fn().mockResolvedValue([]),
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+
+      const result = await service.evaluateMetrics(BRANCH_ID, [CLASS_COUNT_RULE]);
+
+      expect(result[0]?.value).toBe(0);
+    });
+
+    it('propagates 400 ApiError from translator for unsupported rule', async () => {
+      const badRule = { id: 'mr-x', name: 'Bad', target: 'Unknown', condition: 'metric', threshold: 0 };
+
+      await expect(
+        service.evaluateMetrics(BRANCH_ID, [badRule]),
+      ).rejects.toMatchObject({ statusCode: 400 });
+    });
+  });
+
   // ── flush ──────────────────────────────────────────────────────────────────
 
   it('flush() runs a DETACH DELETE query scoped to the branchId', async () => {

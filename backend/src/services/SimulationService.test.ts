@@ -353,3 +353,66 @@ describe('SimulationService.getConflicts()', () => {
     expect(result).toEqual([]);
   });
 });
+
+describe('SimulationService.getMetrics()', () => {
+  const SIM_ID = 'sim-alice-abc123';
+  const METRIC_RULES = [
+    { id: 'mr-1', name: 'Class Count', target: 'Class', condition: 'count', threshold: 0 },
+  ];
+  const RULES_JSON = JSON.stringify({ metrics: METRIC_RULES, constraints: [] });
+  const FAKE_METRICS = [{ name: 'Class Count', value: 42, unit: 'classes' }];
+
+  let github: IGitHubService;
+  let graph: IGraphService;
+  let registry: ISessionRegistry;
+  let service: SimulationService;
+
+  beforeEach(() => {
+    github = makeGitHub();
+    graph = makeGraph();
+    registry = makeRegistry(true);
+    (github.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(RULES_JSON);
+    (graph.evaluateMetrics as ReturnType<typeof vi.fn>).mockResolvedValue(FAKE_METRICS);
+    service = new SimulationService(github, graph, registry);
+  });
+
+  it('throws 404 when the simulation session is not found', async () => {
+    const expiredRegistry = makeRegistry(false);
+    const svc = new SimulationService(github, graph, expiredRegistry);
+
+    await expect(svc.getMetrics(SIM_ID)).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Simulation not found or expired',
+    });
+  });
+
+  it('reads rules.json from the main branch', async () => {
+    await service.getMetrics(SIM_ID);
+
+    expect(github.readFile).toHaveBeenCalledWith('main', 'rules.json');
+  });
+
+  it('delegates to graph.evaluateMetrics with parsed metric rules', async () => {
+    await service.getMetrics(SIM_ID);
+
+    expect(graph.evaluateMetrics).toHaveBeenCalledOnce();
+    expect(graph.evaluateMetrics).toHaveBeenCalledWith(SIM_ID, METRIC_RULES);
+  });
+
+  it('returns the MetricResult array from graph.evaluateMetrics', async () => {
+    const result = await service.getMetrics(SIM_ID);
+
+    expect(result).toEqual(FAKE_METRICS);
+  });
+
+  it('returns [] without calling graph when rules.json has no metrics', async () => {
+    (github.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+      JSON.stringify({ metrics: [], constraints: [] }),
+    );
+
+    const result = await service.getMetrics(SIM_ID);
+
+    expect(result).toEqual([]);
+    expect(graph.evaluateMetrics).not.toHaveBeenCalled();
+  });
+});
