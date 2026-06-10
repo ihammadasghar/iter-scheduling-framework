@@ -63,8 +63,30 @@ export class SimulationService implements ISimulationService {
     throw ApiError.notImplemented();
   }
 
-  async listClasses(_params: ListClassesParams): Promise<ListClassesResult> {
-    throw ApiError.notImplemented();
+  async listClasses(params: ListClassesParams): Promise<ListClassesResult> {
+    const { simulationId, page, limit } = params;
+
+    const safePage = Number.isFinite(page) && page > 0 ? page : 1;
+    const requestedLimit = Number.isFinite(limit) && limit > 0 ? limit : 20;
+    const MAX_LIMIT = 500;
+    const safeLimit = Math.min(requestedLimit, MAX_LIMIT);
+
+    // Ensure simulation exists in registry (session must be active/hydrated).
+    // Calling touch refreshes the heartbeat and returns false if not registered.
+    const touched = this.registry.touch(simulationId);
+    if (!touched) {
+      throw ApiError.notFound('Simulation not found or expired');
+    }
+
+    const total = await this.graph.countClasses(simulationId);
+    const data = await this.graph.listClasses(simulationId, safePage, safeLimit);
+
+    return {
+      data,
+      total,
+      page: safePage,
+      limit: safeLimit,
+    };
   }
 
   async updateClass(
