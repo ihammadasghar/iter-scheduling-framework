@@ -1,3 +1,5 @@
+import { Octokit } from '@octokit/rest';
+import { GitHubService } from './services/GitHubService.js';
 import { SimulationService } from './services/SimulationService.js';
 import { ProposalService } from './services/ProposalService.js';
 import { RulesService } from './services/RulesService.js';
@@ -12,11 +14,17 @@ export interface Container {
 }
 
 export function buildContainer(): Container {
-  // Services — external client dependencies (IGitHubService, IGraphService)
-  // will be injected here once their concrete implementations are built.
-  const simulationService = new SimulationService();
-  const proposalService = new ProposalService();
-  const rulesService = new RulesService();
+  const octokit = new Octokit({ auth: process.env['GITHUB_TOKEN'] });
+  const githubService = new GitHubService(
+    octokit,
+    process.env['GITHUB_OWNER'] ?? '',
+    process.env['GITHUB_REPO'] ?? '',
+  );
+
+  // IGraphService will be injected here once the Memgraph client is implemented.
+  const simulationService = new SimulationService(githubService);
+  const proposalService = new ProposalService(githubService);
+  const rulesService = new RulesService(githubService);
 
   return {
     simulationController: new SimulationController(simulationService),
@@ -24,3 +32,4 @@ export function buildContainer(): Container {
     rulesController: new RulesController(rulesService),
   };
 }
+

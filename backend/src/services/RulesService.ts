@@ -1,4 +1,5 @@
 import { ApiError } from '../types/ApiError.js';
+import type { IGitHubService } from '../interfaces/IGitHubService.js';
 import type { IRulesService } from '../interfaces/IRulesService.js';
 import type {
   MetricRule,
@@ -8,6 +9,8 @@ import type {
 } from '../types/domain.js';
 
 export class RulesService implements IRulesService {
+  constructor(private readonly github: IGitHubService) {}
+
   async listMetrics(): Promise<readonly MetricRule[]> {
     throw ApiError.notImplemented();
   }
