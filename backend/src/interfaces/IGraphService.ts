@@ -6,7 +6,6 @@ import type { ScheduleClass, Conflict, MetricResult } from '../types/domain.js';
 export interface IGraphService {
   hydrate(simulationId: string, scheduleJson: string): Promise<void>;
   flush(simulationId: string): Promise<void>;
-  resetHeartbeat(simulationId: string): Promise<void>;
   exportScheduleJson(simulationId: string): Promise<string>;
   listClasses(simulationId: string, page: number, limit: number): Promise<readonly ScheduleClass[]>;
   countClasses(simulationId: string): Promise<number>;

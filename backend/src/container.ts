@@ -6,9 +6,14 @@ import { GraphService } from './services/GraphService.js';
 import { SimulationService } from './services/SimulationService.js';
 import { ProposalService } from './services/ProposalService.js';
 import { RulesService } from './services/RulesService.js';
+import { SessionRegistry } from './sessions/SessionRegistry.js';
+import { SessionGarbageCollector } from './sessions/SessionGarbageCollector.js';
 import { SimulationController } from './controllers/SimulationController.js';
 import { ProposalController } from './controllers/ProposalController.js';
 import { RulesController } from './controllers/RulesController.js';
+
+const DEFAULT_SESSION_TTL_MS = 300_000;  // 5 minutes
+const DEFAULT_GC_INTERVAL_MS = 60_000;   // 1 minute
 
 export interface Container {
   readonly simulationController: SimulationController;
@@ -36,8 +41,15 @@ export function buildContainer(): Container {
   const graphClient = new MemgraphClient(driver);
   const graphService = new GraphService(graphClient);
 
+  // Session registry + GC sweeper
+  const sessionRegistry = new SessionRegistry();
+  const ttlMs = parseInt(process.env['SESSION_TTL_MS'] ?? String(DEFAULT_SESSION_TTL_MS), 10);
+  const intervalMs = parseInt(process.env['GC_INTERVAL_MS'] ?? String(DEFAULT_GC_INTERVAL_MS), 10);
+  const gc = new SessionGarbageCollector(sessionRegistry, graphService, ttlMs, intervalMs);
+  gc.start();
+
   // Domain services
-  const simulationService = new SimulationService(githubService, graphService);
+  const simulationService = new SimulationService(githubService, graphService, sessionRegistry);
   const proposalService = new ProposalService(githubService, graphService);
   const rulesService = new RulesService(githubService);
 
@@ -47,5 +59,3 @@ export function buildContainer(): Container {
     rulesController: new RulesController(rulesService),
   };
 }
-
-

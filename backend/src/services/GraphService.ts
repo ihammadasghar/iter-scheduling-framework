@@ -22,10 +22,6 @@ export class GraphService implements IGraphService {
     );
   }
 
-  async resetHeartbeat(_simulationId: string): Promise<void> {
-    throw ApiError.notImplemented();
-  }
-
   async exportScheduleJson(_simulationId: string): Promise<string> {
     throw ApiError.notImplemented();
   }

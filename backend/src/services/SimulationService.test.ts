@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SimulationService } from './SimulationService.js';
 import type { IGitHubService } from '../interfaces/IGitHubService.js';
 import type { IGraphService } from '../interfaces/IGraphService.js';
+import type { ISessionRegistry } from '../sessions/ISessionRegistry.js';
 import type { Simulation } from '../types/domain.js';
-import { ApiError } from '../types/ApiError.js';
 
 const makeGitHub = (): IGitHubService => ({
   createBranch: vi.fn().mockResolvedValue(undefined),
@@ -19,7 +19,6 @@ const makeGitHub = (): IGitHubService => ({
 const makeGraph = (): IGraphService => ({
   hydrate: vi.fn().mockResolvedValue(undefined),
   flush: vi.fn().mockResolvedValue(undefined),
-  resetHeartbeat: vi.fn().mockResolvedValue(undefined),
   exportScheduleJson: vi.fn().mockResolvedValue('{}'),
   listClasses: vi.fn().mockResolvedValue([]),
   countClasses: vi.fn().mockResolvedValue(0),
@@ -29,15 +28,24 @@ const makeGraph = (): IGraphService => ({
   evaluateMetrics: vi.fn().mockResolvedValue([]),
 });
 
+const makeRegistry = (touchResult = true): ISessionRegistry => ({
+  register: vi.fn(),
+  touch: vi.fn().mockReturnValue(touchResult),
+  getExpired: vi.fn().mockReturnValue([]),
+  remove: vi.fn(),
+});
+
 describe('SimulationService.create()', () => {
   let github: IGitHubService;
   let graph: IGraphService;
+  let registry: ISessionRegistry;
   let service: SimulationService;
 
   beforeEach(() => {
     github = makeGitHub();
     graph = makeGraph();
-    service = new SimulationService(github, graph);
+    registry = makeRegistry();
+    service = new SimulationService(github, graph, registry);
   });
 
   it('creates a git branch with a simulationId derived from userId', async () => {
@@ -54,7 +62,6 @@ describe('SimulationService.create()', () => {
 
     const [branchName, path] = (github.readFile as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string];
     expect(path).toBe('schedule.json');
-    // The branch used for readFile must match what was passed to createBranch
     const createdBranch = ((github.createBranch as ReturnType<typeof vi.fn>).mock.calls[0] as [string])[0];
     expect(branchName).toBe(createdBranch);
   });
@@ -67,6 +74,15 @@ describe('SimulationService.create()', () => {
     const createdBranch = ((github.createBranch as ReturnType<typeof vi.fn>).mock.calls[0] as [string])[0];
     expect(simulationId).toBe(createdBranch);
     expect(json).toContain('"classes"');
+  });
+
+  it('registers the session in the registry after hydration', async () => {
+    await service.create({ userId: 'alice' });
+
+    expect(registry.register).toHaveBeenCalledOnce();
+    const registeredId = ((registry.register as ReturnType<typeof vi.fn>).mock.calls[0] as [string])[0];
+    const createdBranch = ((github.createBranch as ReturnType<typeof vi.fn>).mock.calls[0] as [string])[0];
+    expect(registeredId).toBe(createdBranch);
   });
 
   it('returns a Simulation with id, branchId, and createdAt', async () => {
@@ -100,5 +116,34 @@ describe('SimulationService.create()', () => {
     const deletedBranch = ((github.deleteBranch as ReturnType<typeof vi.fn>).mock.calls[0] as [string])[0];
     const createdBranch = ((github.createBranch as ReturnType<typeof vi.fn>).mock.calls[0] as [string])[0];
     expect(deletedBranch).toBe(createdBranch);
+    expect(registry.register).not.toHaveBeenCalled();
+  });
+});
+
+describe('SimulationService.heartbeat()', () => {
+  let registry: ISessionRegistry;
+  let service: SimulationService;
+
+  beforeEach(() => {
+    registry = makeRegistry(true);
+    service = new SimulationService(makeGitHub(), makeGraph(), registry);
+  });
+
+  it('calls registry.touch() with the simulationId', async () => {
+    await service.heartbeat('sim-alice-abc123');
+    expect(registry.touch).toHaveBeenCalledWith('sim-alice-abc123');
+  });
+
+  it('resolves without error when the session is active', async () => {
+    await expect(service.heartbeat('sim-alice-abc123')).resolves.toBeUndefined();
+  });
+
+  it('throws 404 when the session is not found (GCd or never created)', async () => {
+    const registryNotFound = makeRegistry(false);
+    const svc = new SimulationService(makeGitHub(), makeGraph(), registryNotFound);
+    await expect(svc.heartbeat('sim-gone')).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Simulation not found or expired',
+    });
   });
 });

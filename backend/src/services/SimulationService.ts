@@ -3,6 +3,7 @@ import { ApiError } from '../types/ApiError.js';
 import type { IGitHubService } from '../interfaces/IGitHubService.js';
 import type { IGraphService } from '../interfaces/IGraphService.js';
 import type { ISimulationService } from '../interfaces/ISimulationService.js';
+import type { ISessionRegistry } from '../sessions/ISessionRegistry.js';
 import type {
   Simulation,
   CreateSimulationParams,
@@ -22,6 +23,7 @@ export class SimulationService implements ISimulationService {
   constructor(
     private readonly github: IGitHubService,
     private readonly graph: IGraphService,
+    private readonly registry: ISessionRegistry,
   ) {}
 
   async create(params: CreateSimulationParams): Promise<Simulation> {
@@ -45,11 +47,16 @@ export class SimulationService implements ISimulationService {
       throw err;
     }
 
+    this.registry.register(simulationId);
+
     return { id: simulationId, branchId: simulationId, createdAt };
   }
 
-  async heartbeat(_simulationId: string): Promise<void> {
-    throw ApiError.notImplemented();
+  async heartbeat(simulationId: string): Promise<void> {
+    const found = this.registry.touch(simulationId);
+    if (!found) {
+      throw ApiError.notFound('Simulation not found or expired');
+    }
   }
 
   async commit(_simulationId: string): Promise<void> {
