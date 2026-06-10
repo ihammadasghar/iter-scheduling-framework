@@ -147,3 +147,74 @@ describe('SimulationService.heartbeat()', () => {
     });
   });
 });
+
+describe('SimulationService.updateClass()', () => {
+  const SIM_ID = 'sim-alice-abc123';
+  const CLASS_ID = 'CLS_001';
+  const UPDATED_CLASS = {
+    id: CLASS_ID,
+    courseId: 'CRS_001',
+    title: 'Biology Lecture',
+    professorId: 'PRF_001',
+    studentGroupId: 'GRP_001',
+    roomId: 'RM_102',
+    timeSlotIds: ['TS_MON_P2'],
+  };
+
+  let github: IGitHubService;
+  let graph: IGraphService;
+  let registry: ISessionRegistry;
+  let service: SimulationService;
+
+  beforeEach(() => {
+    github = makeGitHub();
+    graph = makeGraph();
+    registry = makeRegistry(true);
+    (graph.updateClass as ReturnType<typeof vi.fn>).mockResolvedValue(UPDATED_CLASS);
+    service = new SimulationService(github, graph, registry);
+  });
+
+  it('throws 404 when the simulation session is not found', async () => {
+    const expiredRegistry = makeRegistry(false);
+    const svc = new SimulationService(github, graph, expiredRegistry);
+
+    await expect(svc.updateClass(SIM_ID, CLASS_ID, { roomId: 'RM_102' })).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Simulation not found or expired',
+    });
+  });
+
+  it('throws 400 when the patch is empty (no fields provided)', async () => {
+    await expect(service.updateClass(SIM_ID, CLASS_ID, {})).rejects.toMatchObject({
+      statusCode: 400,
+    });
+
+    expect(graph.updateClass).not.toHaveBeenCalled();
+  });
+
+  it('delegates to graph.updateClass with the correct arguments', async () => {
+    const patch = { roomId: 'RM_102' };
+    await service.updateClass(SIM_ID, CLASS_ID, patch);
+
+    expect(graph.updateClass).toHaveBeenCalledOnce();
+    expect(graph.updateClass).toHaveBeenCalledWith(SIM_ID, CLASS_ID, patch);
+  });
+
+  it('returns the updated ScheduleClass from graph.updateClass', async () => {
+    const result = await service.updateClass(SIM_ID, CLASS_ID, { roomId: 'RM_102' });
+
+    expect(result).toEqual(UPDATED_CLASS);
+  });
+
+  it('accepts a patch with only timeSlotIds', async () => {
+    await expect(
+      service.updateClass(SIM_ID, CLASS_ID, { timeSlotIds: ['TS_MON_P2'] }),
+    ).resolves.toEqual(UPDATED_CLASS);
+  });
+
+  it('accepts a patch with only professorId', async () => {
+    await expect(
+      service.updateClass(SIM_ID, CLASS_ID, { professorId: 'PRF_002' }),
+    ).resolves.toEqual(UPDATED_CLASS);
+  });
+});

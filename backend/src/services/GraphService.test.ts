@@ -59,6 +59,120 @@ describe('GraphService', () => {
     expect(mockClient.run).not.toHaveBeenCalled();
   });
 
+  // ── updateClass ───────────────────────────────────────────────────────────
+
+  describe('updateClass()', () => {
+    const CLASS_ID = 'CLS_001';
+    const UPDATED_CLASS = {
+      id: CLASS_ID,
+      courseId: 'CRS_001',
+      title: 'Biology Lecture',
+      professorId: 'PRF_001',
+      studentGroupId: 'GRP_001',
+      roomId: 'RM_102',
+      timeSlotIds: ['TS_MON_P2'],
+    };
+
+    it('runs a HELD_IN mutation when roomId is patched', async () => {
+      mockClient = {
+        run: vi.fn()
+          .mockResolvedValueOnce([]) // room mutation
+          .mockResolvedValueOnce([{ class: UPDATED_CLASS }]), // re-fetch
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+
+      await service.updateClass(BRANCH_ID, CLASS_ID, { roomId: 'RM_102' });
+
+      const calls = (mockClient.run as ReturnType<typeof vi.fn>).mock.calls as Array<[string, Record<string, unknown>]>;
+      expect(calls).toHaveLength(2);
+      expect(calls[0]![0]).toContain('HELD_IN');
+      expect(calls[0]![1]).toMatchObject({ classId: CLASS_ID, roomId: 'RM_102', branchId: BRANCH_ID });
+    });
+
+    it('runs a SCHEDULED_AT mutation when timeSlotIds is patched', async () => {
+      mockClient = {
+        run: vi.fn()
+          .mockResolvedValueOnce([]) // timeslot mutation
+          .mockResolvedValueOnce([{ class: UPDATED_CLASS }]), // re-fetch
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+
+      await service.updateClass(BRANCH_ID, CLASS_ID, { timeSlotIds: ['TS_MON_P2'] });
+
+      const calls = (mockClient.run as ReturnType<typeof vi.fn>).mock.calls as Array<[string, Record<string, unknown>]>;
+      expect(calls).toHaveLength(2);
+      expect(calls[0]![0]).toContain('SCHEDULED_AT');
+      expect(calls[0]![1]).toMatchObject({ classId: CLASS_ID, timeSlotIds: ['TS_MON_P2'], branchId: BRANCH_ID });
+    });
+
+    it('runs a TAUGHT_BY mutation when professorId is patched', async () => {
+      mockClient = {
+        run: vi.fn()
+          .mockResolvedValueOnce([]) // professor mutation
+          .mockResolvedValueOnce([{ class: UPDATED_CLASS }]), // re-fetch
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+
+      await service.updateClass(BRANCH_ID, CLASS_ID, { professorId: 'PRF_002' });
+
+      const calls = (mockClient.run as ReturnType<typeof vi.fn>).mock.calls as Array<[string, Record<string, unknown>]>;
+      expect(calls).toHaveLength(2);
+      expect(calls[0]![0]).toContain('TAUGHT_BY');
+      expect(calls[0]![1]).toMatchObject({ classId: CLASS_ID, professorId: 'PRF_002', branchId: BRANCH_ID });
+    });
+
+    it('runs all three mutations when all fields are patched', async () => {
+      mockClient = {
+        run: vi.fn()
+          .mockResolvedValueOnce([]) // room mutation
+          .mockResolvedValueOnce([]) // timeslot mutation
+          .mockResolvedValueOnce([]) // professor mutation
+          .mockResolvedValueOnce([{ class: UPDATED_CLASS }]), // re-fetch
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+
+      await service.updateClass(BRANCH_ID, CLASS_ID, {
+        roomId: 'RM_102',
+        timeSlotIds: ['TS_MON_P2'],
+        professorId: 'PRF_002',
+      });
+
+      expect(mockClient.run).toHaveBeenCalledTimes(4);
+    });
+
+    it('returns the updated ScheduleClass after mutations', async () => {
+      mockClient = {
+        run: vi.fn()
+          .mockResolvedValueOnce([]) // room mutation
+          .mockResolvedValueOnce([{ class: UPDATED_CLASS }]), // re-fetch
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+
+      const result = await service.updateClass(BRANCH_ID, CLASS_ID, { roomId: 'RM_102' });
+
+      expect(result).toMatchObject({ id: CLASS_ID, roomId: 'RM_102' });
+    });
+
+    it('throws 404 ApiError if class is not found after update', async () => {
+      mockClient = {
+        run: vi.fn()
+          .mockResolvedValueOnce([]) // room mutation
+          .mockResolvedValueOnce([]), // re-fetch returns empty
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+
+      await expect(
+        service.updateClass(BRANCH_ID, 'NON_EXISTENT', { roomId: 'RM_102' }),
+      ).rejects.toMatchObject({ statusCode: 404 });
+    });
+  });
+
   // ── flush ──────────────────────────────────────────────────────────────────
 
   it('flush() runs a DETACH DELETE query scoped to the branchId', async () => {

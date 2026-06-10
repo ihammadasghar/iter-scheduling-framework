@@ -90,11 +90,20 @@ export class SimulationService implements ISimulationService {
   }
 
   async updateClass(
-    _simulationId: string,
-    _classId: string,
-    _patch: UpdateClassParams,
+    simulationId: string,
+    classId: string,
+    patch: UpdateClassParams,
   ): Promise<ScheduleClass> {
-    throw ApiError.notImplemented();
+    const touched = this.registry.touch(simulationId);
+    if (!touched) {
+      throw ApiError.notFound('Simulation not found or expired');
+    }
+
+    if (patch.roomId === undefined && patch.timeSlotIds === undefined && patch.professorId === undefined) {
+      throw ApiError.badRequest('Patch must include at least one field: roomId, timeSlotIds, or professorId');
+    }
+
+    return this.graph.updateClass(simulationId, classId, patch);
   }
 
   async getSuggestions(_simulationId: string, _classId: string): Promise<readonly Suggestion[]> {

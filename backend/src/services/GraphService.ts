@@ -84,11 +84,98 @@ export class GraphService implements IGraphService {
   }
 
   async updateClass(
-    _simulationId: string,
-    _classId: string,
-    _patch: Partial<ScheduleClass>,
+    simulationId: string,
+    classId: string,
+    patch: Partial<ScheduleClass>,
   ): Promise<ScheduleClass> {
-    throw ApiError.notImplemented();
+    if (patch.roomId !== undefined) {
+      await this.client.run(
+        `
+        MATCH (c:Class {id: $classId, branchId: $branchId})
+        OPTIONAL MATCH (c)-[rel:HELD_IN]->()
+        DELETE rel
+        WITH c
+        MATCH (r:Room {id: $roomId, branchId: $branchId})
+        MERGE (c)-[:HELD_IN]->(r)
+        SET c.roomId = $roomId
+        `.trim(),
+        { branchId: simulationId, classId, roomId: patch.roomId },
+      );
+    }
+
+    if (patch.timeSlotIds !== undefined) {
+      await this.client.run(
+        `
+        MATCH (c:Class {id: $classId, branchId: $branchId})
+        OPTIONAL MATCH (c)-[rel:SCHEDULED_AT]->()
+        DELETE rel
+        WITH c
+        UNWIND $timeSlotIds AS slotId
+        MATCH (t:TimeSlot {id: slotId, branchId: $branchId})
+        MERGE (c)-[:SCHEDULED_AT]->(t)
+        `.trim(),
+        { branchId: simulationId, classId, timeSlotIds: [...patch.timeSlotIds] },
+      );
+    }
+
+    if (patch.professorId !== undefined) {
+      await this.client.run(
+        `
+        MATCH (c:Class {id: $classId, branchId: $branchId})
+        OPTIONAL MATCH (c)-[rel:TAUGHT_BY]->()
+        DELETE rel
+        WITH c
+        MATCH (p:Professor {id: $professorId, branchId: $branchId})
+        MERGE (c)-[:TAUGHT_BY]->(p)
+        SET c.professorId = $professorId
+        `.trim(),
+        { branchId: simulationId, classId, professorId: patch.professorId },
+      );
+    }
+
+    return this.fetchClass(simulationId, classId);
+  }
+
+  private async fetchClass(simulationId: string, classId: string): Promise<ScheduleClass> {
+    const cypher = `
+      MATCH (c:Class {id: $classId, branchId: $branchId})
+      OPTIONAL MATCH (c)-[:SCHEDULED_AT]->(t:TimeSlot {branchId: $branchId})
+      OPTIONAL MATCH (c)-[:BELONGS_TO]->(cr:Course {branchId: $branchId})
+      OPTIONAL MATCH (c)-[:TAUGHT_BY]->(p:Professor {branchId: $branchId})
+      OPTIONAL MATCH (c)-[:ATTENDED_BY]->(g:StudentGroup {branchId: $branchId})
+      OPTIONAL MATCH (c)-[:HELD_IN]->(r:Room {branchId: $branchId})
+      WITH c, cr, p, g, r, collect(DISTINCT t.id) AS timeSlotIds
+      RETURN {
+        id: c.id,
+        courseId: coalesce(c.courseId, cr.id),
+        title: c.title,
+        professorId: coalesce(c.professorId, p.id),
+        studentGroupId: coalesce(c.studentGroupId, g.id),
+        roomId: coalesce(c.roomId, r.id),
+        timeSlotIds: timeSlotIds
+      } AS class
+    `.trim();
+
+    const rows = await this.client.run<{ class: Record<string, unknown> }>(cypher, {
+      branchId: simulationId,
+      classId,
+    });
+
+    const first = rows[0];
+    if (!first) {
+      throw ApiError.notFound(`Class '${classId}' not found in simulation '${simulationId}'`);
+    }
+
+    const c = first['class'] as Record<string, unknown>;
+    return {
+      id: String(c['id'] ?? ''),
+      courseId: String(c['courseId'] ?? ''),
+      title: String(c['title'] ?? ''),
+      professorId: String(c['professorId'] ?? ''),
+      studentGroupId: String(c['studentGroupId'] ?? ''),
+      roomId: String(c['roomId'] ?? ''),
+      timeSlotIds: Array.isArray(c['timeSlotIds']) ? (c['timeSlotIds'] as string[]) : [],
+    };
   }
 
   async getSuggestions(_simulationId: string, _classId: string): Promise<readonly string[]> {
