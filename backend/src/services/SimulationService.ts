@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { ApiError } from '../types/ApiError.js';
+import { parseScheduleJson } from '../utils/ScheduleHydrator.js';
 import type { IGitHubService } from '../interfaces/IGitHubService.js';
 import type { IGraphService } from '../interfaces/IGraphService.js';
 import type { ISimulationService } from '../interfaces/ISimulationService.js';
@@ -59,8 +60,26 @@ export class SimulationService implements ISimulationService {
     }
   }
 
-  async commit(_simulationId: string): Promise<void> {
-    throw ApiError.notImplemented();
+  async commit(simulationId: string): Promise<void> {
+    const touched = this.registry.touch(simulationId);
+    if (!touched) {
+      throw ApiError.notFound('Simulation not found or expired');
+    }
+
+    const existingJson = await this.github.readFile(simulationId, SCHEDULE_JSON_PATH);
+    const existing = parseScheduleJson(existingJson);
+
+    const exportedJson = await this.graph.exportScheduleJson(simulationId);
+    const exported = JSON.parse(exportedJson) as Record<string, unknown>;
+
+    const merged = JSON.stringify({ ...exported, metadata: existing.metadata }, null, 2);
+
+    await this.github.writeFile(
+      simulationId,
+      SCHEDULE_JSON_PATH,
+      merged,
+      'chore(schedule): commit simulation changes',
+    );
   }
 
   async listClasses(params: ListClassesParams): Promise<ListClassesResult> {

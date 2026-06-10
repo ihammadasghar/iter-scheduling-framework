@@ -173,6 +173,96 @@ describe('GraphService', () => {
     });
   });
 
+  // ── exportScheduleJson ────────────────────────────────────────────────────
+
+  describe('exportScheduleJson()', () => {
+    const EXPORT_ROWS = {
+      course: { course: { id: 'CRS_001', code: 'BIO101', name: 'Intro to Biology', department: 'Biology' } },
+      professor: { professor: { id: 'PRF_001', name: 'Dr. Smith', department: 'Biology' } },
+      studentGroup: { studentGroup: { id: 'GRP_001', name: 'Bio Year 1', size: 40 } },
+      room: { room: { id: 'RM_101', name: 'Room 101', capacity: 50, building: 'Science Hall' } },
+      timeSlot: { timeSlot: { id: 'TS_MON_P1', day: 'Monday', name: 'Period 1', startTime: '08:30', endTime: '10:15' } },
+      class: { class: { id: 'CLS_001', courseId: 'CRS_001', title: 'Biology Lecture', professorId: 'PRF_001', studentGroupId: 'GRP_001', roomId: 'RM_101', timeSlotIds: ['TS_MON_P1'] } },
+    };
+
+    beforeEach(() => {
+      mockClient = {
+        run: vi.fn()
+          .mockResolvedValueOnce([EXPORT_ROWS.course])        // courses
+          .mockResolvedValueOnce([EXPORT_ROWS.professor])     // professors
+          .mockResolvedValueOnce([EXPORT_ROWS.studentGroup])  // studentGroups
+          .mockResolvedValueOnce([EXPORT_ROWS.room])          // rooms
+          .mockResolvedValueOnce([EXPORT_ROWS.timeSlot])      // timeSlots
+          .mockResolvedValueOnce([EXPORT_ROWS.class]),        // classes
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+    });
+
+    it('calls client.run() exactly 6 times (once per entity type)', async () => {
+      await service.exportScheduleJson(BRANCH_ID);
+      expect(mockClient.run).toHaveBeenCalledTimes(6);
+    });
+
+    it('passes branchId in params of every query', async () => {
+      await service.exportScheduleJson(BRANCH_ID);
+      const calls = (mockClient.run as ReturnType<typeof vi.fn>).mock.calls as Array<
+        [string, Record<string, unknown>]
+      >;
+      calls.forEach(([, params]) => {
+        expect(params['branchId']).toBe(BRANCH_ID);
+      });
+    });
+
+    it('returns valid JSON that parses to a ScheduleJson shape', async () => {
+      const result = await service.exportScheduleJson(BRANCH_ID);
+      const parsed = JSON.parse(result) as Record<string, unknown>;
+
+      expect(parsed).toHaveProperty('metadata');
+      expect(parsed).toHaveProperty('courses');
+      expect(parsed).toHaveProperty('professors');
+      expect(parsed).toHaveProperty('studentGroups');
+      expect(parsed).toHaveProperty('rooms');
+      expect(parsed).toHaveProperty('timeSlots');
+      expect(parsed).toHaveProperty('classes');
+    });
+
+    it('maps each entity correctly into its array', async () => {
+      const result = await service.exportScheduleJson(BRANCH_ID);
+      const parsed = JSON.parse(result) as {
+        courses: unknown[]; professors: unknown[]; studentGroups: unknown[];
+        rooms: unknown[]; timeSlots: unknown[]; classes: unknown[];
+      };
+
+      expect(parsed.courses).toHaveLength(1);
+      expect(parsed.professors).toHaveLength(1);
+      expect(parsed.studentGroups).toHaveLength(1);
+      expect(parsed.rooms).toHaveLength(1);
+      expect(parsed.timeSlots).toHaveLength(1);
+      expect(parsed.classes).toHaveLength(1);
+    });
+
+    it('includes timeSlotIds on class entries', async () => {
+      const result = await service.exportScheduleJson(BRANCH_ID);
+      const parsed = JSON.parse(result) as { classes: Array<{ timeSlotIds: string[] }> };
+      expect(parsed.classes[0]?.timeSlotIds).toEqual(['TS_MON_P1']);
+    });
+
+    it('returns empty arrays when the graph has no data', async () => {
+      mockClient = {
+        run: vi.fn().mockResolvedValue([]),
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+
+      const result = await service.exportScheduleJson(BRANCH_ID);
+      const parsed = JSON.parse(result) as Record<string, unknown[]>;
+
+      expect(parsed['courses']).toHaveLength(0);
+      expect(parsed['classes']).toHaveLength(0);
+    });
+  });
+
   // ── flush ──────────────────────────────────────────────────────────────────
 
   it('flush() runs a DETACH DELETE query scoped to the branchId', async () => {

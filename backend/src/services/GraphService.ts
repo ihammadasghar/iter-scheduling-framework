@@ -3,6 +3,15 @@ import { parseScheduleJson, buildHydrationBatches } from '../utils/ScheduleHydra
 import type { IMemgraphClient } from '../clients/IMemgraphClient.js';
 import type { IGraphService } from '../interfaces/IGraphService.js';
 import type { ScheduleClass, Conflict, MetricResult } from '../types/domain.js';
+import type {
+  ScheduleJson,
+  RawCourse,
+  RawProfessor,
+  RawStudentGroup,
+  RawRoom,
+  RawTimeSlot,
+  RawClass,
+} from '../types/scheduleJson.js';
 
 export class GraphService implements IGraphService {
   constructor(private readonly client: IMemgraphClient) {}
@@ -22,8 +31,63 @@ export class GraphService implements IGraphService {
     );
   }
 
-  async exportScheduleJson(_simulationId: string): Promise<string> {
-    throw ApiError.notImplemented();
+  async exportScheduleJson(simulationId: string): Promise<string> {
+    const branchId = simulationId;
+
+    const [courses, professors, studentGroups, rooms, timeSlots, classes] = await Promise.all([
+      this.client.run<{ course: Record<string, unknown> }>(
+        `MATCH (n:Course {branchId: $branchId})
+         RETURN { id: n.id, code: n.code, name: n.name, department: n.department } AS course
+         ORDER BY n.id`.trim(),
+        { branchId },
+      ),
+      this.client.run<{ professor: Record<string, unknown> }>(
+        `MATCH (n:Professor {branchId: $branchId})
+         RETURN { id: n.id, name: n.name, department: n.department } AS professor
+         ORDER BY n.id`.trim(),
+        { branchId },
+      ),
+      this.client.run<{ studentGroup: Record<string, unknown> }>(
+        `MATCH (n:StudentGroup {branchId: $branchId})
+         RETURN { id: n.id, name: n.name, size: n.size } AS studentGroup
+         ORDER BY n.id`.trim(),
+        { branchId },
+      ),
+      this.client.run<{ room: Record<string, unknown> }>(
+        `MATCH (n:Room {branchId: $branchId})
+         RETURN { id: n.id, name: n.name, capacity: n.capacity, building: n.building } AS room
+         ORDER BY n.id`.trim(),
+        { branchId },
+      ),
+      this.client.run<{ timeSlot: Record<string, unknown> }>(
+        `MATCH (n:TimeSlot {branchId: $branchId})
+         RETURN { id: n.id, day: n.day, name: n.name, startTime: n.startTime, endTime: n.endTime } AS timeSlot
+         ORDER BY n.id`.trim(),
+        { branchId },
+      ),
+      this.client.run<{ class: Record<string, unknown> }>(
+        `MATCH (c:Class {branchId: $branchId})
+         OPTIONAL MATCH (c)-[:SCHEDULED_AT]->(t:TimeSlot {branchId: $branchId})
+         WITH c, collect(DISTINCT t.id) AS timeSlotIds
+         ORDER BY c.id
+         RETURN { id: c.id, courseId: c.courseId, title: c.title,
+                  professorId: c.professorId, studentGroupId: c.studentGroupId,
+                  roomId: c.roomId, timeSlotIds: timeSlotIds } AS class`.trim(),
+        { branchId },
+      ),
+    ]);
+
+    const schedule: ScheduleJson = {
+      metadata: {},
+      courses: courses.map((r) => r['course'] as unknown as RawCourse),
+      professors: professors.map((r) => r['professor'] as unknown as RawProfessor),
+      studentGroups: studentGroups.map((r) => r['studentGroup'] as unknown as RawStudentGroup),
+      rooms: rooms.map((r) => r['room'] as unknown as RawRoom),
+      timeSlots: timeSlots.map((r) => r['timeSlot'] as unknown as RawTimeSlot),
+      classes: classes.map((r) => r['class'] as unknown as RawClass),
+    };
+
+    return JSON.stringify(schedule, null, 2);
   }
 
   async listClasses(

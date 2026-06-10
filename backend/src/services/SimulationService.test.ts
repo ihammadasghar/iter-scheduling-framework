@@ -218,3 +218,83 @@ describe('SimulationService.updateClass()', () => {
     ).resolves.toEqual(UPDATED_CLASS);
   });
 });
+
+describe('SimulationService.commit()', () => {
+  const SIM_ID = 'sim-alice-abc123';
+  const METADATA = { term: 'Spring 2026', version: '1' };
+  const EXISTING_JSON = JSON.stringify({
+    metadata: METADATA,
+    timeSlots: [], rooms: [], professors: [], studentGroups: [], courses: [], classes: [],
+  });
+  const EXPORTED_JSON = JSON.stringify({
+    metadata: {},
+    timeSlots: [{ id: 'TS_MON_P1', day: 'Monday', name: 'P1', startTime: '08:30', endTime: '10:15' }],
+    rooms: [], professors: [], studentGroups: [], courses: [], classes: [],
+  });
+
+  let github: IGitHubService;
+  let graph: IGraphService;
+  let registry: ISessionRegistry;
+  let service: SimulationService;
+
+  beforeEach(() => {
+    github = makeGitHub();
+    graph = makeGraph();
+    registry = makeRegistry(true);
+    (github.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(EXISTING_JSON);
+    (graph.exportScheduleJson as ReturnType<typeof vi.fn>).mockResolvedValue(EXPORTED_JSON);
+    service = new SimulationService(github, graph, registry);
+  });
+
+  it('throws 404 when the simulation session is not found', async () => {
+    const expiredRegistry = makeRegistry(false);
+    const svc = new SimulationService(github, graph, expiredRegistry);
+
+    await expect(svc.commit(SIM_ID)).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Simulation not found or expired',
+    });
+  });
+
+  it('reads schedule.json from the simulation branch to preserve metadata', async () => {
+    await service.commit(SIM_ID);
+
+    expect(github.readFile).toHaveBeenCalledWith(SIM_ID, 'schedule.json');
+  });
+
+  it('calls graph.exportScheduleJson with the simulationId', async () => {
+    await service.commit(SIM_ID);
+
+    expect(graph.exportScheduleJson).toHaveBeenCalledWith(SIM_ID);
+  });
+
+  it('writes the merged JSON to the simulation branch via github.writeFile', async () => {
+    await service.commit(SIM_ID);
+
+    expect(github.writeFile).toHaveBeenCalledOnce();
+    const [branch, path, , message] = (github.writeFile as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string, string, string];
+    expect(branch).toBe(SIM_ID);
+    expect(path).toBe('schedule.json');
+    expect(message).toBe('chore(schedule): commit simulation changes');
+  });
+
+  it('preserves original metadata in the written JSON', async () => {
+    await service.commit(SIM_ID);
+
+    const [, , content] = (github.writeFile as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string, string];
+    const written = JSON.parse(content) as { metadata: Record<string, unknown> };
+    expect(written.metadata).toEqual(METADATA);
+  });
+
+  it('includes graph-exported data in the written JSON', async () => {
+    await service.commit(SIM_ID);
+
+    const [, , content] = (github.writeFile as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string, string];
+    const written = JSON.parse(content) as { timeSlots: unknown[] };
+    expect(written.timeSlots).toHaveLength(1);
+  });
+
+  it('resolves void on success', async () => {
+    await expect(service.commit(SIM_ID)).resolves.toBeUndefined();
+  });
+});
