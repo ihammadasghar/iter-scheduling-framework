@@ -1,0 +1,226 @@
+openapi: 3.0.0
+info:
+  title: University Scheduling System API
+  description: API for managing human-in-the-loop university timetable simulations using a Git-backed, Graph-hydrated architecture.
+  version: 1.0.0
+servers:
+  - url: /api/v1
+paths:
+  /simulations:
+    post:
+      summary: Create a Simulation Branch
+      responses:
+        '201':
+          description: Created
+  /simulations/{id}/heartbeat:
+    post:
+      summary: Session Heartbeat
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /simulations/{id}/commit:
+    post:
+      summary: Save Draft
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /simulations/{id}/classes:
+    get:
+      summary: List Classes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /simulations/{id}/classes/{classId}:
+    patch:
+      summary: Update a Class Assignment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: classId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /simulations/{id}/classes/{classId}/suggestions:
+    get:
+      summary: Get Smart Slot Suggestions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: classId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /simulations/{id}/conflicts:
+    get:
+      summary: Get Current Conflicts
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /simulations/{id}/metrics:
+    get:
+      summary: Get Simulation Metrics
+      description: Evaluates all active metrics against the current simulation state in Memgraph.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: number
+  /proposals:
+    post:
+      summary: Submit a Proposal
+      responses:
+        '201':
+          description: Created
+    get:
+      summary: List Proposals
+      responses:
+        '200':
+          description: OK
+  /proposals/{id}:
+    get:
+      summary: Review Proposal Details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /proposals/{id}/merge:
+    post:
+      summary: Approve & Merge Proposal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /rules/metrics:
+    get:
+      summary: List Metric Rules
+      description: Fetches custom metrics configurations from rules.json.
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: Create Metric Rule
+      description: Adds a new custom metric using a structured JSON object.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                target:
+                  type: string
+                condition:
+                  type: string
+                threshold:
+                  type: number
+      responses:
+        '201':
+          description: Created
+  /rules/metrics/{metricId}:
+    delete:
+      summary: Delete Metric Rule
+      parameters:
+        - name: metricId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+  /rules/constraints:
+    get:
+      summary: List Hard Constraints
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: Create Constraint Rule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                target:
+                  type: string
+                violationCondition:
+                  type: string
+      responses:
+        '201':
+          description: Created
+  /rules/constraints/{constraintId}:
+    delete:
+      summary: Delete Constraint Rule
+      parameters:
+        - name: constraintId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
