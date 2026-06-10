@@ -129,8 +129,13 @@ export class SimulationService implements ISimulationService {
     throw ApiError.notImplemented();
   }
 
-  async getConflicts(_simulationId: string): Promise<readonly Conflict[]> {
-    throw ApiError.notImplemented();
+  async getConflicts(simulationId: string): Promise<readonly Conflict[]> {
+    const touched = this.registry.touch(simulationId);
+    if (!touched) {
+      throw ApiError.notFound('Simulation not found or expired');
+    }
+
+    return this.graph.queryConflicts(simulationId);
   }
 
   async getMetrics(_simulationId: string): Promise<readonly MetricResult[]> {

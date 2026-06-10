@@ -246,8 +246,38 @@ export class GraphService implements IGraphService {
     throw ApiError.notImplemented();
   }
 
-  async queryConflicts(_simulationId: string): Promise<readonly Conflict[]> {
-    throw ApiError.notImplemented();
+  async queryConflicts(simulationId: string): Promise<readonly Conflict[]> {
+    const branchId = simulationId;
+
+    const [roomRows, professorRows, groupRows] = await Promise.all([
+      this.client.run<ConflictRow>(
+        `MATCH (c1:Class {branchId: $branchId})-[:HELD_IN]->(r:Room {branchId: $branchId})<-[:HELD_IN]-(c2:Class {branchId: $branchId})
+         MATCH (c1)-[:SCHEDULED_AT]->(t:TimeSlot {branchId: $branchId})<-[:SCHEDULED_AT]-(c2)
+         WHERE c1.id < c2.id
+         RETURN c1.id AS classId1, c2.id AS classId2, r.name AS resourceName`.trim(),
+        { branchId },
+      ),
+      this.client.run<ConflictRow>(
+        `MATCH (c1:Class {branchId: $branchId})-[:TAUGHT_BY]->(p:Professor {branchId: $branchId})<-[:TAUGHT_BY]-(c2:Class {branchId: $branchId})
+         MATCH (c1)-[:SCHEDULED_AT]->(t:TimeSlot {branchId: $branchId})<-[:SCHEDULED_AT]-(c2)
+         WHERE c1.id < c2.id
+         RETURN c1.id AS classId1, c2.id AS classId2, p.name AS resourceName`.trim(),
+        { branchId },
+      ),
+      this.client.run<ConflictRow>(
+        `MATCH (c1:Class {branchId: $branchId})-[:ATTENDED_BY]->(g:StudentGroup {branchId: $branchId})<-[:ATTENDED_BY]-(c2:Class {branchId: $branchId})
+         MATCH (c1)-[:SCHEDULED_AT]->(t:TimeSlot {branchId: $branchId})<-[:SCHEDULED_AT]-(c2)
+         WHERE c1.id < c2.id
+         RETURN c1.id AS classId1, c2.id AS classId2, g.name AS resourceName`.trim(),
+        { branchId },
+      ),
+    ]);
+
+    return [
+      ...roomRows.map((r) => toConflict(r, 'ROOM_DOUBLE_BOOK')),
+      ...professorRows.map((r) => toConflict(r, 'PROFESSOR_OVERLAP')),
+      ...groupRows.map((r) => toConflict(r, 'GROUP_OVERLAP')),
+    ];
   }
 
   async evaluateMetrics(_simulationId: string): Promise<readonly MetricResult[]> {
@@ -255,3 +285,32 @@ export class GraphService implements IGraphService {
   }
 }
 
+// ── Conflict helpers ─────────────────────────────────────────────────────────
+
+interface ConflictRow {
+  readonly classId1: string;
+  readonly classId2: string;
+  readonly resourceName: string;
+}
+
+const toConflict = (row: ConflictRow, type: Conflict['type']): Conflict => ({
+  id: `${type}_${row.classId1}_${row.classId2}`,
+  type,
+  classIds: [row.classId1, row.classId2],
+  message: buildConflictMessage(type, row.classId1, row.classId2, row.resourceName),
+});
+
+const buildConflictMessage = (
+  type: Conflict['type'],
+  classId1: string,
+  classId2: string,
+  resourceName: string,
+): string => {
+  if (type === 'ROOM_DOUBLE_BOOK') {
+    return `Classes ${classId1} and ${classId2} both occupy room '${resourceName}' at the same time`;
+  }
+  if (type === 'PROFESSOR_OVERLAP') {
+    return `Professor '${resourceName}' is double-booked for classes ${classId1} and ${classId2}`;
+  }
+  return `Student group '${resourceName}' is scheduled in two classes simultaneously: ${classId1} and ${classId2}`;
+};

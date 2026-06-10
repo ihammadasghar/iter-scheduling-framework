@@ -298,3 +298,58 @@ describe('SimulationService.commit()', () => {
     await expect(service.commit(SIM_ID)).resolves.toBeUndefined();
   });
 });
+
+describe('SimulationService.getConflicts()', () => {
+  const SIM_ID = 'sim-alice-abc123';
+  const FAKE_CONFLICTS = [
+    {
+      id: 'ROOM_DOUBLE_BOOK_CLS_001_CLS_002',
+      type: 'ROOM_DOUBLE_BOOK' as const,
+      classIds: ['CLS_001', 'CLS_002'] as [string, string],
+      message: "Classes CLS_001 and CLS_002 both occupy room 'Room 101' at the same time",
+    },
+  ];
+
+  let github: IGitHubService;
+  let graph: IGraphService;
+  let registry: ISessionRegistry;
+  let service: SimulationService;
+
+  beforeEach(() => {
+    github = makeGitHub();
+    graph = makeGraph();
+    registry = makeRegistry(true);
+    (graph.queryConflicts as ReturnType<typeof vi.fn>).mockResolvedValue(FAKE_CONFLICTS);
+    service = new SimulationService(github, graph, registry);
+  });
+
+  it('throws 404 when the simulation session is not found', async () => {
+    const expiredRegistry = makeRegistry(false);
+    const svc = new SimulationService(github, graph, expiredRegistry);
+
+    await expect(svc.getConflicts(SIM_ID)).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Simulation not found or expired',
+    });
+  });
+
+  it('delegates to graph.queryConflicts with the simulationId', async () => {
+    await service.getConflicts(SIM_ID);
+
+    expect(graph.queryConflicts).toHaveBeenCalledOnce();
+    expect(graph.queryConflicts).toHaveBeenCalledWith(SIM_ID);
+  });
+
+  it('returns the conflict array from graph.queryConflicts', async () => {
+    const result = await service.getConflicts(SIM_ID);
+
+    expect(result).toEqual(FAKE_CONFLICTS);
+  });
+
+  it('returns an empty array when there are no conflicts', async () => {
+    (graph.queryConflicts as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    const result = await service.getConflicts(SIM_ID);
+
+    expect(result).toEqual([]);
+  });
+});

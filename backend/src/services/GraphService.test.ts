@@ -263,6 +263,134 @@ describe('GraphService', () => {
     });
   });
 
+  // ── queryConflicts ────────────────────────────────────────────────────────
+
+  describe('queryConflicts()', () => {
+    const ROOM_ROW = { classId1: 'CLS_001', classId2: 'CLS_002', resourceName: 'Room 101' };
+    const PROF_ROW = { classId1: 'CLS_001', classId2: 'CLS_003', resourceName: 'Dr. Smith' };
+    const GROUP_ROW = { classId1: 'CLS_002', classId2: 'CLS_003', resourceName: 'Bio Year 1' };
+
+    it('calls client.run() exactly 3 times (one per constraint type)', async () => {
+      mockClient = {
+        run: vi.fn().mockResolvedValue([]),
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+
+      await service.queryConflicts(BRANCH_ID);
+
+      expect(mockClient.run).toHaveBeenCalledTimes(3);
+    });
+
+    it('passes branchId in params of every query', async () => {
+      mockClient = {
+        run: vi.fn().mockResolvedValue([]),
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+
+      await service.queryConflicts(BRANCH_ID);
+
+      const calls = (mockClient.run as ReturnType<typeof vi.fn>).mock.calls as Array<
+        [string, Record<string, unknown>]
+      >;
+      calls.forEach(([, params]) => {
+        expect(params['branchId']).toBe(BRANCH_ID);
+      });
+    });
+
+    it('returns empty array when there are no conflicts', async () => {
+      mockClient = { run: vi.fn().mockResolvedValue([]), close: vi.fn() };
+      service = new GraphService(mockClient);
+
+      const result = await service.queryConflicts(BRANCH_ID);
+
+      expect(result).toEqual([]);
+    });
+
+    it('maps a room conflict row to a ROOM_DOUBLE_BOOK Conflict', async () => {
+      mockClient = {
+        run: vi.fn()
+          .mockResolvedValueOnce([ROOM_ROW]) // room query
+          .mockResolvedValueOnce([])          // professor query
+          .mockResolvedValueOnce([]),         // group query
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+
+      const result = await service.queryConflicts(BRANCH_ID);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        id: 'ROOM_DOUBLE_BOOK_CLS_001_CLS_002',
+        type: 'ROOM_DOUBLE_BOOK',
+        classIds: ['CLS_001', 'CLS_002'],
+      });
+      expect(result[0]!.message).toContain('Room 101');
+    });
+
+    it('maps a professor conflict row to a PROFESSOR_OVERLAP Conflict', async () => {
+      mockClient = {
+        run: vi.fn()
+          .mockResolvedValueOnce([])           // room query
+          .mockResolvedValueOnce([PROF_ROW])   // professor query
+          .mockResolvedValueOnce([]),           // group query
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+
+      const result = await service.queryConflicts(BRANCH_ID);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        id: 'PROFESSOR_OVERLAP_CLS_001_CLS_003',
+        type: 'PROFESSOR_OVERLAP',
+        classIds: ['CLS_001', 'CLS_003'],
+      });
+      expect(result[0]!.message).toContain('Dr. Smith');
+    });
+
+    it('maps a group conflict row to a GROUP_OVERLAP Conflict', async () => {
+      mockClient = {
+        run: vi.fn()
+          .mockResolvedValueOnce([])            // room query
+          .mockResolvedValueOnce([])            // professor query
+          .mockResolvedValueOnce([GROUP_ROW]),  // group query
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+
+      const result = await service.queryConflicts(BRANCH_ID);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        id: 'GROUP_OVERLAP_CLS_002_CLS_003',
+        type: 'GROUP_OVERLAP',
+        classIds: ['CLS_002', 'CLS_003'],
+      });
+      expect(result[0]!.message).toContain('Bio Year 1');
+    });
+
+    it('returns conflicts from all three types in a single flat array', async () => {
+      mockClient = {
+        run: vi.fn()
+          .mockResolvedValueOnce([ROOM_ROW])
+          .mockResolvedValueOnce([PROF_ROW])
+          .mockResolvedValueOnce([GROUP_ROW]),
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+
+      const result = await service.queryConflicts(BRANCH_ID);
+
+      expect(result).toHaveLength(3);
+      const types = result.map((c) => c.type);
+      expect(types).toContain('ROOM_DOUBLE_BOOK');
+      expect(types).toContain('PROFESSOR_OVERLAP');
+      expect(types).toContain('GROUP_OVERLAP');
+    });
+  });
+
   // ── flush ──────────────────────────────────────────────────────────────────
 
   it('flush() runs a DETACH DELETE query scoped to the branchId', async () => {
