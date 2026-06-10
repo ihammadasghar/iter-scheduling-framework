@@ -1,5 +1,6 @@
 import { ApiError } from '../types/ApiError.js';
 import type { IGitHubService } from '../interfaces/IGitHubService.js';
+import type { IGraphService } from '../interfaces/IGraphService.js';
 import type { ISimulationService } from '../interfaces/ISimulationService.js';
 import type {
   Simulation,
@@ -14,7 +15,10 @@ import type {
 } from '../types/domain.js';
 
 export class SimulationService implements ISimulationService {
-  constructor(private readonly github: IGitHubService) {}
+  constructor(
+    private readonly github: IGitHubService,
+    private readonly graph: IGraphService,
+  ) {}
 
   async create(_params: CreateSimulationParams): Promise<Simulation> {
     throw ApiError.notImplemented();

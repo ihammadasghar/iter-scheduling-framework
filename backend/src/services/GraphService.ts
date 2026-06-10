@@ -1,0 +1,56 @@
+import { ApiError } from '../types/ApiError.js';
+import type { IMemgraphClient } from '../clients/IMemgraphClient.js';
+import type { IGraphService } from '../interfaces/IGraphService.js';
+import type { ScheduleClass, Conflict, MetricResult } from '../types/domain.js';
+
+export class GraphService implements IGraphService {
+  constructor(private readonly client: IMemgraphClient) {}
+
+  async hydrate(_simulationId: string, _scheduleJson: string): Promise<void> {
+    throw ApiError.notImplemented();
+  }
+
+  async flush(_simulationId: string): Promise<void> {
+    throw ApiError.notImplemented();
+  }
+
+  async resetHeartbeat(_simulationId: string): Promise<void> {
+    throw ApiError.notImplemented();
+  }
+
+  async exportScheduleJson(_simulationId: string): Promise<string> {
+    throw ApiError.notImplemented();
+  }
+
+  async listClasses(
+    _simulationId: string,
+    _page: number,
+    _limit: number,
+  ): Promise<readonly ScheduleClass[]> {
+    throw ApiError.notImplemented();
+  }
+
+  async countClasses(_simulationId: string): Promise<number> {
+    throw ApiError.notImplemented();
+  }
+
+  async updateClass(
+    _simulationId: string,
+    _classId: string,
+    _patch: Partial<ScheduleClass>,
+  ): Promise<ScheduleClass> {
+    throw ApiError.notImplemented();
+  }
+
+  async getSuggestions(_simulationId: string, _classId: string): Promise<readonly string[]> {
+    throw ApiError.notImplemented();
+  }
+
+  async queryConflicts(_simulationId: string): Promise<readonly Conflict[]> {
+    throw ApiError.notImplemented();
+  }
+
+  async evaluateMetrics(_simulationId: string): Promise<readonly MetricResult[]> {
+    throw ApiError.notImplemented();
+  }
+}

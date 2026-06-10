@@ -20,7 +20,8 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "helmet": "^8.2.0",
-    "morgan": "^1.11.0"
+    "morgan": "^1.11.0",
+    "neo4j-driver": "^6.1.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
