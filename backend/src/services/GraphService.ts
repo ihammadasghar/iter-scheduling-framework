@@ -1,4 +1,5 @@
 import { ApiError } from '../types/ApiError.js';
+import { parseScheduleJson, buildHydrationBatches } from '../utils/ScheduleHydrator.js';
 import type { IMemgraphClient } from '../clients/IMemgraphClient.js';
 import type { IGraphService } from '../interfaces/IGraphService.js';
 import type { ScheduleClass, Conflict, MetricResult } from '../types/domain.js';
@@ -6,12 +7,19 @@ import type { ScheduleClass, Conflict, MetricResult } from '../types/domain.js';
 export class GraphService implements IGraphService {
   constructor(private readonly client: IMemgraphClient) {}
 
-  async hydrate(_simulationId: string, _scheduleJson: string): Promise<void> {
-    throw ApiError.notImplemented();
+  async hydrate(branchId: string, scheduleJson: string): Promise<void> {
+    const json = parseScheduleJson(scheduleJson);
+    const batches = buildHydrationBatches(json, branchId);
+    for (const batch of batches) {
+      await this.client.run(batch.cypher, batch.params);
+    }
   }
 
-  async flush(_simulationId: string): Promise<void> {
-    throw ApiError.notImplemented();
+  async flush(branchId: string): Promise<void> {
+    await this.client.run(
+      'MATCH (n {branchId: $branchId}) DETACH DELETE n',
+      { branchId },
+    );
   }
 
   async resetHeartbeat(_simulationId: string): Promise<void> {
@@ -54,3 +62,4 @@ export class GraphService implements IGraphService {
     throw ApiError.notImplemented();
   }
 }
+
