@@ -10,8 +10,29 @@ export class ProposalService implements IProposalService {
     private readonly graph: IGraphService,
   ) {}
 
-  async submit(_params: CreateProposalParams): Promise<Proposal> {
-    throw ApiError.notImplemented();
+  async submit(params: CreateProposalParams): Promise<Proposal> {
+    const { simulationId, description } = params;
+
+    if (!simulationId || simulationId.trim() === '') {
+      throw ApiError.badRequest('simulationId is required');
+    }
+    if (!description || description.trim() === '') {
+      throw ApiError.badRequest('description is required');
+    }
+
+    const prId = await this.github.createPullRequest(
+      simulationId,
+      'main',
+      `Proposal: ${simulationId}`,
+      description,
+    );
+
+    return {
+      id: prId,
+      simulationId,
+      status: 'PENDING',
+      createdAt: new Date().toISOString(),
+    };
   }
 
   async list(): Promise<readonly Proposal[]> {
