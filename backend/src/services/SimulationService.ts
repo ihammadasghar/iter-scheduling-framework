@@ -127,8 +127,13 @@ export class SimulationService implements ISimulationService {
     return this.graph.updateClass(simulationId, classId, patch);
   }
 
-  async getSuggestions(_simulationId: string, _classId: string): Promise<readonly Suggestion[]> {
-    throw ApiError.notImplemented();
+  async getSuggestions(simulationId: string, classId: string): Promise<readonly Suggestion[]> {
+    const touched = this.registry.touch(simulationId);
+    if (!touched) {
+      throw ApiError.notFound('Simulation not found or expired');
+    }
+
+    return this.graph.getSuggestions(simulationId, classId);
   }
 
   async getConflicts(simulationId: string): Promise<readonly Conflict[]> {

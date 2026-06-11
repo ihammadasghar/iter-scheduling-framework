@@ -3,7 +3,7 @@ import { parseScheduleJson, buildHydrationBatches } from '../utils/ScheduleHydra
 import { translateRule } from '../utils/MetricRuleTranslator.js';
 import type { IMemgraphClient } from '../clients/IMemgraphClient.js';
 import type { IGraphService } from '../interfaces/IGraphService.js';
-import type { ScheduleClass, Conflict, MetricResult, MetricRule } from '../types/domain.js';
+import type { ScheduleClass, Conflict, MetricResult, MetricRule, Suggestion } from '../types/domain.js';
 import type {
   ScheduleJson,
   RawCourse,
@@ -243,8 +243,34 @@ export class GraphService implements IGraphService {
     };
   }
 
-  async getSuggestions(_simulationId: string, _classId: string): Promise<readonly string[]> {
-    throw ApiError.notImplemented();
+  async getSuggestions(simulationId: string, classId: string): Promise<readonly Suggestion[]> {
+    const branchId = simulationId;
+
+    const cypher = `
+      MATCH (cls:Class {id: $classId, branchId: $branchId})
+      MATCH (r:Room {branchId: $branchId}), (t:TimeSlot {branchId: $branchId})
+      OPTIONAL MATCH (roomOcc:Class {branchId: $branchId})-[:HELD_IN]->(r)
+        WHERE (roomOcc)-[:SCHEDULED_AT]->(t) AND roomOcc.id <> cls.id
+      WITH cls, r, t, count(roomOcc) AS roomConflicts
+      OPTIONAL MATCH (profOcc:Class {branchId: $branchId})-[:TAUGHT_BY]->(:Professor {id: cls.professorId, branchId: $branchId})
+        WHERE (profOcc)-[:SCHEDULED_AT]->(t) AND profOcc.id <> cls.id
+      WITH cls, r, t, roomConflicts, count(profOcc) AS profConflicts
+      OPTIONAL MATCH (groupOcc:Class {branchId: $branchId})-[:ATTENDED_BY]->(:StudentGroup {id: cls.studentGroupId, branchId: $branchId})
+        WHERE (groupOcc)-[:SCHEDULED_AT]->(t) AND groupOcc.id <> cls.id
+      WITH r, t, roomConflicts, profConflicts, count(groupOcc) AS groupConflicts
+      WHERE roomConflicts = 0 AND profConflicts = 0 AND groupConflicts = 0
+      WITH r, collect(DISTINCT t.id) AS timeSlotIds
+      RETURN r.id AS roomId, timeSlotIds
+      ORDER BY r.id
+    `.trim();
+
+    const rows = await this.client.run<SuggestionRow>(cypher, { branchId, classId });
+
+    return rows.map((row) => ({
+      roomId: String(row['roomId'] ?? ''),
+      timeSlotIds: Array.isArray(row['timeSlotIds']) ? (row['timeSlotIds'] as string[]) : [],
+      conflictFree: true,
+    }));
   }
 
   async queryConflicts(simulationId: string): Promise<readonly Conflict[]> {
@@ -326,3 +352,10 @@ const buildConflictMessage = (
   }
   return `Student group '${resourceName}' is scheduled in two classes simultaneously: ${classId1} and ${classId2}`;
 };
+
+// ── Suggestion helpers ────────────────────────────────────────────────────────
+
+interface SuggestionRow {
+  readonly roomId: string;
+  readonly timeSlotIds: readonly string[];
+}

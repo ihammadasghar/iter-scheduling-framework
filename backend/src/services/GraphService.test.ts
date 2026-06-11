@@ -470,6 +470,88 @@ describe('GraphService', () => {
     });
   });
 
+  // ── getSuggestions ────────────────────────────────────────────────────────
+
+  describe('getSuggestions()', () => {
+    const CLASS_ID = 'CLS_001';
+    const SUGGESTION_ROW = {
+      roomId: 'RM_101',
+      timeSlotIds: ['TS_MON_P1', 'TS_MON_P2'],
+    };
+
+    it('calls client.run() exactly once', async () => {
+      mockClient = { run: vi.fn().mockResolvedValue([SUGGESTION_ROW]), close: vi.fn() };
+      service = new GraphService(mockClient);
+
+      await service.getSuggestions(BRANCH_ID, CLASS_ID);
+
+      expect(mockClient.run).toHaveBeenCalledOnce();
+    });
+
+    it('passes both branchId and classId as params', async () => {
+      mockClient = { run: vi.fn().mockResolvedValue([]), close: vi.fn() };
+      service = new GraphService(mockClient);
+
+      await service.getSuggestions(BRANCH_ID, CLASS_ID);
+
+      const [, params] = (mockClient.run as ReturnType<typeof vi.fn>).mock.calls[0] as [
+        string,
+        Record<string, unknown>,
+      ];
+      expect(params['branchId']).toBe(BRANCH_ID);
+      expect(params['classId']).toBe(CLASS_ID);
+    });
+
+    it('maps rows to Suggestion objects with conflictFree: true', async () => {
+      mockClient = { run: vi.fn().mockResolvedValue([SUGGESTION_ROW]), close: vi.fn() };
+      service = new GraphService(mockClient);
+
+      const result = await service.getSuggestions(BRANCH_ID, CLASS_ID);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        roomId: 'RM_101',
+        timeSlotIds: ['TS_MON_P1', 'TS_MON_P2'],
+        conflictFree: true,
+      });
+    });
+
+    it('returns an empty array when no conflict-free slots are found', async () => {
+      mockClient = { run: vi.fn().mockResolvedValue([]), close: vi.fn() };
+      service = new GraphService(mockClient);
+
+      const result = await service.getSuggestions(BRANCH_ID, CLASS_ID);
+
+      expect(result).toEqual([]);
+    });
+
+    it('returns multiple suggestions across different rooms', async () => {
+      const rows = [
+        { roomId: 'RM_101', timeSlotIds: ['TS_MON_P1'] },
+        { roomId: 'RM_102', timeSlotIds: ['TS_TUE_P1', 'TS_TUE_P2'] },
+      ];
+      mockClient = { run: vi.fn().mockResolvedValue(rows), close: vi.fn() };
+      service = new GraphService(mockClient);
+
+      const result = await service.getSuggestions(BRANCH_ID, CLASS_ID);
+
+      expect(result).toHaveLength(2);
+      expect(result.every((s) => s.conflictFree)).toBe(true);
+    });
+
+    it('includes all three constraint checks in the Cypher (HELD_IN, TAUGHT_BY, ATTENDED_BY)', async () => {
+      mockClient = { run: vi.fn().mockResolvedValue([]), close: vi.fn() };
+      service = new GraphService(mockClient);
+
+      await service.getSuggestions(BRANCH_ID, CLASS_ID);
+
+      const [cypher] = (mockClient.run as ReturnType<typeof vi.fn>).mock.calls[0] as [string];
+      expect(cypher).toContain('HELD_IN');
+      expect(cypher).toContain('TAUGHT_BY');
+      expect(cypher).toContain('ATTENDED_BY');
+    });
+  });
+
   // ── flush ──────────────────────────────────────────────────────────────────
 
   it('flush() runs a DETACH DELETE query scoped to the branchId', async () => {

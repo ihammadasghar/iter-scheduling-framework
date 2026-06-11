@@ -416,3 +416,55 @@ describe('SimulationService.getMetrics()', () => {
     expect(graph.evaluateMetrics).not.toHaveBeenCalled();
   });
 });
+
+describe('SimulationService.getSuggestions()', () => {
+  const SIM_ID = 'sim-alice-abc123';
+  const CLASS_ID = 'CLS_001';
+  const FAKE_SUGGESTIONS = [
+    { roomId: 'RM_101', timeSlotIds: ['TS_MON_P1', 'TS_MON_P2'], conflictFree: true },
+    { roomId: 'RM_102', timeSlotIds: ['TS_TUE_P1'], conflictFree: true },
+  ];
+
+  let github: IGitHubService;
+  let graph: IGraphService;
+  let registry: ISessionRegistry;
+  let service: SimulationService;
+
+  beforeEach(() => {
+    github = makeGitHub();
+    graph = makeGraph();
+    registry = makeRegistry(true);
+    (graph.getSuggestions as ReturnType<typeof vi.fn>).mockResolvedValue(FAKE_SUGGESTIONS);
+    service = new SimulationService(github, graph, registry);
+  });
+
+  it('throws 404 when the simulation session is not found', async () => {
+    const expiredRegistry = makeRegistry(false);
+    const svc = new SimulationService(github, graph, expiredRegistry);
+
+    await expect(svc.getSuggestions(SIM_ID, CLASS_ID)).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Simulation not found or expired',
+    });
+  });
+
+  it('delegates to graph.getSuggestions with the correct arguments', async () => {
+    await service.getSuggestions(SIM_ID, CLASS_ID);
+
+    expect(graph.getSuggestions).toHaveBeenCalledOnce();
+    expect(graph.getSuggestions).toHaveBeenCalledWith(SIM_ID, CLASS_ID);
+  });
+
+  it('returns the Suggestion array from graph.getSuggestions', async () => {
+    const result = await service.getSuggestions(SIM_ID, CLASS_ID);
+
+    expect(result).toEqual(FAKE_SUGGESTIONS);
+  });
+
+  it('returns an empty array when no conflict-free slots exist', async () => {
+    (graph.getSuggestions as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    const result = await service.getSuggestions(SIM_ID, CLASS_ID);
+
+    expect(result).toEqual([]);
+  });
+});
