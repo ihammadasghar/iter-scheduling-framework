@@ -116,6 +116,15 @@ export class GitHubService implements IGitHubService {
     return data.map((pr) => String(pr.number));
   }
 
+  async addPullRequestComment(pullRequestId: string, body: string): Promise<void> {
+    await this.octokit.rest.issues.createComment({
+      owner: this.owner,
+      repo: this.repo,
+      issue_number: parseInt(pullRequestId, 10),
+      body,
+    });
+  }
+
   // Returns the blob SHA of an existing file, or null if the file does not exist.
   private async getFileSha(branch: string, path: string): Promise<string | null> {
     try {

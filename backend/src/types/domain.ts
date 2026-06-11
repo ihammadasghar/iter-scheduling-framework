@@ -98,3 +98,8 @@ export interface CreateConstraintParams {
   readonly target: string;
   readonly violationCondition: string;
 }
+
+export interface CiResult {
+  readonly status: 'READY' | 'BLOCKED';
+  readonly conflicts: readonly Conflict[];
+}

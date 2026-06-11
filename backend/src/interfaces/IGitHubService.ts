@@ -10,4 +10,5 @@ export interface IGitHubService {
   mergePullRequest(pullRequestId: string): Promise<void>;
   getPullRequestDiff(pullRequestId: string): Promise<string>;
   listOpenPullRequests(): Promise<readonly string[]>;
+  addPullRequestComment(pullRequestId: string, body: string): Promise<void>;
 }

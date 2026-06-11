@@ -20,6 +20,9 @@ type MockOctokit = {
       merge: ReturnType<typeof vi.fn>;
       list: ReturnType<typeof vi.fn>;
     };
+    issues: {
+      createComment: ReturnType<typeof vi.fn>;
+    };
   };
   request: ReturnType<typeof vi.fn>;
 };
@@ -43,6 +46,9 @@ function buildMockOctokit(): MockOctokit {
         create: vi.fn(),
         merge: vi.fn(),
         list: vi.fn(),
+      },
+      issues: {
+        createComment: vi.fn(),
       },
     },
     request: vi.fn(),
@@ -195,5 +201,20 @@ describe('GitHubService', () => {
     expect(mock.rest.pulls.list).toHaveBeenCalledWith(
       expect.objectContaining({ state: 'open' }),
     );
+  });
+
+  // ── addPullRequestComment ───────────────────────────────────────────────────
+
+  it('addPullRequestComment calls issues.createComment with numeric PR number', async () => {
+    mock.rest.issues.createComment.mockResolvedValue({});
+
+    await service.addPullRequestComment('42', 'CI passed');
+
+    expect(mock.rest.issues.createComment).toHaveBeenCalledWith({
+      owner: OWNER,
+      repo: REPO,
+      issue_number: 42,
+      body: 'CI passed',
+    });
   });
 });

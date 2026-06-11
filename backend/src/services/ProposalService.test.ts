@@ -2,6 +2,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ProposalService } from './ProposalService.js';
 import type { IGitHubService } from '../interfaces/IGitHubService.js';
 import type { IGraphService } from '../interfaces/IGraphService.js';
+import type { ICiPipelineService } from '../interfaces/ICiPipelineService.js';
+import type { Conflict } from '../types/domain.js';
+
+const FAKE_CONFLICT: Conflict = {
+  id: 'ROOM_DOUBLE_BOOK_CLS_001_CLS_002',
+  type: 'ROOM_DOUBLE_BOOK',
+  classIds: ['CLS_001', 'CLS_002'],
+  message: 'Room RM_101 is double-booked',
+};
 
 const makeGitHub = (): IGitHubService => ({
   createBranch: vi.fn().mockResolvedValue(undefined),
@@ -12,6 +21,7 @@ const makeGitHub = (): IGitHubService => ({
   mergePullRequest: vi.fn().mockResolvedValue(undefined),
   getPullRequestDiff: vi.fn().mockResolvedValue(''),
   listOpenPullRequests: vi.fn().mockResolvedValue([]),
+  addPullRequestComment: vi.fn().mockResolvedValue(undefined),
 });
 
 const makeGraph = (): IGraphService => ({
@@ -26,6 +36,13 @@ const makeGraph = (): IGraphService => ({
   evaluateMetrics: vi.fn().mockResolvedValue([]),
 });
 
+const makeCi = (conflicts: readonly Conflict[] = []): ICiPipelineService => ({
+  run: vi.fn().mockResolvedValue({
+    status: conflicts.length > 0 ? 'BLOCKED' : 'READY',
+    conflicts,
+  }),
+});
+
 describe('ProposalService.submit()', () => {
   const VALID_PARAMS = {
     simulationId: 'sim-alice-abc123',
@@ -34,12 +51,14 @@ describe('ProposalService.submit()', () => {
 
   let github: IGitHubService;
   let graph: IGraphService;
+  let ci: ICiPipelineService;
   let service: ProposalService;
 
   beforeEach(() => {
     github = makeGitHub();
     graph = makeGraph();
-    service = new ProposalService(github, graph);
+    ci = makeCi();
+    service = new ProposalService(github, graph, ci);
   });
 
   it('throws 400 when simulationId is empty', async () => {
@@ -99,10 +118,48 @@ describe('ProposalService.submit()', () => {
     expect(proposal.id).toBe('42');
   });
 
-  it('returns a Proposal with status PENDING', async () => {
+  it('returns status READY when CI finds no conflicts', async () => {
     const proposal = await service.submit(VALID_PARAMS);
 
-    expect(proposal.status).toBe('PENDING');
+    expect(proposal.status).toBe('READY');
+  });
+
+  it('returns status BLOCKED when CI finds conflicts', async () => {
+    ci = makeCi([FAKE_CONFLICT]);
+    service = new ProposalService(github, graph, ci);
+
+    const proposal = await service.submit(VALID_PARAMS);
+
+    expect(proposal.status).toBe('BLOCKED');
+  });
+
+  it('calls ciPipeline.run with the PR id and simulationId', async () => {
+    await service.submit(VALID_PARAMS);
+
+    expect(ci.run).toHaveBeenCalledWith({
+      proposalId: '42',
+      simulationId: VALID_PARAMS.simulationId,
+    });
+  });
+
+  it('posts a READY comment to the PR when no conflicts', async () => {
+    await service.submit(VALID_PARAMS);
+
+    expect(github.addPullRequestComment).toHaveBeenCalledOnce();
+    const [prId, body] = (github.addPullRequestComment as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string];
+    expect(prId).toBe('42');
+    expect(body).toContain('CI passed');
+  });
+
+  it('posts a BLOCKED comment to the PR when conflicts found', async () => {
+    ci = makeCi([FAKE_CONFLICT]);
+    service = new ProposalService(github, graph, ci);
+
+    await service.submit(VALID_PARAMS);
+
+    const [, body] = (github.addPullRequestComment as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string];
+    expect(body).toContain('CI failed');
+    expect(body).toContain('1');
   });
 
   it('returns a Proposal with the correct simulationId', async () => {
@@ -120,3 +177,4 @@ describe('ProposalService.submit()', () => {
     expect(proposal.createdAt <= after).toBe(true);
   });
 });
+
