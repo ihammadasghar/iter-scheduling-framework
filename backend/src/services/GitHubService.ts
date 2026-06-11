@@ -1,6 +1,6 @@
 import { Octokit } from '@octokit/rest';
 import { ApiError } from '../types/ApiError.js';
-import type { IGitHubService } from '../interfaces/IGitHubService.js';
+import type { IGitHubService, PullRequestInfo } from '../interfaces/IGitHubService.js';
 
 export class GitHubService implements IGitHubService {
   constructor(
@@ -122,6 +122,30 @@ export class GitHubService implements IGitHubService {
       repo: this.repo,
       issue_number: parseInt(pullRequestId, 10),
       body,
+    });
+  }
+
+  async getPullRequest(pullRequestId: string): Promise<PullRequestInfo> {
+    const { data } = await this.octokit.rest.pulls.get({
+      owner: this.owner,
+      repo: this.repo,
+      pull_number: parseInt(pullRequestId, 10),
+    });
+
+    return {
+      title: data.title,
+      head: data.head.ref,
+      labels: data.labels.map((l) => l.name ?? '').filter(Boolean),
+      createdAt: data.created_at,
+    };
+  }
+
+  async setPullRequestLabels(pullRequestId: string, labels: readonly string[]): Promise<void> {
+    await this.octokit.rest.issues.setLabels({
+      owner: this.owner,
+      repo: this.repo,
+      issue_number: parseInt(pullRequestId, 10),
+      labels: labels as string[],
     });
   }
 

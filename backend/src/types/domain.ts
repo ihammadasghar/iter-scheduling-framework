@@ -103,3 +103,7 @@ export interface CiResult {
   readonly status: 'READY' | 'BLOCKED';
   readonly conflicts: readonly Conflict[];
 }
+
+export interface ProposalDetail extends Proposal {
+  readonly diff: string;
+}

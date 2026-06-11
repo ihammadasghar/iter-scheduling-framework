@@ -3,7 +3,10 @@ import type { IGitHubService } from '../interfaces/IGitHubService.js';
 import type { IGraphService } from '../interfaces/IGraphService.js';
 import type { ICiPipelineService } from '../interfaces/ICiPipelineService.js';
 import type { IProposalService } from '../interfaces/IProposalService.js';
-import type { Proposal, CreateProposalParams } from '../types/domain.js';
+import type { Proposal, ProposalDetail, CreateProposalParams } from '../types/domain.js';
+
+const CI_LABEL_READY = 'ci:ready';
+const CI_LABEL_BLOCKED = 'ci:blocked';
 
 export class ProposalService implements IProposalService {
   constructor(
@@ -30,7 +33,11 @@ export class ProposalService implements IProposalService {
     );
 
     const ciResult = await this.ciPipeline.run({ proposalId: prId, simulationId });
-    await this.github.addPullRequestComment(prId, formatCiComment(ciResult.status, ciResult.conflicts.length));
+
+    await Promise.all([
+      this.github.addPullRequestComment(prId, formatCiComment(ciResult.status, ciResult.conflicts.length)),
+      this.github.setPullRequestLabels(prId, [ciResult.status === 'READY' ? CI_LABEL_READY : CI_LABEL_BLOCKED]),
+    ]);
 
     return {
       id: prId,
@@ -41,16 +48,63 @@ export class ProposalService implements IProposalService {
   }
 
   async list(): Promise<readonly Proposal[]> {
-    throw ApiError.notImplemented();
+    const prIds = await this.github.listOpenPullRequests();
+    const prs = await Promise.all(prIds.map((id) => this.github.getPullRequest(id)));
+
+    return prIds
+      .map((id, i) => ({ id, pr: prs[i]! }))
+      .filter(({ pr }) => pr.labels.includes(CI_LABEL_READY))
+      .map(({ id, pr }) => toProposal(id, pr.head, pr.labels, pr.createdAt));
   }
 
-  async get(_proposalId: string): Promise<Proposal> {
-    throw ApiError.notImplemented();
+  async get(proposalId: string): Promise<ProposalDetail> {
+    const [pr, diff] = await Promise.all([
+      this.github.getPullRequest(proposalId),
+      this.github.getPullRequestDiff(proposalId),
+    ]);
+
+    return {
+      ...toProposal(proposalId, pr.head, pr.labels, pr.createdAt),
+      diff,
+    };
   }
 
-  async merge(_proposalId: string): Promise<void> {
-    throw ApiError.notImplemented();
+  async merge(proposalId: string): Promise<Proposal> {
+    const pr = await this.github.getPullRequest(proposalId);
+
+    if (!pr.labels.includes(CI_LABEL_READY)) {
+      throw ApiError.conflict('Proposal is not READY to merge — re-run CI or fix conflicts first');
+    }
+
+    await this.github.mergePullRequest(proposalId);
+
+    return {
+      id: proposalId,
+      simulationId: pr.head,
+      status: 'MERGED',
+      createdAt: pr.createdAt,
+    };
   }
+}
+
+function toProposal(
+  id: string,
+  head: string,
+  labels: readonly string[],
+  createdAt: string,
+): Proposal {
+  return {
+    id,
+    simulationId: head,
+    status: labelsToStatus(labels),
+    createdAt,
+  };
+}
+
+function labelsToStatus(labels: readonly string[]): Proposal['status'] {
+  if (labels.includes(CI_LABEL_READY)) return 'READY';
+  if (labels.includes(CI_LABEL_BLOCKED)) return 'BLOCKED';
+  return 'PENDING';
 }
 
 function formatCiComment(status: 'READY' | 'BLOCKED', conflictCount: number): string {

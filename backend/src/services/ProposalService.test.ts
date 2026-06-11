@@ -19,9 +19,16 @@ const makeGitHub = (): IGitHubService => ({
   writeFile: vi.fn().mockResolvedValue(undefined),
   createPullRequest: vi.fn().mockResolvedValue('42'),
   mergePullRequest: vi.fn().mockResolvedValue(undefined),
-  getPullRequestDiff: vi.fn().mockResolvedValue(''),
+  getPullRequestDiff: vi.fn().mockResolvedValue('diff --git a/schedule.json'),
   listOpenPullRequests: vi.fn().mockResolvedValue([]),
   addPullRequestComment: vi.fn().mockResolvedValue(undefined),
+  getPullRequest: vi.fn().mockResolvedValue({
+    title: 'Proposal: sim-alice-abc123',
+    head: 'sim-alice-abc123',
+    labels: ['ci:ready'],
+    createdAt: '2026-06-11T10:00:00.000Z',
+  }),
+  setPullRequestLabels: vi.fn().mockResolvedValue(undefined),
 });
 
 const makeGraph = (): IGraphService => ({
@@ -175,6 +182,166 @@ describe('ProposalService.submit()', () => {
 
     expect(proposal.createdAt >= before).toBe(true);
     expect(proposal.createdAt <= after).toBe(true);
+  });
+
+  it('sets ci:ready label on the PR when CI passes', async () => {
+    await service.submit(VALID_PARAMS);
+
+    expect(github.setPullRequestLabels).toHaveBeenCalledWith('42', ['ci:ready']);
+  });
+
+  it('sets ci:blocked label on the PR when CI fails', async () => {
+    ci = makeCi([FAKE_CONFLICT]);
+    service = new ProposalService(github, graph, ci);
+
+    await service.submit(VALID_PARAMS);
+
+    expect(github.setPullRequestLabels).toHaveBeenCalledWith('42', ['ci:blocked']);
+  });
+});
+
+describe('ProposalService.list()', () => {
+  let github: IGitHubService;
+  let service: ProposalService;
+
+  beforeEach(() => {
+    github = makeGitHub();
+    service = new ProposalService(github, makeGraph(), makeCi());
+  });
+
+  it('returns empty array when no open PRs', async () => {
+    (github.listOpenPullRequests as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+
+    const proposals = await service.list();
+
+    expect(proposals).toHaveLength(0);
+  });
+
+  it('returns only PRs with ci:ready label', async () => {
+    (github.listOpenPullRequests as ReturnType<typeof vi.fn>).mockResolvedValue(['1', '2', '3']);
+    (github.getPullRequest as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ title: 'P1', head: 'sim-1', labels: ['ci:ready'], createdAt: '2026-01-01T00:00:00.000Z' })
+      .mockResolvedValueOnce({ title: 'P2', head: 'sim-2', labels: ['ci:blocked'], createdAt: '2026-01-02T00:00:00.000Z' })
+      .mockResolvedValueOnce({ title: 'P3', head: 'sim-3', labels: [], createdAt: '2026-01-03T00:00:00.000Z' });
+
+    const proposals = await service.list();
+
+    expect(proposals).toHaveLength(1);
+    expect(proposals[0]?.id).toBe('1');
+    expect(proposals[0]?.status).toBe('READY');
+  });
+
+  it('maps simulationId from the PR head branch', async () => {
+    (github.listOpenPullRequests as ReturnType<typeof vi.fn>).mockResolvedValue(['7']);
+    (github.getPullRequest as ReturnType<typeof vi.fn>).mockResolvedValue({
+      title: 'Proposal: sim-bob-xyz',
+      head: 'sim-bob-xyz',
+      labels: ['ci:ready'],
+      createdAt: '2026-01-01T00:00:00.000Z',
+    });
+
+    const proposals = await service.list();
+
+    expect(proposals[0]?.simulationId).toBe('sim-bob-xyz');
+  });
+});
+
+describe('ProposalService.get()', () => {
+  let github: IGitHubService;
+  let service: ProposalService;
+
+  beforeEach(() => {
+    github = makeGitHub();
+    service = new ProposalService(github, makeGraph(), makeCi());
+  });
+
+  it('returns ProposalDetail with diff and status', async () => {
+    const detail = await service.get('42');
+
+    expect(detail.id).toBe('42');
+    expect(detail.simulationId).toBe('sim-alice-abc123');
+    expect(detail.status).toBe('READY');
+    expect(detail.diff).toBe('diff --git a/schedule.json');
+    expect(detail.createdAt).toBe('2026-06-11T10:00:00.000Z');
+  });
+
+  it('derives BLOCKED status from ci:blocked label', async () => {
+    (github.getPullRequest as ReturnType<typeof vi.fn>).mockResolvedValue({
+      title: 'Proposal: sim-x',
+      head: 'sim-x',
+      labels: ['ci:blocked'],
+      createdAt: '2026-01-01T00:00:00.000Z',
+    });
+
+    const detail = await service.get('5');
+
+    expect(detail.status).toBe('BLOCKED');
+  });
+
+  it('derives PENDING status when no CI label', async () => {
+    (github.getPullRequest as ReturnType<typeof vi.fn>).mockResolvedValue({
+      title: 'Proposal: sim-y',
+      head: 'sim-y',
+      labels: [],
+      createdAt: '2026-01-01T00:00:00.000Z',
+    });
+
+    const detail = await service.get('9');
+
+    expect(detail.status).toBe('PENDING');
+  });
+});
+
+describe('ProposalService.merge()', () => {
+  let github: IGitHubService;
+  let service: ProposalService;
+
+  beforeEach(() => {
+    github = makeGitHub();
+    service = new ProposalService(github, makeGraph(), makeCi());
+  });
+
+  it('merges the PR and returns Proposal with MERGED status', async () => {
+    const proposal = await service.merge('42');
+
+    expect(github.mergePullRequest).toHaveBeenCalledWith('42');
+    expect(proposal.status).toBe('MERGED');
+    expect(proposal.id).toBe('42');
+    expect(proposal.simulationId).toBe('sim-alice-abc123');
+  });
+
+  it('throws 409 when PR does not have ci:ready label', async () => {
+    (github.getPullRequest as ReturnType<typeof vi.fn>).mockResolvedValue({
+      title: 'Proposal: sim-blocked',
+      head: 'sim-blocked',
+      labels: ['ci:blocked'],
+      createdAt: '2026-01-01T00:00:00.000Z',
+    });
+
+    await expect(service.merge('5')).rejects.toMatchObject({
+      statusCode: 409,
+    });
+
+    expect(github.mergePullRequest).not.toHaveBeenCalled();
+  });
+
+  it('throws 409 when PR has no CI label (PENDING)', async () => {
+    (github.getPullRequest as ReturnType<typeof vi.fn>).mockResolvedValue({
+      title: 'Proposal: sim-pending',
+      head: 'sim-pending',
+      labels: [],
+      createdAt: '2026-01-01T00:00:00.000Z',
+    });
+
+    await expect(service.merge('9')).rejects.toMatchObject({
+      statusCode: 409,
+    });
+  });
+
+  it('returns createdAt from the PR', async () => {
+    const proposal = await service.merge('42');
+
+    expect(proposal.createdAt).toBe('2026-06-11T10:00:00.000Z');
   });
 });
 

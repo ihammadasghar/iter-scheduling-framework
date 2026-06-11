@@ -33,8 +33,8 @@ export class ProposalController {
 
   async merge(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      await this.service.merge(req.params['id'] as string);
-      res.status(200).json({ ok: true });
+      const proposal = await this.service.merge(req.params['id'] as string);
+      res.status(200).json(proposal);
     } catch (err) {
       next(err);
     }

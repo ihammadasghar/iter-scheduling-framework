@@ -11,4 +11,13 @@ export interface IGitHubService {
   getPullRequestDiff(pullRequestId: string): Promise<string>;
   listOpenPullRequests(): Promise<readonly string[]>;
   addPullRequestComment(pullRequestId: string, body: string): Promise<void>;
+  getPullRequest(pullRequestId: string): Promise<PullRequestInfo>;
+  setPullRequestLabels(pullRequestId: string, labels: readonly string[]): Promise<void>;
+}
+
+export interface PullRequestInfo {
+  readonly title: string;
+  readonly head: string;
+  readonly labels: readonly string[];
+  readonly createdAt: string;
 }

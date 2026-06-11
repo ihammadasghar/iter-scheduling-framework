@@ -5,6 +5,7 @@ import { GitHubService } from './services/GitHubService.js';
 import { GraphService } from './services/GraphService.js';
 import { SimulationService } from './services/SimulationService.js';
 import { ProposalService } from './services/ProposalService.js';
+import { CiPipelineService } from './services/CiPipelineService.js';
 import { RulesService } from './services/RulesService.js';
 import { SessionRegistry } from './sessions/SessionRegistry.js';
 import { SessionGarbageCollector } from './sessions/SessionGarbageCollector.js';
@@ -50,7 +51,8 @@ export function buildContainer(): Container {
 
   // Domain services
   const simulationService = new SimulationService(githubService, graphService, sessionRegistry);
-  const proposalService = new ProposalService(githubService, graphService);
+  const ciPipelineService = new CiPipelineService(githubService, graphService);
+  const proposalService = new ProposalService(githubService, graphService, ciPipelineService);
   const rulesService = new RulesService(githubService);
 
   return {

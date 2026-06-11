@@ -19,9 +19,11 @@ type MockOctokit = {
       create: ReturnType<typeof vi.fn>;
       merge: ReturnType<typeof vi.fn>;
       list: ReturnType<typeof vi.fn>;
+      get: ReturnType<typeof vi.fn>;
     };
     issues: {
       createComment: ReturnType<typeof vi.fn>;
+      setLabels: ReturnType<typeof vi.fn>;
     };
   };
   request: ReturnType<typeof vi.fn>;
@@ -46,9 +48,11 @@ function buildMockOctokit(): MockOctokit {
         create: vi.fn(),
         merge: vi.fn(),
         list: vi.fn(),
+        get: vi.fn(),
       },
       issues: {
         createComment: vi.fn(),
+        setLabels: vi.fn(),
       },
     },
     request: vi.fn(),
@@ -215,6 +219,44 @@ describe('GitHubService', () => {
       repo: REPO,
       issue_number: 42,
       body: 'CI passed',
+    });
+  });
+
+  // ── getPullRequest ──────────────────────────────────────────────────────────
+
+  it('getPullRequest returns title, head, labels and createdAt', async () => {
+    mock.rest.pulls.get.mockResolvedValue({
+      data: {
+        title: 'Proposal: sim-alice',
+        head: { ref: 'sim-alice-abc123' },
+        labels: [{ name: 'ci:ready' }, { name: 'bug' }],
+        created_at: '2026-06-11T10:00:00.000Z',
+      },
+    });
+
+    const pr = await service.getPullRequest('7');
+
+    expect(pr).toEqual({
+      title: 'Proposal: sim-alice',
+      head: 'sim-alice-abc123',
+      labels: ['ci:ready', 'bug'],
+      createdAt: '2026-06-11T10:00:00.000Z',
+    });
+    expect(mock.rest.pulls.get).toHaveBeenCalledWith({ owner: OWNER, repo: REPO, pull_number: 7 });
+  });
+
+  // ── setPullRequestLabels ────────────────────────────────────────────────────
+
+  it('setPullRequestLabels calls issues.setLabels with numeric PR number', async () => {
+    mock.rest.issues.setLabels.mockResolvedValue({});
+
+    await service.setPullRequestLabels('42', ['ci:ready']);
+
+    expect(mock.rest.issues.setLabels).toHaveBeenCalledWith({
+      owner: OWNER,
+      repo: REPO,
+      issue_number: 42,
+      labels: ['ci:ready'],
     });
   });
 });
