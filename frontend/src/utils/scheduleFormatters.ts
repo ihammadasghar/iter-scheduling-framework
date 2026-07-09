@@ -14,6 +14,11 @@ const DAY_ORDER: Record<string, number> = {
   MON: 0, TUE: 1, WED: 2, THU: 3, FRI: 4, SAT: 5, SUN: 6,
 };
 
+const DAY_NAMES: Readonly<Record<string, string>> = {
+  MON: 'Monday', TUE: 'Tuesday', WED: 'Wednesday', THU: 'Thursday',
+  FRI: 'Friday', SAT: 'Saturday', SUN: 'Sunday',
+};
+
 /** Sort time-slot IDs chronologically: by day then by period number. */
 export const sortTimeSlotIds = (ids: readonly string[]): string[] =>
   [...ids].sort((a, b) => {
@@ -33,6 +38,14 @@ export const formatTimeSlotLabel = (id: string): string => {
   return parts
     .map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
     .join(' ');
+};
+
+/** Format a time-slot ID into a full label: "TS_MON_P1" → "Monday Period 1" */
+export const formatTimeSlotFull = (id: string): string => {
+  const [, day = '', period = ''] = id.split('_');
+  const dayName = DAY_NAMES[day] ?? day;
+  const periodNum = period.replace(/\D/g, '');
+  return `${dayName} Period ${periodNum}`;
 };
 
 /** Format a room ID: "RM_101" → "Room 101", "RM_LAB_A" → "Lab A" */

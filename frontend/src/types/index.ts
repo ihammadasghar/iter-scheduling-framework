@@ -45,4 +45,5 @@ export type {
   FieldChange,
   ClassChange,
   ConflictDisplayItem,
+  MetricDelta,
 } from './ui';

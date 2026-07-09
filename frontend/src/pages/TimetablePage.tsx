@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Box, Typography } from '@mui/material';
 import AppShell from '@/templates/AppShell';
 import TimetableGrid from '@/organisms/TimetableGrid';
+import Inspector from '@/organisms/Inspector';
 import ViewBySelector from '@/molecules/ViewBySelector';
 import SaveChangesButton from '@/molecules/SaveChangesButton';
 import { useAppDispatch } from '@/store/hooks';
@@ -71,9 +72,10 @@ export default function TimetablePage(): React.ReactElement {
           <SaveChangesButton simId={simId} />
         </Box>
 
-        {/* Main grid — fills remaining height */}
-        <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
+        {/* Main area: grid + inspector overlay */}
+        <Box sx={{ flex: 1, overflow: 'hidden', position: 'relative', display: 'flex' }}>
           <TimetableGrid />
+          <Inspector simId={simId} />
         </Box>
 
         {/* HUD placeholder (Task 10) */}

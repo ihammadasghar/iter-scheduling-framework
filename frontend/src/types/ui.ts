@@ -36,3 +36,11 @@ export interface ConflictDisplayItem {
   readonly message: string;   // Plain English — never the raw type code
   readonly primaryClassId: string;
 }
+
+// Metric change after applying a suggestion
+export interface MetricDelta {
+  readonly name: string;
+  readonly before: number;
+  readonly after: number;
+  readonly unit: string;
+}
