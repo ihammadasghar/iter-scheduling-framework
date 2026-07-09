@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
+import AllureReporter from 'allure-vitest/reporter';
 
 export default defineConfig({
   plugins: [react()],
@@ -13,6 +14,10 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     globals: true,
+    reporters: [
+      'default',
+      new AllureReporter({ resultsDir: 'allure-results' }),
+    ],
     coverage: {
       provider: 'v8',
       thresholds: {
