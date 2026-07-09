@@ -1,0 +1,29 @@
+services:
+  memgraph:
+    image: memgraph/memgraph:latest
+    ports:
+      - '7687:7687'
+    volumes:
+      - memgraph-data:/var/lib/memgraph
+    healthcheck:
+      test: ['CMD', 'nc', '-z', 'localhost', '7687']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - '3000:3000'
+    env_file:
+      - ./backend/.env
+    environment:
+      - MEMGRAPH_URI=bolt://memgraph:7687
+    depends_on:
+      memgraph:
+        condition: service_healthy
+
+volumes:
+  memgraph-data:
