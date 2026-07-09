@@ -41,24 +41,16 @@ describe('rulesService', () => {
     expect(result[0].condition).toBe('utilization');
   });
 
-  it('getMetricRules returns empty array on 501 (Gap 1)', async () => {
+  it('getMetricRules rethrows 501 (slice handles unavailable flag)', async () => {
     const gap1Error: ApiError = { statusCode: 501, code: 'NOT_IMPLEMENTED', message: 'Not impl' };
     getSpy.mockRejectedValue(gap1Error);
-    const result = await rulesService.getMetricRules();
-    expect(result).toEqual([]);
+    await expect(rulesService.getMetricRules()).rejects.toMatchObject({ statusCode: 501 });
   });
 
-  it('getMetricRules returns empty array on 404', async () => {
+  it('getMetricRules rethrows 404', async () => {
     const notFound: ApiError = { statusCode: 404, code: 'NOT_FOUND', message: 'Not found' };
     getSpy.mockRejectedValue(notFound);
-    const result = await rulesService.getMetricRules();
-    expect(result).toEqual([]);
-  });
-
-  it('getMetricRules rethrows non-gap errors', async () => {
-    const serverError: ApiError = { statusCode: 500, code: 'INTERNAL_SERVER_ERROR', message: 'Boom' };
-    getSpy.mockRejectedValue(serverError);
-    await expect(rulesService.getMetricRules()).rejects.toMatchObject({ statusCode: 500 });
+    await expect(rulesService.getMetricRules()).rejects.toMatchObject({ statusCode: 404 });
   });
 
   it('createMetricRule calls POST /rules/metrics', async () => {
@@ -85,11 +77,10 @@ describe('rulesService', () => {
     expect(result[0].violationCondition).toBeTruthy();
   });
 
-  it('getConstraints returns empty array on 501', async () => {
+  it('getConstraints rethrows 501 (slice handles unavailable flag)', async () => {
     const gap1Error: ApiError = { statusCode: 501, code: 'NOT_IMPLEMENTED', message: 'Not impl' };
     getSpy.mockRejectedValue(gap1Error);
-    const result = await rulesService.getConstraints();
-    expect(result).toEqual([]);
+    await expect(rulesService.getConstraints()).rejects.toMatchObject({ statusCode: 501 });
   });
 
   it('createConstraint calls POST /rules/constraints', async () => {

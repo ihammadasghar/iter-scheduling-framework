@@ -4,23 +4,14 @@ import type {
   Constraint,
   CreateMetricRuleRequest,
   CreateConstraintRequest,
-  ApiError,
 } from '@/types';
 
-// Returns true for any response that indicates the rules service is unavailable.
-const isUnavailable = (err: ApiError): boolean =>
-  err.statusCode === 501 || err.statusCode === 404 || err.statusCode === 405;
-
 export const rulesService = {
-  // GET /rules/metrics — returns empty array on 501 (service not yet implemented).
+  // GET /rules/metrics — rethrows all errors (including 501) so the slice can set unavailable.
   getMetricRules(): Promise<MetricRule[]> {
     return apiClient
       .get<MetricRule[]>('/rules/metrics')
-      .then((r) => r.data)
-      .catch((err: ApiError) => {
-        if (isUnavailable(err)) return [];
-        throw err;
-      });
+      .then((r) => r.data);
   },
 
   createMetricRule(params: CreateMetricRuleRequest): Promise<MetricRule> {
@@ -35,15 +26,11 @@ export const rulesService = {
       .then(() => undefined);
   },
 
-  // GET /rules/constraints — returns empty array on 501.
+  // GET /rules/constraints — rethrows all errors (including 501) so the slice can set unavailable.
   getConstraints(): Promise<Constraint[]> {
     return apiClient
       .get<Constraint[]>('/rules/constraints')
-      .then((r) => r.data)
-      .catch((err: ApiError) => {
-        if (isUnavailable(err)) return [];
-        throw err;
-      });
+      .then((r) => r.data);
   },
 
   createConstraint(params: CreateConstraintRequest): Promise<Constraint> {
