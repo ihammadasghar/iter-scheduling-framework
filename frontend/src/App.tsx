@@ -4,6 +4,7 @@ import { ThemeProvider, CssBaseline } from '@mui/material';
 import { store } from '@/store/store';
 import theme from '@/styles/theme';
 import GlobalStyles from '@/styles/GlobalStyles';
+import GlobalErrorSnackbar from '@/atoms/GlobalErrorSnackbar';
 import AppShell from '@/templates/AppShell';
 import AdminGuard from '@/organisms/AdminGuard';
 import SimulationDashboardPage from '@/pages/SimulationDashboardPage';
@@ -24,6 +25,8 @@ export default function App(): React.ReactElement {
         <CssBaseline />
         <GlobalStyles />
         <BrowserRouter>
+          {/* Global error Snackbar — listens to all Redux error fields */}
+          <GlobalErrorSnackbar />
           <AppShell>
             <Routes>
               {/* User routes */}
