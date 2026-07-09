@@ -63,37 +63,74 @@ Every edit triggers a live conflict check. If a change creates a hard conflict, 
 ### 4. The Admin is a gatekeeper, not a bottleneck
 The Admin's Proposal Dashboard is designed for speed: proposals are pre-labelled `READY` or `BLOCKED` by the CI pipeline, the diff is human-readable, and the merge path is one click. The Admin should never need to re-run checks manually.
 
+### 5. Designed for non-technical users aged 50+
+Both primary user groups — scheduling department staff and professors — are likely to be 50+ years old and non-technical. The UI must never assume comfort with developer tools, abstract terminology, or small interactive targets.
+
+Concrete requirements that flow from this:
+- **Minimum font size: 16px** for all body text; 14px floor for secondary labels
+- **Minimum click/touch target: 44 × 44px** for every interactive element
+- **Labels on every icon** — no icon-only buttons anywhere in the application
+- **Plain English everywhere** — no jargon, no IDs in user-facing copy where a name exists, no raw error codes
+- **Confirmation before every destructive action** — no silent deletes or irreversible operations
+- **Tooltips on non-obvious elements** — every button or field that isn't self-explanatory gets a `Tooltip` on hover
+- **High contrast** — WCAG AA minimum (4.5:1 for normal text, 3:1 for large text and UI components)
+- **Error messages explain what to do**, not just what went wrong (e.g. *"This class has a room conflict — click the class to see available alternatives"* not *"ROOM_DOUBLE_BOOK error"*)
+
 ---
 
 ## 3. User Roles & Personas
 
 Since there is no authentication system, roles are toggled via a switch in the top navigation bar.
 
-### User — Scheduling Officer
+### User — Professor (Scheduling Requestor)
 
 | Attribute | Detail |
 |---|---|
-| **Goal** | Propose a better timetable arrangement without disrupting the live schedule |
-| **Mental model** | Familiar with spreadsheets and calendar apps; not a developer |
+| **Age / background** | Typically 50+ years old; comfortable with email and Microsoft Office but not specialist software |
+| **Goal** | Make a specific timetable change (e.g. move one of their classes to a different room or time) and submit it without creating problems for anyone else |
+| **Mental model** | Thinks of the timetable as a calendar or spreadsheet; has no concept of version control, branches, or pull requests |
+| **Tech anxiety** | High — easily loses confidence if the UI behaves unexpectedly or shows unfamiliar terminology |
 | **Key screens** | Simulation Dashboard, Timetable Grid, Inspector, HUD, Submit Proposal Modal |
-| **Key anxieties** | "Will my change break something else?" / "Is my proposal going to be approved?" |
+| **Key anxieties** | *"Will I accidentally break the whole schedule?"* / *"I don't know what half these buttons do"* / *"What does 'conflict' mean here?"* |
+| **Usage pattern** | Infrequent — may use the tool a handful of times per semester; cannot be expected to remember how it works between sessions |
 
-### Admin — Registry Manager
+**Design implications for this persona:**
+- The Simulation Dashboard must make it obvious what to do first ("Create New Simulation" is the only prominent action)
+- Simulation IDs like `sim-alice-a1b2c3d4` must never appear in user-facing copy — use *"Your draft from 2 hours ago"* or a user-defined name
+- The Timetable Grid must show only classes relevant to the logged-in professor by default (filtered view), with an option to show all
+- Every action button must carry a text label describing the outcome, not just the action (e.g. *"Save draft to branch"* not just *"Commit"*)
+- Conflict messages must use real names: *"Dr. Smith is already teaching at this time"*, not `PROFESSOR_OVERLAP: PRF_SMITH`
+
+---
+
+### Admin — Scheduling Department Staff
 
 | Attribute | Detail |
 |---|---|
-| **Goal** | Review incoming proposals quickly and confidently; keep `main` clean |
-| **Mental model** | Process-oriented; cares about data integrity and audit trail |
+| **Age / background** | Typically 55+ years old; scheduling department veteran; expert in university processes but not in software; likely uses email, spreadsheets, and a student information system daily |
+| **Goal** | Review incoming change proposals quickly, confirm they don't break anything, and publish the approved ones |
+| **Mental model** | Thinks in terms of approvals and paperwork; a "proposal" is like a form on their desk waiting to be stamped |
+| **Tech anxiety** | Moderate — comfortable with structured forms and lists but intimidated by anything that looks like developer output (diffs, JSON, IDs) |
 | **Key screens** | Admin Proposal Dashboard, Diff Review Screen, Rule Builder |
-| **Key anxieties** | "How do I know this is safe to merge?" / "What exactly changed?" |
+| **Key anxieties** | *"How do I know this is safe to approve?"* / *"What exactly changed — show me in plain English"* / *"What if I approve the wrong one?"* |
+| **Usage pattern** | Regular but not constant — checks for new proposals once or twice a day |
+
+**Design implications for this persona:**
+- The Admin Dashboard must feel like an inbox — a clear list with status labels, not a developer-facing Kanban board
+- The Diff Review Screen must translate every change into plain prose: *"Intro to Biology (Section A) moved from Room 101 on Monday morning to Room 102 on Wednesday morning"* — the raw JSON diff is collapsed and only available on request
+- The "Approve & Publish" button must be large, clearly labelled, and preceded by a confirmation step
+- The Rule Builder must feel like filling in a form, not writing code — dropdowns and number fields only, no free-text rule syntax
+
+---
 
 ### Role switching
 
-A toggle in the top app bar labelled **"Admin View"** switches the navigation and available screens. This is a demo-mode affordance — in a production system it would be replaced by real authentication.
+A toggle in the top app bar labelled **"Switch to Admin View"** switches the navigation and available screens. This is a demo-mode affordance — in a production system it would be replaced by real authentication.
 
 - Default state: **User View**
 - Toggle on: **Admin View** (shows Admin Proposal Dashboard and Rule Builder in nav; hides Simulation Dashboard)
-- The toggle is visually prominent but labelled with a "Demo" chip to signal its temporary nature
+- The toggle carries a **"Demo only"** `Chip` to signal its temporary nature and prevent confusion
+- When switching to Admin View, show a brief confirmation: *"You are now viewing as Admin. Changes you make here affect the published rules."*
 
 ---
 
@@ -135,11 +172,23 @@ App Shell (Top Bar)
 
 The shell is the persistent frame that wraps every screen. It has two zones: the **top app bar** and the **main content area**. The Metrics & Conflicts HUD (S4) is a third persistent zone that appears only when inside a simulation session (S2).
 
+### Accessibility baseline (applies to entire shell and all screens)
+
+| Requirement | Spec |
+|---|---|
+| Body text size | 16px minimum |
+| Secondary / label text | 14px minimum |
+| Interactive target size | 44 × 44px minimum |
+| Colour contrast | WCAG AA — 4.5:1 for text, 3:1 for UI components |
+| Icon usage | Every icon must be accompanied by a visible text label — no standalone icons |
+| Tooltips | All non-obvious controls get a `Tooltip` on hover with a plain-English description |
+| Focus indicators | Visible keyboard focus ring on all interactive elements |
+
 ### Top App Bar
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  🗓 UniSchedule          [My Simulations]        [ Admin View 🔵 ] │
+│  🗓 UniSchedule      [My Simulations]   [Switch to Admin View] Demo │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -149,7 +198,7 @@ The shell is the persistent frame that wraps every screen. It has two zones: the
 | "My Simulations" nav link | Visible in User View; navigates to S1 |
 | "Proposals" nav link | Visible in Admin View; navigates to S6 |
 | "Rules" nav link | Visible in Admin View; navigates to S8 |
-| Admin View toggle | MUI `Switch` with label; switches nav context |
+| "Switch to Admin View" toggle | MUI `Switch` with full text label + "Demo only" `Chip`; shows confirmation message on switch |
 
 ### Main Content Area
 
@@ -173,22 +222,25 @@ Visible only on route `/simulations/:id`. Pinned to the bottom of the viewport a
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  My Simulations                          [+ New Simulation]         │
+│  My Simulations                    [+ Create New Simulation]        │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  MAIN SCHEDULE                                                      │
+│  PUBLISHED SCHEDULE                                                 │
 │  ┌──────────────────────────────────────────────────────────────┐   │
-│  │  📋  Fall Semester 2026 — Official Schedule      [View]      │   │
+│  │  📋  Fall Semester 2026 — Current Published Schedule         │   │
+│  │                                          [View Schedule]     │   │
 │  └──────────────────────────────────────────────────────────────┘   │
 │                                                                     │
-│  MY SIMULATIONS                                                     │
+│  MY DRAFT SIMULATIONS                                               │
 │  ┌──────────────────────────────────────────────────────────────┐   │
-│  │  sim-alice-a1b2c3d4   Created 2h ago         [Open] [Delete] │   │
-│  │  ○ 0 conflicts · Room Utilization: 74%                       │   │
+│  │  Draft from 2 hours ago                                      │   │
+│  │  ✅ No scheduling conflicts · Room Utilization: 74%          │   │
+│  │                               [Open Draft]  [Delete Draft]   │   │
 │  └──────────────────────────────────────────────────────────────┘   │
 │  ┌──────────────────────────────────────────────────────────────┐   │
-│  │  sim-alice-f9e8d7c6   Created yesterday       [Open] [Delete] │   │
-│  │  🔴 3 conflicts · Room Utilization: 68%                      │   │
+│  │  Draft from yesterday                                        │   │
+│  │  ⚠️ 3 scheduling conflicts found · Room Utilization: 68%    │   │
+│  │                               [Open Draft]  [Delete Draft]   │   │
 │  └──────────────────────────────────────────────────────────────┘   │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
@@ -198,11 +250,12 @@ Visible only on route `/simulations/:id`. Pinned to the bottom of the viewport a
 
 | Component | MUI | Notes |
 |---|---|---|
-| "New Simulation" button | `Button` variant="contained" | Triggers `POST /simulations`; navigates to S2 on success |
-| Simulation card | `Card` + `CardContent` | Shows ID (truncated), age, conflict count, key metric |
-| Conflict count chip | `Chip` color="error" / color="success" | Red if > 0, green if 0 |
-| "Open" button | `Button` variant="outlined" | Navigates to `/simulations/:id` — triggers heartbeat + re-hydration check |
-| "Delete" button | `IconButton` with confirm dialog | Not currently in the API — see [Section 11](#11-backend-gaps-required-for-full-ui) |
+| "Create New Simulation" button | `Button` variant="contained" size="large" | Full text label; triggers `POST /simulations`; navigates to S2 on success |
+| Simulation card | `Card` + `CardContent` | Shows human-readable age ("2 hours ago"), conflict summary, key metric — **never shows raw simulation ID** |
+| Conflict summary | `Typography` with ✅ / ⚠️ icon + text | Plain English: "No scheduling conflicts" or "3 scheduling conflicts found" — never the raw type code |
+| "Open Draft" button | `Button` variant="contained" | Full text label; navigates to `/simulations/:id` |
+| "Delete Draft" button | `Button` variant="outlined" color="error" | Full text label; opens confirmation dialog before deletion |
+| Confirmation dialog | `Dialog` | *"Are you sure you want to delete this draft? This cannot be undone."* with [Cancel] and [Yes, Delete Draft] |
 
 **User flow:**
 1. User lands on dashboard. Existing simulations are listed (stored in Redux from previous sessions via `localStorage` of simulation IDs).
@@ -221,7 +274,7 @@ Visible only on route `/simulations/:id`. Pinned to the bottom of the viewport a
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  sim-alice-a1b2c3d4          View by: [Rooms ▼]    [Commit Draft]  │
+│  Your Draft Simulation          View by: [Rooms ▼]  [Save Changes] │
 ├──────────────┬──────────────┬──────────────┬──────────────────────┤
 │              │  Monday P1   │  Monday P2   │  Tuesday P1  │  ...  │
 ├──────────────┼──────────────┼──────────────┼──────────────────────┤
@@ -229,7 +282,7 @@ Visible only on route `/simulations/:id`. Pinned to the bottom of the viewport a
 ├──────────────┼──────────────┼──────────────┼──────────────────────┤
 │  Room 102    │              │ [HIS201]     │              │       │
 ├──────────────┼──────────────┼──────────────┼──────────────────────┤
-│  Room 103    │              │              │ [CHEM301 🔴] │       │
+│  Room 103    │              │              │ [CHEM301 ⚠️] │       │
 └──────────────┴──────────────┴──────────────┴──────────────────────┘
 
 [Metrics & Conflicts HUD — pinned bottom bar]
@@ -240,16 +293,18 @@ Visible only on route `/simulations/:id`. Pinned to the bottom of the viewport a
 - **Columns:** Time slots (sorted chronologically by day + start time)
 - **Cells:** Class chips — one chip per `(resource, timeSlot)` intersection
 
-**View-by selector:** A `Select` dropdown (Rooms / Professors / Student Groups) that re-renders the row axis. The underlying data does not change — only the grouping dimension.
+**View-by selector:** A `Select` dropdown with plain labels — "View by Room", "View by Professor", "View by Student Group" — that re-renders the row axis. The underlying data does not change — only the grouping dimension. Each option has a `Tooltip` explaining what it shows.
 
 **Class chip states:**
 
 | State | Visual | Condition |
 |---|---|---|
-| Default | Filled chip, course code + title (truncated) | No conflict |
-| Conflicted | Red outlined chip + 🔴 icon | This class appears in the current conflicts list |
+| Default | Filled chip, course name (truncated) | No conflict |
+| Conflicted | Amber outlined chip + ⚠️ icon | This class has a scheduling conflict |
 | Selected | Elevated chip with primary border | User has clicked it; Inspector is open |
-| Multi-slot | Chip spans multiple columns | Class has 2+ `timeSlotIds` |
+| Multi-slot | Chip spans multiple columns | Class runs across multiple periods |
+
+> **Note on conflicted state:** Use ⚠️ (amber warning) rather than 🔴 (red error) on the chip itself — red signals "broken" which may alarm users. The HUD counter uses red only when there are unresolved conflicts at submission time.
 
 **Interaction:**
 1. User clicks a class chip → Inspector panel (S3) slides in from the right; chip transitions to "Selected" state.
@@ -258,7 +313,7 @@ Visible only on route `/simulations/:id`. Pinned to the bottom of the viewport a
 
 **Pagination:** The API returns paginated classes (`?page=&limit=`). For the grid, all classes for the current simulation should be loaded eagerly in the background (sequential page fetches) and stored in Redux. A loading skeleton is shown until the first page arrives.
 
-**"Commit Draft" button:** Triggers `POST /simulations/:id/commit` — saves the current Memgraph state back to the GitHub branch. Visually indicated as a save action, not a publish. See the commit-gate flow in [Section 6.5](#65-submit-proposal-modal--commit-gate).
+**"Save Changes" button:** Labelled "Save Changes" (not "Commit Draft" — avoid developer jargon). Triggers `POST /simulations/:id/commit`. A `Tooltip` on hover reads: *"Saves your current changes to your draft so they are not lost."* See the commit-gate flow in [Section 6.5](#65-submit-proposal-modal--commit-gate).
 
 ---
 
@@ -339,15 +394,17 @@ Since the API does not provide a "what-if" metric preview, the metric impact sho
 
 | Value | Visual |
 |---|---|
-| 0 | `Chip` color="success" — "✓ No conflicts" |
-| > 0 | `Chip` color="error" — "🔴 N conflict(s)" — clicking expands a popover listing all conflicts |
+| 0 | `Chip` color="success" — "✅ No scheduling conflicts" |
+| > 0 | `Chip` color="error" — "⚠️ N scheduling conflict(s) — click to see details" |
 
-**Conflict popover:** Clicking the conflict chip opens a `Popover` listing each conflict:
-- Type icon (room / professor / group)
-- Affected class IDs + human-readable message
-- Each row is a shortcut: clicking it selects that class and opens the Inspector
+**Conflict popover:** Clicking the conflict chip opens a `Popover` listing each conflict in plain English:
+- "Dr. Smith is already teaching another class at this time" (PROFESSOR_OVERLAP)
+- "Room 101 is booked for two classes at the same time" (ROOM_DOUBLE_BOOK)
+- "Biology Year 1 students are in two classes at once" (GROUP_OVERLAP)
 
-**Metric chips:** One chip per active metric rule from `rules.json`. If no metric rules are configured, the metric zone shows *"No metrics configured — set them up in Admin → Rules."*
+The technical type code (`ROOM_DOUBLE_BOOK` etc.) is **never shown to users**. Each conflict row acts as a shortcut: clicking it selects that class and opens the Inspector.
+
+**Metric chips:** One chip per active metric rule from `rules.json`, using the rule's human-readable name (e.g. *"Room Utilization: 74%"*). If no metric rules are configured, the metric zone shows a muted label: *"No performance metrics configured yet."*
 
 **Live update behaviour:**
 - `GET /conflicts` is dispatched after every successful `PATCH` (class update)
@@ -364,64 +421,68 @@ Since the API does not provide a "what-if" metric preview, the metric impact sho
 **Flow:**
 
 ```
-User clicks "Submit Proposal"
+User clicks "Submit Proposal for Review"
         │
         ▼
 ┌─────────────────────────────────────┐
-│  COMMIT GATE (if unsaved changes)   │
+│  UNSAVED CHANGES                    │
 │                                     │
-│  "Save your changes to your branch  │
-│   before submitting."               │
+│  You have unsaved changes in this   │
+│  draft. Save them before submitting │
+│  so nothing is lost.                │
 │                                     │
-│   [Save Draft]  [Submit Anyway]     │
+│  [Save My Changes First]            │
+│  [Submit Without Saving]            │
 └─────────────────────────────────────┘
-        │ (after save or skip)
+        │ (after saving or skipping)
         ▼
 ┌─────────────────────────────────────┐
-│  Submit Proposal                    │
+│  Submit Proposal for Review         │
 │                                     │
-│  Describe your changes:             │
+│  Explain your changes:              │
 │  ┌─────────────────────────────┐    │
-│  │ Text area (required)        │    │
-│  │ e.g. "Moving BIO101 to      │    │
-│  │  Wednesday reduces overlap  │    │
-│  │  for Year 1 students..."    │    │
+│  │ e.g. "I moved my Biology    │    │
+│  │  lecture to Wednesday       │    │
+│  │  because students have      │    │
+│  │  back-to-back classes on    │    │
+│  │  Monday mornings..."        │    │
 │  └─────────────────────────────┘    │
 │                                     │
-│  ⚠️  2 hard conflicts detected.     │
-│  Your proposal will be marked       │
-│  BLOCKED until they are resolved.   │
+│  ⚠️  Your draft has 2 scheduling   │
+│  conflicts. The scheduling office  │
+│  will see these and may ask you    │
+│  to fix them before approving.     │
 │                                     │
-│          [Cancel]  [Submit →]       │
+│   [Cancel]   [Submit for Review →] │
 └─────────────────────────────────────┘
 ```
 
 **Commit gate logic:**
 - The frontend tracks whether any `PATCH` has been made since the last `POST /commit`
-- If yes, show the commit gate prompt before the proposal form
-- "Save Draft" calls `POST /simulations/:id/commit`, then opens the proposal form
-- "Submit Anyway" skips the commit (the branch may be stale — the CI will still run against the branch's latest committed state)
+- If yes, show the unsaved-changes prompt before the proposal form
+- "Save My Changes First" calls `POST /simulations/:id/commit`, then opens the proposal form
+- "Submit Without Saving" skips the commit (the branch may be stale — the CI will still run against the branch's latest committed state)
 
 **Conflict warning:**
-- If the current HUD conflict count > 0, show the inline warning inside the modal
-- The user can still submit — the CI will label it `BLOCKED` and the Admin will not see it in the Ready queue
+- If the current HUD conflict count > 0, show the inline warning using plain language (no jargon, no raw conflict types)
+- The user can still submit — the CI will label it BLOCKED and the Admin will not see it in the Ready queue
 - The warning is informational, not blocking
 
 **Submit action:**
 1. `POST /proposals { simulationId, description }` 
-2. On success: close modal, show a `Snackbar` — *"Proposal #42 submitted — CI is running…"*
-3. If CI returns `BLOCKED`: snackbar updates to *"Proposal #42 is BLOCKED — fix conflicts and resubmit"*
-4. If CI returns `READY`: snackbar updates to *"Proposal #42 is READY for Admin review ✓"*
+2. On success: close modal, show a `Snackbar` — *"Your proposal has been submitted and is being checked for conflicts…"*
+3. If CI returns `BLOCKED`: snackbar updates to *"Your proposal has scheduling conflicts — the scheduling office has been notified and will contact you"*
+4. If CI returns `READY`: snackbar updates to *"Your proposal is ready for review by the scheduling office ✓"*
 
 **Key components:**
 
 | Component | MUI | Notes |
 |---|---|---|
 | Modal | `Dialog` | `maxWidth="sm"` |
-| Description input | `TextField` multiline rows={4} | Required; validated before submit |
-| Conflict warning | `Alert` severity="warning" | Shown if HUD conflicts > 0 |
-| Submit button | `Button` variant="contained" | Disabled while `POST /proposals` is in-flight |
-| Snackbar | `Snackbar` + `Alert` | Auto-hides after 6s; includes link to Admin view |
+| Description input | `TextField` multiline rows={4} | Required; placeholder text guides the user; validated before submit |
+| Conflict warning | `Alert` severity="warning" | Plain English — no raw conflict type codes |
+| Submit button | `Button` variant="contained" size="large" | Full label "Submit for Review →"; disabled while request is in-flight |
+| Snackbar | `Snackbar` + `Alert` | Auto-hides after 8s (longer than default for older users); includes link to Admin view |
 
 ---
 
@@ -433,41 +494,50 @@ User clicks "Submit Proposal"
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  Proposals                                            [Refresh 🔄]  │
+│  Proposals for Review                          [Refresh List 🔄]    │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  ✅ READY TO MERGE  (2)                                             │
+│  ✅ READY TO PUBLISH  (2)                                           │
+│  Checked by the system — no scheduling conflicts found              │
 │  ┌──────────────────────────────────────────────────────────────┐   │
-│  │  #42  sim-alice-a1b2c3d4    Submitted 1h ago    [Review →]   │   │
+│  │  Submitted by Dr. Alice Brown  ·  1 hour ago                 │   │
+│  │  "Moving BIO101 to Wednesday to reduce student overlap"       │   │
+│  │                                    [Review & Publish →]      │   │
 │  └──────────────────────────────────────────────────────────────┘   │
 │  ┌──────────────────────────────────────────────────────────────┐   │
-│  │  #38  sim-bob-c9d8e7f6      Submitted 3h ago    [Review →]   │   │
+│  │  Submitted by Prof. Bob Chen  ·  3 hours ago                 │   │
+│  │  "Room swap for HIS201 to accommodate larger group"           │   │
+│  │                                    [Review & Publish →]      │   │
 │  └──────────────────────────────────────────────────────────────┘   │
 │                                                                     │
-│  🔴 BLOCKED — CI FAILED  (1)                                        │
+│  ⚠️ HAS SCHEDULING CONFLICTS  (1)                                   │
+│  Cannot be published until the conflicts are fixed                  │
 │  ┌──────────────────────────────────────────────────────────────┐   │
-│  │  #39  sim-carol-b1c2d3e4    Submitted 2h ago    [Review →]   │   │
-│  │  ⚠️  3 conflicts detected                                    │   │
+│  │  Submitted by Dr. Carol Davis  ·  2 hours ago                │   │
+│  │  "Rescheduling CHEM301 to free up the lab on Fridays"         │   │
+│  │  ⚠️ 3 scheduling conflicts detected                          │   │
+│  │                                    [Review Details →]        │   │
 │  └──────────────────────────────────────────────────────────────┘   │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-**Data source:** `GET /proposals` — returns only open PRs labelled `ci:ready`. For the `BLOCKED` section, a separate `GET /proposals` with a filter is needed — **this requires a backend change** (see [Section 11](#11-backend-gaps-required-for-full-ui)).
+**Note on submitter name:** The username (`userId`) provided at simulation creation is used as the display name. The raw simulation ID (`sim-alice-a1b2c3d4`) is never shown to Admin users.
 
 **Sections:**
-- **READY TO MERGE** — PRs with `ci:ready` label (currently supported by the API)
-- **BLOCKED** — PRs with `ci:blocked` label (requires new `GET /proposals?status=blocked` query parameter)
+- **READY TO PUBLISH** — PRs with `ci:ready` label; subtitle explains what "ready" means in plain English
+- **HAS SCHEDULING CONFLICTS** — PRs with `ci:blocked` label; subtitle explains why they cannot be published (requires new backend filter — see [Section 11](#11-backend-gaps-required-for-full-ui))
 
 **Key components:**
 
 | Component | MUI | Notes |
 |---|---|---|
-| Section header | `Typography` variant="h6" + status `Chip` | READY = green, BLOCKED = red |
-| Proposal card | `Card` | Shows PR number, simulation ID, submitted time |
-| "Review →" button | `Button` | Navigates to S7 |
-| Refresh button | `IconButton` | Re-fetches proposals list |
-| BLOCKED conflict count | `Chip` color="error" | Shown only on BLOCKED cards |
+| Section header | `Typography` variant="h6" + status `Chip` | Plain labels: "Ready to Publish" (green) / "Has Scheduling Conflicts" (amber) |
+| Section subtitle | `Typography` variant="body2" color="text.secondary" | One sentence explaining the status in plain English |
+| Proposal card | `Card` | Shows submitter name, time, first line of reasoning — not the raw simulation ID |
+| "Review & Publish →" button | `Button` variant="contained" | Full label; navigates to S7 |
+| "Review Details →" button | `Button` variant="outlined" | Used for BLOCKED proposals |
+| Refresh button | `Button` variant="text" startIcon={RefreshIcon} | Full text label "Refresh List" — not an icon-only button |
 
 **Empty state (all clear):** Centred illustration + *"No proposals waiting for review."*
 
@@ -481,66 +551,72 @@ User clicks "Submit Proposal"
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  ← Proposals    Proposal #42 — sim-alice-a1b2c3d4    ✅ CI: READY  │
+│  ← Back to Proposals    Proposal by Dr. Alice Brown    ✅ Checked   │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  USER'S REASONING                                                   │
-│  "Moving BIO101 to Wednesday reduces overlap for Year 1 students   │
-│   who have back-to-back classes on Monday mornings."               │
+│  REASON FOR CHANGE                                                  │
+│  "Moving my Biology lecture to Wednesday reduces the back-to-back   │
+│   scheduling for Year 1 Biology students on Monday mornings."       │
 │                                                                     │
 ├─────────────────────────────────────────────────────────────────────┤
-│  CHANGES  (3 classes modified)                                      │
+│  WHAT WILL CHANGE  (2 classes affected)                             │
 │  ┌──────────────────────────────────────────────────────────────┐   │
-│  │  CLS_00001 · Intro to Biology - Section A                    │   │
-│  │    Room:   Room 101 → Room 102                               │   │
-│  │    Time:   Monday P1 → Wednesday P1                          │   │
+│  │  Intro to Biology — Section A                                │   │
+│  │    Room:  Room 101  →  Room 102                              │   │
+│  │    Time:  Monday, Period 1  →  Wednesday, Period 1           │   │
 │  └──────────────────────────────────────────────────────────────┘   │
 │  ┌──────────────────────────────────────────────────────────────┐   │
-│  │  CLS_00002 · Modern History - Section A                      │   │
-│  │    Professor: Prof. Jones → Dr. Smith                        │   │
+│  │  Modern History — Section A                                  │   │
+│  │    Lecturer:  Prof. Jones  →  Dr. Smith                      │   │
 │  └──────────────────────────────────────────────────────────────┘   │
 │                                                                     │
-├─────────────────────────────────────────────────────────────────────┤
-│  RAW GIT DIFF  [Expand ▼]                                           │
-│  (collapsed by default — shows raw JSON diff from GitHub)          │
-├─────────────────────────────────────────────────────────────────────┤
+│  ⓘ System check passed — no scheduling conflicts detected.          │
 │                                                                     │
-│              [🚫 Reject]                    [✅ Approve & Merge]    │
+│  [Show technical details ▼]   (collapsed raw diff — for IT use)    │
+│                                                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                [Close This Proposal]   [✅ Approve & Publish]       │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 **Human-readable diff:**
-The raw diff returned by `GET /proposals/:id` is a JSON diff string. The frontend must parse this into a list of changed class entries and render each as a readable change card (Old value → New value). This parsing logic lives in a pure utility function in `utils/`.
+The raw diff returned by `GET /proposals/:id` is a JSON diff string. The frontend must parse this into a list of changed class entries and render each as a plain English change card. Field labels use scheduling vocabulary: "Lecturer" not "professorId", "Time" not "timeSlotIds", "Room" not "roomId".
 
 Parsing strategy:
 - Diff lines starting with `-` for `"classes"` array entries → old values
 - Diff lines starting with `+` for `"classes"` array entries → new values
 - Pair them by `"id"` to produce "before → after" comparison rows
+- Translate all IDs to their names using the schedule's master data (e.g. `PRF_SMITH` → "Dr. Jane Smith")
 
 **CI status badge:**
-- `ci:ready` → green `Chip` "✅ CI: READY"
-- `ci:blocked` → red `Chip` "🔴 CI: BLOCKED" + count of conflicts below
+- `ci:ready` → green `Chip` "✅ Checked — no conflicts"
+- `ci:blocked` → amber `Chip` "⚠️ Has scheduling conflicts" + plain English conflict list below
+
+> Note: include a small disclaimer below the status: *"This check was run when the proposal was submitted. It does not re-check against changes made to the published schedule after that date."*
 
 **Approve action:**
-1. `POST /proposals/:id/merge`
-2. On success: navigate back to S6; show snackbar *"Proposal #42 merged into main ✓"*
-3. On error (409 — not ready): show `Alert` — *"This proposal cannot be merged until CI passes."*
+1. Opens a confirmation `Dialog`: *"You are about to publish these changes to the live timetable. This will affect students and lecturers. Are you sure?"* with [Cancel] and [Yes, Publish Changes] buttons.
+2. On confirm: `POST /proposals/:id/merge`
+3. On success: navigate back to S6; show snackbar *"Changes published to the live timetable ✓"*
+4. On error (409 — not ready): show `Alert` — *"This proposal cannot be published because it has unresolved scheduling conflicts."*
 
-**Reject action:**
-1. Show a confirmation `Dialog`: *"Are you sure? The branch will be kept but the proposal will be closed."*
-2. On confirm: `POST /proposals/:id/reject` ← **requires new backend endpoint** (see [Section 11](#11-backend-gaps-required-for-full-ui))
-3. On success: navigate back to S6; show snackbar *"Proposal #42 closed."*
+**Reject (Close) action:**
+1. Button labelled **"Close This Proposal"** — avoids the word "reject" which can feel harsh
+2. Opens a confirmation `Dialog`: *"Are you sure you want to close this proposal? The lecturer's draft will be kept and they can make adjustments and resubmit."*
+3. Confirm buttons: [Cancel] and [Yes, Close Proposal]
+4. On confirm: `POST /proposals/:id/reject` ← **requires new backend endpoint** (see [Section 11](#11-backend-gaps-required-for-full-ui))
+5. On success: navigate back to S6; show snackbar *"Proposal closed. The lecturer has been notified."*
 
 **Key components:**
 
 | Component | MUI | Notes |
 |---|---|---|
-| Back navigation | `Breadcrumbs` + `Button` | "← Proposals" |
-| CI status chip | `Chip` | Color driven by proposal status |
-| Change card | `Card` + `Table` | One row per changed field; Old → New |
-| Raw diff | `Accordion` | Collapsed by default; uses monospace `Typography` |
-| Reject button | `Button` variant="outlined" color="error" | Opens confirmation dialog |
-| Approve button | `Button` variant="contained" color="success" | Calls merge endpoint |
+| Back navigation | `Button` startIcon={ArrowBackIcon} "Back to Proposals" | Full text label — not an icon only |
+| CI status chip | `Chip` | Plain English labels — never shows raw status code |
+| Change card | `Card` + field rows | Human-readable field names; names resolved from IDs |
+| Technical diff | `Accordion` | Collapsed by default; labelled "Show technical details (for IT use)" |
+| Close Proposal button | `Button` variant="outlined" | Full text label; opens confirmation dialog |
+| Approve & Publish button | `Button` variant="contained" color="success" size="large" | Prominent; also opens confirmation dialog |
 
 ---
 
@@ -580,26 +656,35 @@ Parsing strategy:
 
 ```
 ┌──────────────────────────────────────┐
-│  Add Metric Rule                     │
+│  Add a New Metric                    │
 │                                      │
-│  Name:      [___________________]    │
-│  Target:    [Class          ▼]       │
-│  Condition: [count          ▼]       │
-│  Threshold: [___]                    │
+│  Name:                               │
+│  [e.g. Room Utilisation         ]    │
 │                                      │
-│             [Cancel]  [Add Rule]     │
+│  What to measure:                    │
+│  [Rooms                        ▼]    │
+│                                      │
+│  How to measure it:                  │
+│  [Percentage of rooms in use   ▼]    │
+│                                      │
+│  Target value (%):                   │
+│  [80                           ]     │
+│                                      │
+│         [Cancel]  [Add This Metric]  │
 └──────────────────────────────────────┘
 ```
 
-**Supported target/condition combinations** (driven by backend's `MetricRuleTranslator`):
+**Supported target/condition combinations** (driven by backend's `MetricRuleTranslator`).  
+Labels are human-readable — the underlying `target:condition` key is never shown to the Admin:
 
-| Target | Available Conditions |
-|---|---|
-| `Class` | `count` |
-| `Professor` | `avg_classes_per_day`, `max_classes_per_day` |
-| `Room` | `utilization` |
+| "What to measure" (Target) | "How to measure it" (Condition) | Plain label shown in dropdown |
+|---|---|---|
+| Classes | count | Total number of classes |
+| Lecturers | avg_classes_per_day | Average classes per lecturer per day |
+| Lecturers | max_classes_per_day | Maximum classes any lecturer teaches in one day |
+| Rooms | utilization | Percentage of rooms in use |
 
-The `Condition` dropdown is populated dynamically based on the selected `Target` — selecting "Class" shows only "count"; selecting "Professor" shows both professor conditions.
+The "How to measure it" dropdown is filtered based on the selected "What to measure" — selecting "Classes" shows only "Total number of classes". Every option in both dropdowns has a `Tooltip` with a one-sentence plain English explanation.
 
 **Delete action:**
 1. Click trash icon → confirm `Dialog`
@@ -637,16 +722,19 @@ If the heartbeat (or any simulation API call) returns `404 NOT_FOUND`:
 
 ```
 ┌──────────────────────────────────────────┐
-│  ⏱ Session Expired                       │
+│  ⏱ Your session has ended                │
 │                                          │
-│  Your editing session has timed out.     │
-│  Your last committed changes are saved   │
-│  on your branch.                         │
+│  You were away for a while and your      │
+│  editing session has closed              │
+│  automatically.                          │
 │                                          │
-│  Uncommitted edits in this session       │
-│  have been lost.                         │
+│  Don't worry — any changes you saved     │
+│  are still there on your draft.          │
+│  Only unsaved changes from this          │
+│  session were lost.                      │
 │                                          │
-│    [Back to Dashboard]  [New Simulation] │
+│   [Go Back to My Simulations]            │
+│   [Start a New Draft]                    │
 └──────────────────────────────────────────┘
 ```
 
@@ -658,9 +746,9 @@ If the heartbeat (or any simulation API call) returns `404 NOT_FOUND`:
 
 To prevent surprise expiry, show a non-blocking `Alert` banner inside the simulation after **3 minutes of inactivity** (no API calls):
 
-> *"Your session will expire in 2 minutes. Make an edit or save your draft to keep it alive."*
+> *"You've been away for a while. To avoid losing any unsaved changes, save your draft now or make an edit to keep your session active."*
 
-The banner auto-dismisses if any API call is made before the TTL elapses.
+The banner includes a **"Save Now"** button that triggers `POST /simulations/:id/commit` and a **"Dismiss"** button. It auto-dismisses if any API call is made before the TTL elapses.
 
 ### 7.4 Hydration Latency
 
@@ -689,10 +777,20 @@ When a simulation is first created:
 ### Global error handling
 
 Network errors and unexpected `5xx` responses surface as a `Snackbar` at the bottom of the screen:
-- Auto-dismisses after 6 seconds
-- Has a "Retry" action where applicable
+- Auto-dismisses after **8 seconds** (longer than default — older users need more time to read)
+- Has a "Try Again" action where applicable
+- All messages are in plain English — no HTTP status codes, no raw error `code` values, no stack traces
 
-`4xx` errors (validation failures, not-found, conflicts) are handled inline on the relevant screen — they are not surfaced as global snackbars.
+Error message examples:
+
+| Technical error | What the user sees |
+|---|---|
+| `500 INTERNAL_SERVER_ERROR` | *"Something went wrong on our end. Please try again."* |
+| `404 NOT_FOUND` on simulation | *"This draft is no longer available. It may have timed out."* |
+| `409 CONFLICT` on merge | *"This proposal cannot be published yet — it still has scheduling conflicts."* |
+| `501 NOT_IMPLEMENTED` on rules | *"This feature is not available yet. Please contact your IT department."* |
+
+`4xx` validation errors are handled inline on the relevant screen — they are not surfaced as global snackbars.
 
 ---
 

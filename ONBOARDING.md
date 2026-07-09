@@ -21,7 +21,7 @@ Welcome to the **University Scheduling System**. This document is the single sou
 13. [Code Conventions](#13-code-conventions)
 14. [Testing](#14-testing)
 15. [Environment Variables](#15-environment-variables)
-16. [Frontend Plans](#16-frontend-plans)
+16. [Frontend](#16-frontend)
 17. [Known Gaps / Not Yet Implemented](#17-known-gaps--not-yet-implemented)
 
 ---
@@ -57,7 +57,7 @@ The system is split into three distinct layers:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      Frontend (Planned)                      │
+│                         Frontend                             │
 │              React + MUI + Redux Toolkit                     │
 └──────────────────────────┬──────────────────────────────────┘
                            │ HTTP REST
@@ -120,47 +120,54 @@ The system is split into three distinct layers:
 
 | Tool | Version | Notes |
 |---|---|---|
-| Node.js | ≥ 20 | Check with `node -v` |
+| Node.js | ≥ 22 | Check with `node -v` |
 | pnpm | any recent | `npm i -g pnpm` |
-| Memgraph | any | Docker: `docker run -p 7687:7687 memgraph/memgraph` |
+| Docker | any | Used to run Memgraph |
+| make | any | Pre-installed on macOS/Linux |
 | GitHub PAT | — | Needs `repo` scope on the schedule repository |
 
 ### Setup
 
 ```bash
-# 1. Clone the repo
+# 1. Clone and install all dependencies
 git clone https://github.com/ihammadasghar/iter-scheduling-framework.git
-cd iter-scheduling-framework/backend
+cd iter-scheduling-framework
+make install
 
-# 2. Install dependencies
-pnpm install
+# 2. Configure the backend environment
+cp backend/.env.example backend/.env
+# Edit backend/.env — fill in GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO
 
-# 3. Configure environment
-cp .env.example .env
-# Edit .env — fill in GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO
-
-# 4. Start the API
-pnpm dev           # Development mode (nodemon, auto-restart)
-pnpm start         # Production mode (requires pnpm build first)
+# 3. Start everything
+make dev
+# Starts: Memgraph (Docker) + backend (:3000) + frontend (:5173)
 ```
 
 ### Verify it's running
 
 ```bash
-curl http://localhost:3000/api/v1/simulations   # Should return 404 (no {id} param)
+# Backend API health check
+curl http://localhost:3000/api/v1/simulations
+# → 404 (expected — no {id} param provided)
+
+# Frontend
+open http://localhost:5173
 ```
 
-### Commands
+### Available Commands
 
 ```bash
-pnpm dev                              # Start dev server (nodemon)
-pnpm build                            # Compile TypeScript to dist/
-pnpm start                            # Run compiled server
-pnpm test                             # Run all tests (watch mode)
-pnpm test:coverage                    # Tests + coverage report
-pnpm lint                             # Type-check only (tsc --noEmit)
-pnpm vitest run -t "<test name>"      # Run a single named test
-pnpm lint && pnpm test                # Pre-commit check
+make install        # Install dependencies (backend + frontend)
+make dev            # Start all services (Ctrl+C stops everything)
+make dev-backend    # Start backend only
+make dev-frontend   # Start frontend only
+make test           # Run all tests once
+make test-watch     # Run tests in watch mode
+make test-coverage  # Tests + coverage reports
+make lint           # Type-check both workspaces (tsc --noEmit)
+make check          # Full pre-commit check (lint + tests)
+make build          # Compile backend + build frontend bundle
+make clean          # Remove build artifacts and node_modules
 ```
 
 ---
@@ -169,67 +176,86 @@ pnpm lint && pnpm test                # Pre-commit check
 
 ```
 iter-scheduling-framework/
+├── Makefile                    # Unified dev commands (make dev, make test, …)
+├── docker-compose.yml          # Memgraph infrastructure
 ├── ONBOARDING.md               # ← you are here
 ├── AGENTS.md                   # Coding conventions for AI agents
-├── README.md                   # Project stub
-├── docs/                       # Original design documents
+├── README.md                   # Quick start and project overview
+├── docs/                       # Design documents and OpenAPI spec
 │   ├── system-architecture.md
 │   ├── api-overview.md
 │   ├── graph-erd.md
 │   ├── schedule-schema.md
 │   ├── sequence-diagram.md
 │   └── openapi.yaml
-└── backend/                    # Node.js + Express backend
-    ├── .env.example            # Environment variable template
+├── backend/                    # Node.js + Express API (TypeScript)
+│   ├── .env.example            # Environment variable template
+│   ├── package.json
+│   ├── tsconfig.json
+│   ├── vitest.config.ts
+│   ├── nodemon.json
+│   └── src/
+│       ├── server.ts           # Entry point — starts HTTP server
+│       ├── app.ts              # Express app factory (middleware, routes)
+│       ├── container.ts        # DI wiring — instantiates all services
+│       ├── clients/
+│       │   ├── IMemgraphClient.ts    # Interface for Bolt client
+│       │   └── MemgraphClient.ts     # neo4j-driver wrapper
+│       ├── controllers/
+│       │   ├── SimulationController.ts
+│       │   ├── ProposalController.ts
+│       │   └── RulesController.ts
+│       ├── interfaces/
+│       │   ├── IGitHubService.ts
+│       │   ├── IGraphService.ts
+│       │   ├── ISimulationService.ts
+│       │   ├── IProposalService.ts
+│       │   ├── ICiPipelineService.ts
+│       │   └── IRulesService.ts
+│       ├── middleware/
+│       │   ├── errorHandler.ts       # Centralised error → JSON response
+│       │   └── notFound.ts           # 404 catch-all
+│       ├── routes/
+│       │   ├── index.ts              # Mounts sub-routers under /api/v1
+│       │   ├── simulations.ts
+│       │   ├── proposals.ts
+│       │   └── rules.ts
+│       ├── services/
+│       │   ├── GitHubService.ts      # octokit wrapper
+│       │   ├── GraphService.ts       # Memgraph Cypher operations
+│       │   ├── SimulationService.ts  # Orchestrates GitHub + Graph + Registry
+│       │   ├── ProposalService.ts    # Orchestrates GitHub + CI pipeline
+│       │   ├── CiPipelineService.ts  # Hydrate → check conflicts → flush
+│       │   └── RulesService.ts       # ⚠️ NOT IMPLEMENTED (returns 501)
+│       ├── sessions/
+│       │   ├── ISessionRegistry.ts
+│       │   ├── SessionRegistry.ts         # In-memory heartbeat tracker
+│       │   └── SessionGarbageCollector.ts # Periodic TTL sweep
+│       ├── types/
+│       │   ├── domain.ts           # All shared TypeScript interfaces
+│       │   ├── ApiError.ts         # Typed HTTP error class
+│       │   ├── scheduleJson.ts     # Raw JSON shape (as stored in GitHub)
+│       │   └── rulesJson.ts        # rules.json shape
+│       └── utils/
+│           ├── ScheduleHydrator.ts      # JSON → Cypher batch builder
+│           └── MetricRuleTranslator.ts  # Metric rule → Cypher translator
+└── frontend/                   # React + MUI + Redux Toolkit (TypeScript)
+    ├── .env.example            # VITE_API_BASE_URL
     ├── package.json
-    ├── tsconfig.json
+    ├── vite.config.ts          # Dev server with /api proxy to backend
     ├── vitest.config.ts
-    ├── nodemon.json
     └── src/
-        ├── server.ts           # Entry point — starts HTTP server
-        ├── app.ts              # Express app factory (middleware, routes)
-        ├── container.ts        # DI wiring — instantiates all services
-        ├── clients/
-        │   ├── IMemgraphClient.ts    # Interface for Bolt client
-        │   └── MemgraphClient.ts     # neo4j-driver wrapper
-        ├── controllers/
-        │   ├── SimulationController.ts
-        │   ├── ProposalController.ts
-        │   └── RulesController.ts
-        ├── interfaces/
-        │   ├── IGitHubService.ts
-        │   ├── IGraphService.ts
-        │   ├── ISimulationService.ts
-        │   ├── IProposalService.ts
-        │   ├── ICiPipelineService.ts
-        │   └── IRulesService.ts
-        ├── middleware/
-        │   ├── errorHandler.ts       # Centralised error → JSON response
-        │   └── notFound.ts           # 404 catch-all
-        ├── routes/
-        │   ├── index.ts              # Mounts sub-routers under /api/v1
-        │   ├── simulations.ts
-        │   ├── proposals.ts
-        │   └── rules.ts
-        ├── services/
-        │   ├── GitHubService.ts      # octokit wrapper
-        │   ├── GraphService.ts       # Memgraph Cypher operations
-        │   ├── SimulationService.ts  # Orchestrates GitHub + Graph + Registry
-        │   ├── ProposalService.ts    # Orchestrates GitHub + CI pipeline
-        │   ├── CiPipelineService.ts  # Hydrate → check conflicts → flush
-        │   └── RulesService.ts       # ⚠️ NOT IMPLEMENTED (returns 501)
-        ├── sessions/
-        │   ├── ISessionRegistry.ts
-        │   ├── SessionRegistry.ts         # In-memory heartbeat tracker
-        │   └── SessionGarbageCollector.ts # Periodic TTL sweep
-        ├── types/
-        │   ├── domain.ts           # All shared TypeScript interfaces
-        │   ├── ApiError.ts         # Typed HTTP error class
-        │   ├── scheduleJson.ts     # Raw JSON shape (as stored in GitHub)
-        │   └── rulesJson.ts        # rules.json shape
-        └── utils/
-            ├── ScheduleHydrator.ts      # JSON → Cypher batch builder
-            └── MetricRuleTranslator.ts  # Metric rule → Cypher translator
+        ├── atoms/              # Stateless, single-responsibility UI primitives
+        ├── molecules/          # 2–3 atoms with minimal local state
+        ├── organisms/          # Complex sections using global state
+        ├── templates/          # Page layout shells — no data fetching
+        ├── pages/              # Route components — data orchestration
+        ├── hooks/              # Custom React hooks
+        ├── services/           # Axios API wrappers
+        ├── store/reducers/     # Redux slices (one per feature domain)
+        ├── types/              # Shared TypeScript interfaces
+        ├── utils/              # Pure utility functions
+        └── styles/             # MUI theme + global CSS
 ```
 
 ---
@@ -840,8 +866,8 @@ throw ApiError.conflict('Proposal is not READY to merge');
 | Interfaces / Types | PascalCase | `ScheduleClass`, `SimulationState` |
 | Functions / Variables | camelCase | `hydrateGraph`, `isLoading` |
 | Constants | UPPER_SNAKE_CASE | `BASE_API_URL`, `DEFAULT_SESSION_TTL_MS` |
-| React Components (planned) | PascalCase.tsx | `ClassCard.tsx` |
-| Redux slices (planned) | camelCaseReducer.ts | `simulationReducer.ts` |
+| React Components | PascalCase.tsx | `ClassCard.tsx` |
+| Redux slices | camelCaseReducer.ts | `simulationReducer.ts` |
 
 ### Controller Pattern
 
@@ -938,9 +964,9 @@ Copy `.env.example` to `.env` and fill in the required values before running the
 
 ---
 
-## 16. Frontend Plans
+## 16. Frontend
 
-> **Status: Not yet built.** This section describes the planned architecture so contributors can understand the full vision.
+The frontend is a React + MUI + Redux Toolkit application located in `frontend/`. It follows the Atomic Design pattern and communicates with the backend API via a Vite dev proxy (`/api` → `http://localhost:3000`).
 
 ### Stack
 
@@ -1025,13 +1051,7 @@ async listMetrics(): Promise<readonly MetricRule[]> {
 
 ---
 
-### 3. No Frontend
-
-The React frontend has not been started. The backend API is fully usable via HTTP clients (curl, Postman, etc.) while the frontend is built.
-
----
-
-### 4. No User Authentication
+### 3. No User Authentication
 
 User roles are hardcoded:
 - The GitHub PAT owner = Admin (can merge proposals into `main`).
@@ -1041,10 +1061,10 @@ There is no login, no JWT, no session auth. This is a scoped demo decision — a
 
 ---
 
-### 5. `MetricRuleTranslator` Has Only 4 Conditions
+### 4. `MetricRuleTranslator` Has Only 4 Conditions
 
 The translator supports only `Class:count`, `Professor:avg_classes_per_day`, `Professor:max_classes_per_day`, and `Room:utilization`. Any other `target:condition` pair returns `400 BAD_REQUEST`. New metric types require adding a Cypher template and registering it in `TRANSLATION_MAP` in `utils/MetricRuleTranslator.ts`.
 
 ---
 
-*Last updated: June 2026 — reflects backend implementation as of the initial backend milestone.*
+*Last updated: July 2026 — reflects backend + frontend implementation.*
