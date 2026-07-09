@@ -1,0 +1,7 @@
+node_modules
+dist
+.env
+coverage
+*.test.ts
+*.spec.ts
+nodemon.json
