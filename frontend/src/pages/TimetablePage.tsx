@@ -5,6 +5,7 @@ import AppShell from '@/templates/AppShell';
 import TimetableGrid from '@/organisms/TimetableGrid';
 import Inspector from '@/organisms/Inspector';
 import HUD from '@/organisms/HUD';
+import SubmitProposalModal from '@/organisms/SubmitProposalModal';
 import ViewBySelector from '@/molecules/ViewBySelector';
 import SaveChangesButton from '@/molecules/SaveChangesButton';
 import { useAppDispatch } from '@/store/hooks';
@@ -16,8 +17,7 @@ const PAGE_SIZE = 50; // must match PAGE_SIZE in classSlice
 export default function TimetablePage(): React.ReactElement {
   const { id: simId } = useParams<{ id: string }>();
   const dispatch = useAppDispatch();
-  // TODO Task 11: wire submit proposal dialog
-  const [, setSubmitOpen] = useState(false);
+  const [submitOpen, setSubmitOpen] = useState(false);
 
   // On mount: set session context and eagerly load all class pages
   useEffect(() => {
@@ -83,6 +83,13 @@ export default function TimetablePage(): React.ReactElement {
         {/* HUD — bottom bar with live conflicts + metrics */}
         <HUD simId={simId} onSubmitProposal={() => setSubmitOpen(true)} />
       </Box>
+
+      {/* Submit Proposal Modal — rendered outside the main layout so Snackbar persists */}
+      <SubmitProposalModal
+        open={submitOpen}
+        simId={simId}
+        onClose={() => setSubmitOpen(false)}
+      />
     </AppShell>
   );
 }
