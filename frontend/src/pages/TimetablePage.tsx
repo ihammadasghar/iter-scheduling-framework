@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Box, Typography } from '@mui/material';
 import AppShell from '@/templates/AppShell';
 import TimetableGrid from '@/organisms/TimetableGrid';
 import Inspector from '@/organisms/Inspector';
+import HUD from '@/organisms/HUD';
 import ViewBySelector from '@/molecules/ViewBySelector';
 import SaveChangesButton from '@/molecules/SaveChangesButton';
 import { useAppDispatch } from '@/store/hooks';
@@ -15,6 +16,8 @@ const PAGE_SIZE = 50; // must match PAGE_SIZE in classSlice
 export default function TimetablePage(): React.ReactElement {
   const { id: simId } = useParams<{ id: string }>();
   const dispatch = useAppDispatch();
+  // TODO Task 11: wire submit proposal dialog
+  const [, setSubmitOpen] = useState(false);
 
   // On mount: set session context and eagerly load all class pages
   useEffect(() => {
@@ -28,7 +31,6 @@ export default function TimetablePage(): React.ReactElement {
       while (more) {
         const result = await dispatch(fetchClassesPage({ simId, page }));
         if (fetchClassesPage.fulfilled.match(result)) {
-          // more pages exist when a full page was returned
           more = result.payload.classes.length === PAGE_SIZE;
           page++;
         } else {
@@ -78,22 +80,8 @@ export default function TimetablePage(): React.ReactElement {
           <Inspector simId={simId} />
         </Box>
 
-        {/* HUD placeholder (Task 10) */}
-        <Box
-          sx={{
-            flexShrink: 0,
-            borderTop: '1px solid',
-            borderColor: 'divider',
-            px: 3,
-            py: 1,
-            bgcolor: 'background.paper',
-          }}
-          aria-label="Metrics and conflicts HUD"
-        >
-          <Typography variant="caption" color="text.secondary">
-            Metrics &amp; Conflicts HUD — coming in Task 10
-          </Typography>
-        </Box>
+        {/* HUD — bottom bar with live conflicts + metrics */}
+        <HUD simId={simId} onSubmitProposal={() => setSubmitOpen(true)} />
       </Box>
     </AppShell>
   );

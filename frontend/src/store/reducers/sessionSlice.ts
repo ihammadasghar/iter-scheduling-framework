@@ -6,6 +6,8 @@ interface SessionState {
   readonly lastHeartbeat: number;
   readonly expired: boolean;
   readonly hasUnsavedChanges: boolean;
+  /** Epoch ms of the last successful class PATCH — used to trigger HUD re-fetch debounce. */
+  readonly lastPatchAt: number;
 }
 
 const initialState: SessionState = {
@@ -13,6 +15,7 @@ const initialState: SessionState = {
   lastHeartbeat: 0,
   expired: false,
   hasUnsavedChanges: false,
+  lastPatchAt: 0,
 };
 
 const sessionSlice = createSlice({
@@ -46,6 +49,7 @@ const sessionSlice = createSlice({
       // Any successful class edit marks the session as having unsaved changes
       .addCase(updateClassThunk.fulfilled, (state) => {
         state.hasUnsavedChanges = true;
+        state.lastPatchAt = Date.now();
       })
       // A successful commit clears the unsaved-changes flag
       .addCase(commitSimulationThunk.fulfilled, (state) => {
