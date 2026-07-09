@@ -5,12 +5,16 @@ import AppShell from '@/templates/AppShell';
 import TimetableGrid from '@/organisms/TimetableGrid';
 import Inspector from '@/organisms/Inspector';
 import HUD from '@/organisms/HUD';
+import SessionExpiryModal from '@/organisms/SessionExpiryModal';
 import SubmitProposalModal from '@/organisms/SubmitProposalModal';
 import ViewBySelector from '@/molecules/ViewBySelector';
 import SaveChangesButton from '@/molecules/SaveChangesButton';
+import InactivityBanner from '@/molecules/InactivityBanner';
 import { useAppDispatch } from '@/store/hooks';
 import { setSession } from '@/store/reducers/sessionSlice';
 import { fetchClassesPage, resetClasses } from '@/store/reducers/classSlice';
+import { useHeartbeat } from '@/hooks/useHeartbeat';
+import { useInactivityWarning } from '@/hooks/useInactivityWarning';
 
 const PAGE_SIZE = 50; // must match PAGE_SIZE in classSlice
 
@@ -18,6 +22,10 @@ export default function TimetablePage(): React.ReactElement {
   const { id: simId } = useParams<{ id: string }>();
   const dispatch = useAppDispatch();
   const [submitOpen, setSubmitOpen] = useState(false);
+
+  // Session lifecycle hooks
+  useHeartbeat(simId ?? null);
+  const { showWarning, dismiss } = useInactivityWarning(simId ?? '');
 
   // On mount: set session context and eagerly load all class pages
   useEffect(() => {
@@ -56,6 +64,11 @@ export default function TimetablePage(): React.ReactElement {
   return (
     <AppShell>
       <Box sx={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
+        {/* Inactivity warning — pinned below TopAppBar */}
+        {showWarning && (
+          <InactivityBanner simId={simId} onDismiss={dismiss} />
+        )}
+
         {/* Toolbar */}
         <Box
           sx={{
@@ -90,6 +103,9 @@ export default function TimetablePage(): React.ReactElement {
         simId={simId}
         onClose={() => setSubmitOpen(false)}
       />
+
+      {/* Session expiry overlay — non-dismissable */}
+      <SessionExpiryModal />
     </AppShell>
   );
 }
