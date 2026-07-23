@@ -86,6 +86,14 @@ The system is split into three distinct layers:
 - Proposals are GitHub Pull Requests, managed via `octokit`.
 - Admin-defined rules (metrics, constraints) live in `rules.json` on `main` only — kept separate from the schedule data so simulation branches don't diverge in configuration.
 
+#### Local mock mode (`LocalGitHubService`)
+
+For local development and tests, `GITHUB_PROVIDER=mock` (the `.env.example` default) swaps the real Octokit-backed `GitHubService` for `backend/src/services/LocalGitHubService.ts` — an in-memory fake that implements the same `IGitHubService` interface. It models branches as in-memory file maps and pull requests as a simple numbered record, seeded on startup from `backend/src/fixtures/mock-schedule.json` and `mock-rules.json`.
+
+What it fakes: branch create/delete, file read/write, PR create/get/list/label/merge, and unified diff generation between branches — everything the simulation → proposal → merge flow needs.
+
+What it does **not** do: nothing is ever pushed to real GitHub, there's no commit history, and state resets every time the backend process restarts (it's reseeded from the fixture files each time). Switch to `GITHUB_PROVIDER=github` (see README "Using a real GitHub repo") for the real workflow.
+
 ### Layer B: Compute (Memgraph)
 
 - **Ephemeral calculation engine, not a persistent database.**

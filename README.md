@@ -26,7 +26,9 @@ make install
 
 # 2. Configure the backend environment
 cp backend/.env.example backend/.env
-# Edit backend/.env — fill in GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO
+# The default .env.example needs no GitHub account — GITHUB_PROVIDER=mock
+# runs the backend against bundled mock schedule/rules data (see
+# backend/src/fixtures/). See "Using a real GitHub repo" below to switch.
 
 # 3. Start everything (Memgraph + backend + frontend)
 make dev
@@ -37,7 +39,12 @@ make dev
 | Backend API | http://localhost:3000 |
 | Frontend | http://localhost:5173 |
 
-> **Prerequisite:** You need a separate GitHub repository containing `schedule.json` and `rules.json` on `main`. See [ONBOARDING.md §2 — Schedule Repository Setup](./ONBOARDING.md) for the one-time setup.
+### Using a real GitHub repo
+
+By default (`GITHUB_PROVIDER=mock` in `.env.example`), the backend never talks to GitHub — it keeps `schedule.json`/`rules.json` in memory, seeded from `backend/src/fixtures/mock-schedule.json` and `mock-rules.json`. To run against a real Git-flow (real branches, real PRs) instead:
+
+1. Create a GitHub repository containing `schedule.json` and `rules.json` on `main` — see [ONBOARDING.md §2 — Schedule Repository Setup](./ONBOARDING.md) for the schema.
+2. In `backend/.env`, set `GITHUB_PROVIDER=github` and fill in `GITHUB_TOKEN` (a PAT with `repo` scope), `GITHUB_OWNER`, and `GITHUB_REPO`.
 
 ---
 
