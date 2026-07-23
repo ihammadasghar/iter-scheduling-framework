@@ -21,18 +21,21 @@ One command that: creates (or reuses) a real GitHub repo, seeds it with a realis
 Lives inside `backend/src/` (not a repo-root `scripts/` dir) specifically so it's automatically picked up by the backend's existing `vitest.config.ts` (`include: ['src/**/*.test.ts']`) and `tsconfig.json` (`include: ["src/**/*"]`) — no new test-runner config needed. Run via `cd backend && pnpm tsx src/scripts/generate-large-schedule.ts <outDir>` (a new `backend/package.json` script, `"generate:mock-data": "tsx src/scripts/generate-large-schedule.ts"`, wraps this). Imports `ScheduleJson`/`RulesJson` and their constituent types directly from `../types/scheduleJson.ts` / `../types/rulesJson.ts` so the generator can't silently drift from the real schema.
 
 **Scale** (fixed constants in the script, per the chosen "Large" tier):
-- 40 rooms, 80 professors, 40 student groups, 150 courses
-- 25 time slots: 5 days (Monday–Friday) × 5 periods/day, contiguous non-overlapping times per day (e.g. period 1 08:30–10:00, period 2 10:15–11:45, ... period 5 16:45–18:15)
-- ~1500 classes (roughly one section per course per relevant student-group/professor pairing, generated until the target count is reached)
+- 20 departments (e.g. Biology, Chemistry, History, Mathematics, Physics, Computer Science, English, Economics, Psychology, Art, ...), each with 4 professors, 4 student groups ("Year 1"–"Year 4"), and 8 courses → 80 professors, 80 student groups, 160 courses total (close to the "~150 courses" originally estimated; exact multiples of 20 keep the generator's department distribution clean).
+- 80 rooms (not department-scoped, varying capacity/building).
+- 25 time slots: 5 days (Monday–Friday) × 5 periods/day, contiguous non-overlapping times per day (e.g. period 1 08:30–10:00, period 2 10:15–11:45, ... period 5 15:30–17:00).
+- ~1500 classes total, generated as multiple sections per course.
+
+**Why 80 rooms/groups, not 40:** a zero-conflict schedule requires every class to land on a *distinct* `(room, timeSlot)` pair (no `ROOM_DOUBLE_BOOK`) AND a distinct `(studentGroup, timeSlot)` pair per class (no `GROUP_OVERLAP`) — so the maximum conflict-free classes achievable is `min(rooms, groups) × timeSlots`. With 25 time slots, 40 rooms/groups caps out at 1000 classes, which cannot fit the ~1500-class target without a conflict. 80 rooms/groups × 25 slots = 2000 capacity, giving ~1500 classes a realistic **75% utilization** — meaningfully below the existing 80%-threshold metric rule (so the metric reads as "healthy," not maxed out) while leaving headroom for simulations to move classes around without immediately hitting capacity.
 
 **Placement algorithm:** for each class to place, iterate candidate `(room, timeSlot)` pairs in a deterministic order and pick the first one where:
 - no other already-placed class occupies that room at that time slot (no `ROOM_DOUBLE_BOOK`)
-- the assigned professor has no other class at that time slot (no `PROFESSOR_OVERLAP`)
+- the assigned professor has no other class at that time slot (no `PROFESSOR_OVERLAP`) — professor capacity (80 professors × 25 slots = 2000) also comfortably exceeds 1500, so this never becomes the binding constraint
 - the assigned student group has no other class at that time slot (no `GROUP_OVERLAP`)
 
-This mirrors exactly the three conflict types `GraphService.queryConflicts` checks, so the generated `main` schedule starts genuinely conflict-free — realistic for a "published, already-solved" timetable. (40 rooms × 25 slots = 1000 room-slot capacity; ~1500 classes means some classes will be single-period only to fit, which is fine and realistic.)
+This mirrors exactly the three conflict types `GraphService.queryConflicts` checks, so the generated `main` schedule starts genuinely conflict-free — realistic for a "published, already-solved" timetable.
 
-Professor/student-group assignment per class: round-robin-ish selection from the relevant department's professors/groups (courses get a department field, same as the existing small fixture), so the data reads as plausible rather than fully random.
+Professor/student-group assignment per class: deterministic round-robin selection from the class's course's department's professors/groups (courses get a department field, same as the existing small fixture) — no randomness anywhere in the generator, so its output is fully reproducible and simple to unit-test.
 
 **`rules.json`:** include the same handful of realistic metric rules as the existing `mock-rules.json` (Room Utilization, Avg Classes per Professor per Day) plus one hard constraint entry — scaled thresholds make sense at this size (e.g. utilization threshold still 80%).
 
