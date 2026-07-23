@@ -245,6 +245,29 @@ describe('ProposalService.list()', () => {
 
     expect(proposals[0]?.simulationId).toBe('sim-bob-xyz');
   });
+
+  it("returns only BLOCKED proposals when called with 'blocked'", async () => {
+    (github.listOpenPullRequests as ReturnType<typeof vi.fn>).mockResolvedValue(['1', '2']);
+    (github.getPullRequest as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ title: 'P1', head: 'sim-a', labels: ['ci:ready'], createdAt: '2026-01-01T00:00:00.000Z' })
+      .mockResolvedValueOnce({ title: 'P2', head: 'sim-b', labels: ['ci:blocked'], createdAt: '2026-01-02T00:00:00.000Z' });
+
+    const result = await service.list('blocked');
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.simulationId).toBe('sim-b');
+  });
+
+  it("returns every open proposal regardless of label when called with 'all'", async () => {
+    (github.listOpenPullRequests as ReturnType<typeof vi.fn>).mockResolvedValue(['1', '2']);
+    (github.getPullRequest as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ title: 'P1', head: 'sim-a', labels: ['ci:ready'], createdAt: '2026-01-01T00:00:00.000Z' })
+      .mockResolvedValueOnce({ title: 'P2', head: 'sim-b', labels: ['ci:blocked'], createdAt: '2026-01-02T00:00:00.000Z' });
+
+    const result = await service.list('all');
+
+    expect(result).toHaveLength(2);
+  });
 });
 
 describe('ProposalService.get()', () => {
@@ -343,6 +366,29 @@ describe('ProposalService.merge()', () => {
     const proposal = await service.merge('42');
 
     expect(proposal.createdAt).toBe('2026-06-11T10:00:00.000Z');
+  });
+});
+
+describe('ProposalService.reject()', () => {
+  let github: IGitHubService;
+  let service: ProposalService;
+
+  beforeEach(() => {
+    github = makeGitHub();
+    service = new ProposalService(github, makeGraph(), makeCi());
+  });
+
+  it('closes the pull request and returns status REJECTED', async () => {
+    (github.getPullRequest as ReturnType<typeof vi.fn>).mockResolvedValue({
+      title: 'Proposal: sim-alice', head: 'sim-alice', labels: ['ci:blocked'], createdAt: '2026-01-01T00:00:00.000Z',
+    });
+
+    const result = await service.reject('7');
+
+    expect(github.closePullRequest).toHaveBeenCalledWith('7');
+    expect(result).toEqual({
+      id: '7', simulationId: 'sim-alice', status: 'REJECTED', createdAt: '2026-01-01T00:00:00.000Z',
+    });
   });
 });
 

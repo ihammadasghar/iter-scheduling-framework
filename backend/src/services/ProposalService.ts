@@ -47,13 +47,17 @@ export class ProposalService implements IProposalService {
     };
   }
 
-  async list(): Promise<readonly Proposal[]> {
+  async list(status: 'ready' | 'blocked' | 'all' = 'ready'): Promise<readonly Proposal[]> {
     const prIds = await this.github.listOpenPullRequests();
     const prs = await Promise.all(prIds.map((id) => this.github.getPullRequest(id)));
 
     return prIds
       .map((id, i) => ({ id, pr: prs[i]! }))
-      .filter(({ pr }) => pr.labels.includes(CI_LABEL_READY))
+      .filter(({ pr }) => {
+        if (status === 'all') return true;
+        if (status === 'ready') return pr.labels.includes(CI_LABEL_READY);
+        return pr.labels.includes(CI_LABEL_BLOCKED);
+      })
       .map(({ id, pr }) => toProposal(id, pr.head, pr.labels, pr.createdAt));
   }
 
@@ -82,6 +86,18 @@ export class ProposalService implements IProposalService {
       id: proposalId,
       simulationId: pr.head,
       status: 'MERGED',
+      createdAt: pr.createdAt,
+    };
+  }
+
+  async reject(proposalId: string): Promise<Proposal> {
+    const pr = await this.github.getPullRequest(proposalId);
+    await this.github.closePullRequest(proposalId);
+
+    return {
+      id: proposalId,
+      simulationId: pr.head,
+      status: 'REJECTED',
       createdAt: pr.createdAt,
     };
   }

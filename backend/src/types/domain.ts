@@ -62,7 +62,7 @@ export interface MetricResult {
 export interface Proposal {
   readonly id: string;
   readonly simulationId: string;
-  readonly status: 'PENDING' | 'READY' | 'BLOCKED' | 'MERGED';
+  readonly status: 'PENDING' | 'READY' | 'BLOCKED' | 'MERGED' | 'REJECTED';
   readonly createdAt: string;
 }
 
