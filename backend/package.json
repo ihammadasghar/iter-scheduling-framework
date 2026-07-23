@@ -10,6 +10,7 @@
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "generate:mock-data": "tsx src/scripts/generate-large-schedule.ts",
     "lint": "tsc --noEmit"
   },
   "engines": {
