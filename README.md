@@ -56,7 +56,7 @@ By default (`GITHUB_PROVIDER=mock` in `.env.example`), the backend never talks t
 | **pnpm** | any | `npm i -g pnpm` |
 | **Docker** | any | [docs.docker.com](https://docs.docker.com/get-docker/) |
 | **make** | any | Pre-installed on macOS/Linux; Windows: use WSL or [GnuWin32](http://gnuwin32.sourceforge.net/packages/make.htm) |
-| **GitHub PAT** | — | [Settings → Developer settings → Tokens](https://github.com/settings/tokens) — needs `repo` scope |
+| **GitHub PAT** | Only if using real GitHub | [Settings → Developer settings → Tokens](https://github.com/settings/tokens) — needs `repo` scope; not needed for the default mock mode (see "Using a real GitHub repo" above) |
 
 ---
 
