@@ -29,6 +29,7 @@ const makeGitHub = (): IGitHubService => ({
     createdAt: '2026-06-11T10:00:00.000Z',
   }),
   setPullRequestLabels: vi.fn().mockResolvedValue(undefined),
+  closePullRequest: vi.fn().mockResolvedValue(undefined),
 });
 
 const makeGraph = (): IGraphService => ({
