@@ -1,4 +1,4 @@
-.PHONY: install dev test lint build clean help
+.PHONY: install dev test test-e2e lint build clean help
 
 # Resolve pnpm — try known install locations, fall back to plain 'pnpm' (relies on PATH)
 PNPM := $(firstword $(wildcard $(HOME)/.local/share/pnpm/pnpm $(HOME)/.pnpm/pnpm /usr/local/bin/pnpm /usr/bin/pnpm) pnpm)
@@ -51,6 +51,11 @@ test-watch: ## Run all tests in watch mode (backend + frontend in parallel)
 test-coverage: ## Run tests with coverage report (backend + frontend)
 	$(PNPM) --dir backend test:coverage
 	$(PNPM) --dir frontend test:coverage
+
+test-e2e: ## Run backend e2e tests against a real Memgraph (requires Docker)
+	@echo "Starting Memgraph..."
+	@docker compose up -d memgraph
+	cd backend && $(PNPM) test:e2e
 
 # ─────────────────────────────────────────────────────────────
 # Code quality
