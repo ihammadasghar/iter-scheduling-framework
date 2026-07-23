@@ -160,4 +160,20 @@ export class SimulationService implements ISimulationService {
 
     return this.graph.evaluateMetrics(simulationId, rules);
   }
+
+  async delete(simulationId: string): Promise<void> {
+    await this.graph.flush(simulationId);
+    try {
+      await this.github.deleteBranch(simulationId);
+    } catch (err) {
+      if (!isMissingBranchError(err)) throw err;
+    }
+    this.registry.remove(simulationId);
+  }
+}
+
+function isMissingBranchError(err: unknown): boolean {
+  if (typeof err !== 'object' || err === null || !('status' in err)) return false;
+  const status = (err as { status: unknown }).status;
+  return status === 404 || status === 422;
 }

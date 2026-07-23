@@ -31,6 +31,9 @@ export function createSimulationsRouter(controller: SimulationController): IRout
   // GET /simulations/:id/metrics — evaluate active metric rules
   router.get('/:id/metrics', (req, res, next) => controller.getMetrics(req, res, next));
 
+  // DELETE /simulations/:id — flush graph session, delete branch, remove from registry
+  router.delete('/:id', (req, res, next) => controller.deleteSimulation(req, res, next));
+
   return router;
 }
 

@@ -472,3 +472,56 @@ describe('SimulationService.getSuggestions()', () => {
     expect(result).toEqual([]);
   });
 });
+
+describe('SimulationService.delete()', () => {
+  const SIM_ID = 'sim-alice-abc123';
+
+  let github: IGitHubService;
+  let graph: IGraphService;
+  let registry: ISessionRegistry;
+  let service: SimulationService;
+
+  beforeEach(() => {
+    github = makeGitHub();
+    graph = makeGraph();
+    registry = makeRegistry();
+    service = new SimulationService(github, graph, registry);
+  });
+
+  it('flushes the graph session for the simulation', async () => {
+    await service.delete(SIM_ID);
+
+    expect(graph.flush).toHaveBeenCalledWith(SIM_ID);
+  });
+
+  it('deletes the GitHub branch for the simulation', async () => {
+    await service.delete(SIM_ID);
+
+    expect(github.deleteBranch).toHaveBeenCalledWith(SIM_ID);
+  });
+
+  it('removes the simulation from the session registry', async () => {
+    await service.delete(SIM_ID);
+
+    expect(registry.remove).toHaveBeenCalledWith(SIM_ID);
+  });
+
+  it('swallows a 404 from github.deleteBranch (already-deleted branch is not an error)', async () => {
+    (github.deleteBranch as ReturnType<typeof vi.fn>).mockRejectedValue({ status: 404 });
+
+    await expect(service.delete(SIM_ID)).resolves.toBeUndefined();
+    expect(registry.remove).toHaveBeenCalledWith(SIM_ID);
+  });
+
+  it('swallows a 422 from github.deleteBranch (missing ref)', async () => {
+    (github.deleteBranch as ReturnType<typeof vi.fn>).mockRejectedValue({ status: 422 });
+
+    await expect(service.delete(SIM_ID)).resolves.toBeUndefined();
+  });
+
+  it('propagates an unexpected error from github.deleteBranch', async () => {
+    (github.deleteBranch as ReturnType<typeof vi.fn>).mockRejectedValue({ status: 500 });
+
+    await expect(service.delete(SIM_ID)).rejects.toMatchObject({ status: 500 });
+  });
+});

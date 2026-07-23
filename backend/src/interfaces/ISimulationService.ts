@@ -19,4 +19,5 @@ export interface ISimulationService {
   getSuggestions(simulationId: string, classId: string): Promise<readonly Suggestion[]>;
   getConflicts(simulationId: string): Promise<readonly Conflict[]>;
   getMetrics(simulationId: string): Promise<readonly MetricResult[]>;
+  delete(simulationId: string): Promise<void>;
 }
