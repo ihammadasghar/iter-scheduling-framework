@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import neo4j from 'neo4j-driver';
 import { GraphService } from './GraphService.js';
 import type { IMemgraphClient } from '../clients/IMemgraphClient.js';
 
@@ -170,6 +171,26 @@ describe('GraphService', () => {
       await expect(
         service.updateClass(BRANCH_ID, 'NON_EXISTENT', { roomId: 'RM_102' }),
       ).rejects.toMatchObject({ statusCode: 404 });
+    });
+  });
+
+  // ── listClasses ───────────────────────────────────────────────────────────
+
+  describe('listClasses()', () => {
+    it('binds skip and limit as neo4j Integer instances, not plain numbers', async () => {
+      mockClient = { run: vi.fn().mockResolvedValue([]), close: vi.fn() };
+      service = new GraphService(mockClient);
+
+      await service.listClasses(BRANCH_ID, 2, 10);
+
+      const [, params] = (mockClient.run as ReturnType<typeof vi.fn>).mock.calls[0] as [
+        string,
+        Record<string, unknown>,
+      ];
+      expect(neo4j.isInt(params['skip'])).toBe(true);
+      expect(neo4j.isInt(params['limit'])).toBe(true);
+      expect((params['skip'] as ReturnType<typeof neo4j.int>).toNumber()).toBe(10);
+      expect((params['limit'] as ReturnType<typeof neo4j.int>).toNumber()).toBe(10);
     });
   });
 
