@@ -4,11 +4,16 @@ import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
 import { buildContainer } from './container.js';
+import type { Container } from './container.js';
 import { createApiRouter } from './routes/index.js';
 import { notFound } from './middleware/notFound.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 export function createApp(): Express {
+  return createAppWithContainer().app;
+}
+
+export function createAppWithContainer(): { app: Express; container: Container } {
   const app = express();
 
   // Security headers
@@ -35,6 +40,5 @@ export function createApp(): Express {
   // Centralised error handler (must be last)
   app.use(errorHandler);
 
-  return app;
+  return { app, container };
 }
-

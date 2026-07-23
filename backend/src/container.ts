@@ -2,6 +2,7 @@ import neo4j from 'neo4j-driver';
 import { Octokit } from '@octokit/rest';
 import { MemgraphClient } from './clients/MemgraphClient.js';
 import { GitHubService } from './services/GitHubService.js';
+import { LocalGitHubService } from './services/LocalGitHubService.js';
 import { GraphService } from './services/GraphService.js';
 import { SimulationService } from './services/SimulationService.js';
 import { ProposalService } from './services/ProposalService.js';
@@ -12,6 +13,7 @@ import { SessionGarbageCollector } from './sessions/SessionGarbageCollector.js';
 import { SimulationController } from './controllers/SimulationController.js';
 import { ProposalController } from './controllers/ProposalController.js';
 import { RulesController } from './controllers/RulesController.js';
+import type { IGitHubService } from './interfaces/IGitHubService.js';
 
 const DEFAULT_SESSION_TTL_MS = 300_000;  // 5 minutes
 const DEFAULT_GC_INTERVAL_MS = 60_000;   // 1 minute
@@ -20,16 +22,21 @@ export interface Container {
   readonly simulationController: SimulationController;
   readonly proposalController: ProposalController;
   readonly rulesController: RulesController;
+  shutdown(): Promise<void>;
 }
 
 export function buildContainer(): Container {
-  // GitHub client
-  const octokit = new Octokit({ auth: process.env['GITHUB_TOKEN'] });
-  const githubService = new GitHubService(
-    octokit,
-    process.env['GITHUB_OWNER'] ?? '',
-    process.env['GITHUB_REPO'] ?? '',
-  );
+  // GitHub client — real Octokit-backed service, or an in-memory fake for
+  // local development / tests. Set GITHUB_PROVIDER=mock (see .env.example)
+  // to skip needing a GitHub PAT and schedule repo entirely.
+  const githubService: IGitHubService =
+    process.env['GITHUB_PROVIDER'] === 'mock'
+      ? new LocalGitHubService()
+      : new GitHubService(
+          new Octokit({ auth: process.env['GITHUB_TOKEN'] }),
+          process.env['GITHUB_OWNER'] ?? '',
+          process.env['GITHUB_REPO'] ?? '',
+        );
 
   // Memgraph client
   const driver = neo4j.driver(
@@ -59,5 +66,9 @@ export function buildContainer(): Container {
     simulationController: new SimulationController(simulationService),
     proposalController: new ProposalController(proposalService),
     rulesController: new RulesController(rulesService),
+    async shutdown(): Promise<void> {
+      gc.stop();
+      await driver.close();
+    },
   };
 }
