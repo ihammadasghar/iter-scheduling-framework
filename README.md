@@ -43,7 +43,7 @@ make dev
 
 By default (`GITHUB_PROVIDER=mock` in `.env.example`), the backend never talks to GitHub — it keeps `schedule.json`/`rules.json` in memory, seeded from `backend/src/fixtures/mock-schedule.json` and `mock-rules.json`. To run against a real Git-flow (real branches, real PRs) instead:
 
-1. Create a GitHub repository containing `schedule.json` and `rules.json` on `main` — see [ONBOARDING.md §2 — Schedule Repository Setup](./ONBOARDING.md) for the schema.
+1. Create a GitHub repository containing `schedule.json` and `rules.json` on `main` — see [ONBOARDING.md §5 — Data Models](./ONBOARDING.md#5-data-models) for the schema.
 2. In `backend/.env`, set `GITHUB_PROVIDER=github` and fill in `GITHUB_TOKEN` (a PAT with `repo` scope), `GITHUB_OWNER`, and `GITHUB_REPO`.
 
 ---

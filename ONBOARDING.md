@@ -132,7 +132,7 @@ What it does **not** do: nothing is ever pushed to real GitHub, there's no commi
 | pnpm | any recent | `npm i -g pnpm` |
 | Docker | any | Used to run Memgraph |
 | make | any | Pre-installed on macOS/Linux |
-| GitHub PAT | — | Needs `repo` scope on the schedule repository |
+| GitHub PAT | Only if using real GitHub | Needs `repo` scope on the schedule repository — not needed for the default mock mode, see "Local mock mode" above |
 
 ### Setup
 
@@ -144,7 +144,9 @@ make install
 
 # 2. Configure the backend environment
 cp backend/.env.example backend/.env
-# Edit backend/.env — fill in GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO
+# Default: GITHUB_PROVIDER=mock — no GitHub account needed, runs against
+# bundled fixtures. For real GitHub, set GITHUB_PROVIDER=github and fill
+# in GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO (see "Local mock mode" above).
 
 # 3. Start everything
 make dev
@@ -961,9 +963,10 @@ Copy `.env.example` to `.env` and fill in the required values before running the
 |---|---|---|---|
 | `PORT` | No | `3000` | HTTP port the server listens on |
 | `NODE_ENV` | No | `development` | Affects Morgan log format (`dev` vs `combined`) |
-| `GITHUB_TOKEN` | **Yes** | — | GitHub Personal Access Token with `repo` scope |
-| `GITHUB_OWNER` | **Yes** | — | GitHub username or organisation that owns the schedule repo |
-| `GITHUB_REPO` | **Yes** | — | Name of the repository containing `schedule.json` |
+| `GITHUB_PROVIDER` | No | `mock` | `mock` \| `github` — selects `LocalGitHubService` (in-memory fixtures, no GitHub account) or the real Octokit-backed `GitHubService` |
+| `GITHUB_TOKEN` | Only if `GITHUB_PROVIDER=github` | — | GitHub Personal Access Token with `repo` scope |
+| `GITHUB_OWNER` | Only if `GITHUB_PROVIDER=github` | — | GitHub username or organisation that owns the schedule repo |
+| `GITHUB_REPO` | Only if `GITHUB_PROVIDER=github` | — | Name of the repository containing `schedule.json` |
 | `MEMGRAPH_URI` | No | `bolt://localhost:7687` | Bolt URI for Memgraph |
 | `MEMGRAPH_USERNAME` | No | `""` | Memgraph username (empty = no auth) |
 | `MEMGRAPH_PASSWORD` | No | `""` | Memgraph password (empty = no auth) |
