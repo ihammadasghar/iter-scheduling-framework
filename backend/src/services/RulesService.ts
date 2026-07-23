@@ -23,7 +23,8 @@ export class RulesService implements IRulesService {
 
   async createMetric(params: CreateMetricRuleParams): Promise<MetricRule> {
     const rules = await this.readRules();
-    const metric: MetricRule = { id: generateId('metric', params.name, rules.metrics), ...params };
+    const { name, target, condition, threshold } = params;
+    const metric: MetricRule = { id: generateId('metric', name, rules.metrics), name, target, condition, threshold };
     await this.writeRules(
       { ...rules, metrics: [...rules.metrics, metric] },
       `chore(rules): add metric rule '${params.name}'`,
@@ -47,7 +48,8 @@ export class RulesService implements IRulesService {
 
   async createConstraint(params: CreateConstraintParams): Promise<Constraint> {
     const rules = await this.readRules();
-    const constraint: Constraint = { id: generateId('constraint', params.name, rules.constraints), ...params };
+    const { name, target, violationCondition } = params;
+    const constraint: Constraint = { id: generateId('constraint', name, rules.constraints), name, target, violationCondition };
     await this.writeRules(
       { ...rules, constraints: [...rules.constraints, constraint] },
       `chore(rules): add constraint '${params.name}'`,
