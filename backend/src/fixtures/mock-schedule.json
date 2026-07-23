@@ -1,0 +1,61 @@
+{
+  "metadata": {
+    "semesterId": "FALL_2026",
+    "semesterName": "Fall Semester 2026",
+    "academicYear": "2026-2027",
+    "timeline": {
+      "semesterStartDate": "2026-09-07",
+      "semesterEndDate": "2026-12-18",
+      "exclusionDates": [
+        { "date": "2026-11-26", "reason": "Thanksgiving Break" }
+      ]
+    },
+    "versioning": {
+      "lastModifiedBy": "mock-data@iter-scheduling.local",
+      "lastModifiedAt": "2026-07-22T00:00:00.000Z",
+      "schemaVersion": "1.0.0"
+    }
+  },
+  "timeSlots": [
+    { "id": "TS_MON_P1", "day": "Monday", "name": "Period 1", "startTime": "08:30", "endTime": "10:15" },
+    { "id": "TS_MON_P2", "day": "Monday", "name": "Period 2", "startTime": "10:30", "endTime": "12:15" },
+    { "id": "TS_TUE_P1", "day": "Tuesday", "name": "Period 1", "startTime": "09:00", "endTime": "11:30" },
+    { "id": "TS_WED_P1", "day": "Wednesday", "name": "Period 1", "startTime": "08:30", "endTime": "10:15" },
+    { "id": "TS_WED_P2", "day": "Wednesday", "name": "Period 2", "startTime": "10:30", "endTime": "12:15" }
+  ],
+  "rooms": [
+    { "id": "RM_101", "name": "Room 101", "capacity": 50, "building": "Science Hall" },
+    { "id": "RM_102", "name": "Room 102", "capacity": 30, "building": "Arts Block" },
+    { "id": "RM_103", "name": "Room 103", "capacity": 40, "building": "Science Hall" },
+    { "id": "RM_104", "name": "Room 104", "capacity": 60, "building": "Main Hall" }
+  ],
+  "professors": [
+    { "id": "PRF_SMITH", "name": "Dr. Jane Smith", "department": "Biology" },
+    { "id": "PRF_JONES", "name": "Prof. Alan Jones", "department": "History" },
+    { "id": "PRF_CHEN", "name": "Dr. Bob Chen", "department": "Chemistry" }
+  ],
+  "studentGroups": [
+    { "id": "GRP_BIO_Y1", "name": "Biology Year 1", "size": 45 },
+    { "id": "GRP_HIS_Y1", "name": "History Year 1", "size": 25 },
+    { "id": "GRP_CHEM_Y1", "name": "Chemistry Year 1", "size": 30 }
+  ],
+  "courses": [
+    { "id": "CRS_BIO101", "code": "BIO101", "name": "Intro to Biology", "department": "Biology" },
+    { "id": "CRS_HIS201", "code": "HIS201", "name": "Modern History", "department": "History" },
+    { "id": "CRS_CHEM301", "code": "CHEM301", "name": "Organic Chemistry", "department": "Chemistry" },
+    { "id": "CRS_BIO102", "code": "BIO102", "name": "Cell Biology", "department": "Biology" },
+    { "id": "CRS_HIS202", "code": "HIS202", "name": "World War II", "department": "History" }
+  ],
+  "classes": [
+    { "id": "CLS_00001", "courseId": "CRS_BIO101", "title": "Intro to Biology Lecture - Section A", "professorId": "PRF_SMITH", "studentGroupId": "GRP_BIO_Y1", "roomId": "RM_101", "timeSlotIds": ["TS_MON_P1"] },
+    { "id": "CLS_00002", "courseId": "CRS_HIS201", "title": "Modern History Lecture - Section A", "professorId": "PRF_JONES", "studentGroupId": "GRP_HIS_Y1", "roomId": "RM_102", "timeSlotIds": ["TS_MON_P2"] },
+    { "id": "CLS_00003", "courseId": "CRS_CHEM301", "title": "Organic Chemistry Lab - Section A", "professorId": "PRF_CHEN", "studentGroupId": "GRP_CHEM_Y1", "roomId": "RM_103", "timeSlotIds": ["TS_TUE_P1"] },
+    { "id": "CLS_00004", "courseId": "CRS_HIS202", "title": "World War II Lecture - Section A", "professorId": "PRF_JONES", "studentGroupId": "GRP_HIS_Y1", "roomId": "RM_101", "timeSlotIds": ["TS_MON_P1"] },
+    { "id": "CLS_00005", "courseId": "CRS_CHEM301", "title": "Organic Chemistry Lecture - Section B", "professorId": "PRF_CHEN", "studentGroupId": "GRP_CHEM_Y1", "roomId": "RM_104", "timeSlotIds": ["TS_WED_P1"] },
+    { "id": "CLS_00006", "courseId": "CRS_BIO101", "title": "Intro to Biology Lab - Section A", "professorId": "PRF_SMITH", "studentGroupId": "GRP_BIO_Y1", "roomId": "RM_103", "timeSlotIds": ["TS_WED_P2"] },
+    { "id": "CLS_00007", "courseId": "CRS_HIS201", "title": "Modern History Seminar - Section A", "professorId": "PRF_JONES", "studentGroupId": "GRP_HIS_Y1", "roomId": "RM_102", "timeSlotIds": ["TS_TUE_P1"] },
+    { "id": "CLS_00008", "courseId": "CRS_BIO102", "title": "Cell Biology Lab - Section A", "professorId": "PRF_SMITH", "studentGroupId": "GRP_BIO_Y1", "roomId": "RM_101", "timeSlotIds": ["TS_WED_P1"] },
+    { "id": "CLS_00009", "courseId": "CRS_CHEM301", "title": "Organic Chemistry Tutorial - Section A", "professorId": "PRF_CHEN", "studentGroupId": "GRP_CHEM_Y1", "roomId": "RM_103", "timeSlotIds": ["TS_MON_P2"] },
+    { "id": "CLS_00010", "courseId": "CRS_CHEM301", "title": "Organic Chemistry Tutorial - Section B", "professorId": "PRF_CHEN", "studentGroupId": "GRP_CHEM_Y1", "roomId": "RM_101", "timeSlotIds": ["TS_WED_P2"] }
+  ]
+}
