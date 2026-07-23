@@ -20,6 +20,7 @@ type MockOctokit = {
       merge: ReturnType<typeof vi.fn>;
       list: ReturnType<typeof vi.fn>;
       get: ReturnType<typeof vi.fn>;
+      update: ReturnType<typeof vi.fn>;
     };
     issues: {
       createComment: ReturnType<typeof vi.fn>;
@@ -49,6 +50,7 @@ function buildMockOctokit(): MockOctokit {
         merge: vi.fn(),
         list: vi.fn(),
         get: vi.fn(),
+        update: vi.fn(),
       },
       issues: {
         createComment: vi.fn(),
@@ -171,6 +173,18 @@ describe('GitHubService', () => {
 
     expect(mock.rest.pulls.merge).toHaveBeenCalledWith({
       owner: OWNER, repo: REPO, pull_number: 42,
+    });
+  });
+
+  // ── closePullRequest ────────────────────────────────────────────────────────
+
+  it('closePullRequest calls pulls.update with state closed and the numeric PR number', async () => {
+    mock.rest.pulls.update.mockResolvedValue({});
+
+    await service.closePullRequest('42');
+
+    expect(mock.rest.pulls.update).toHaveBeenCalledWith({
+      owner: OWNER, repo: REPO, pull_number: 42, state: 'closed',
     });
   });
 

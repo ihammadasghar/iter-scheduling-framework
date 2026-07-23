@@ -17,6 +17,7 @@ const makeGitHub = (): IGitHubService => ({
   addPullRequestComment: vi.fn().mockResolvedValue(undefined),
   getPullRequest: vi.fn().mockResolvedValue({ title: '', head: '', labels: [], createdAt: '' }),
   setPullRequestLabels: vi.fn().mockResolvedValue(undefined),
+  closePullRequest: vi.fn().mockResolvedValue(undefined),
 });
 
 const makeGraph = (): IGraphService => ({

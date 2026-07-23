@@ -142,6 +142,32 @@ describe('LocalGitHubService', () => {
     });
   });
 
+  // ── closePullRequest ────────────────────────────────────────────────────────
+
+  it('closePullRequest removes the pull request from listOpenPullRequests', async () => {
+    await service.createBranch('sim-1', 'main');
+    const id = await service.createPullRequest('sim-1', 'main', 'My PR', 'description');
+
+    await service.closePullRequest(id);
+
+    expect(await service.listOpenPullRequests()).toEqual([]);
+  });
+
+  it('closePullRequest throws notFound for an unknown id', async () => {
+    await expect(service.closePullRequest('999')).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  it('closePullRequest does not copy the head branch onto the base branch (unlike merge)', async () => {
+    await service.createBranch('sim-1', 'main');
+    await service.writeFile('sim-1', 'schedule.json', '{"updated":true}', 'edit');
+    const id = await service.createPullRequest('sim-1', 'main', 'My PR', 'description');
+
+    await service.closePullRequest(id);
+
+    const mainContent = await service.readFile('main', 'schedule.json');
+    expect(mainContent).toBe(JSON.stringify({ value: 'main-schedule' }));
+  });
+
   // ── default fixtures ──────────────────────────────────────────────────────────
 
   it('defaults to seeding "main" from the bundled mock fixture files when no seed is provided', async () => {

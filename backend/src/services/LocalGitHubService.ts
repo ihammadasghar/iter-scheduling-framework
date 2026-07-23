@@ -13,7 +13,7 @@ interface PullRequestRecord {
   readonly body: string;
   labels: string[];
   readonly createdAt: string;
-  state: 'open' | 'merged';
+  state: 'open' | 'merged' | 'closed';
 }
 
 /**
@@ -79,6 +79,11 @@ export class LocalGitHubService implements IGitHubService {
       baseFiles.set(path, content);
     }
     pr.state = 'merged';
+  }
+
+  async closePullRequest(pullRequestId: string): Promise<void> {
+    const pr = this.getPullRequestRecord(pullRequestId);
+    pr.state = 'closed';
   }
 
   async getPullRequestDiff(pullRequestId: string): Promise<string> {

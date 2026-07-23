@@ -92,6 +92,15 @@ export class GitHubService implements IGitHubService {
     });
   }
 
+  async closePullRequest(pullRequestId: string): Promise<void> {
+    await this.octokit.rest.pulls.update({
+      owner: this.owner,
+      repo: this.repo,
+      pull_number: parseInt(pullRequestId, 10),
+      state: 'closed',
+    });
+  }
+
   async getPullRequestDiff(pullRequestId: string): Promise<string> {
     const response = await this.octokit.request(
       'GET /repos/{owner}/{repo}/pulls/{pull_number}',
