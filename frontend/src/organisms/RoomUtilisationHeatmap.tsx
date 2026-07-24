@@ -1,17 +1,18 @@
-import { Fragment, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Box, Link, Tooltip, Typography,
   Table, TableBody, TableCell, TableHead, TableRow,
 } from '@mui/material';
 import { WarningAmber } from '@mui/icons-material';
 import { formatRoomLabel, formatTimeSlotLabel } from '@/utils/scheduleFormatters';
-import type { OccupancyLookup } from '@/utils/aggregateOccupancy';
-import type { RawRoom } from '@/types';
+import type { OccupancyCell, OccupancyLookup } from '@/utils/aggregateOccupancy';
+import type { RawRoom, ScheduleClass } from '@/types';
 
 interface RoomUtilisationHeatmapProps {
   readonly occupancy: OccupancyLookup;
   readonly rooms: readonly RawRoom[];
   readonly sortedTimeSlotIds: readonly string[];
+  readonly classes: readonly ScheduleClass[];
 }
 
 // Validated sequential teal ramp (see docs/superpowers/specs/2026-07-24-simulation-overview-visualizations-design.md)
@@ -30,8 +31,19 @@ export default function RoomUtilisationHeatmap({
   occupancy,
   rooms,
   sortedTimeSlotIds,
+  classes,
 }: RoomUtilisationHeatmapProps): React.ReactElement {
   const [tableView, setTableView] = useState(false);
+
+  const classTitleById = useMemo(
+    () => new Map(classes.map((cls) => [cls.id, cls.title])),
+    [classes],
+  );
+
+  const resolveClassTitles = (cell: OccupancyCell | undefined): string => {
+    if (cell === undefined) return '';
+    return cell.classIds.map((id) => classTitleById.get(id) ?? id).join(', ');
+  };
 
   if (rooms.length === 0 || sortedTimeSlotIds.length === 0) {
     return <Typography color="text.secondary">No room data available for this draft.</Typography>;
@@ -65,7 +77,7 @@ export default function RoomUtilisationHeatmap({
                     <TableCell key={tsId}>
                       {cell === undefined
                         ? '—'
-                        : `${Math.round(cell.seatFillRatio * 100)}%${cell.hasConflict ? ' (conflict)' : ''}`}
+                        : `${Math.round(cell.seatFillRatio * 100)}% — ${resolveClassTitles(cell)}${cell.hasConflict ? ' (conflict)' : ''}`}
                     </TableCell>
                   );
                 })}
@@ -83,16 +95,25 @@ export default function RoomUtilisationHeatmap({
             gap: '2px',
           }}
         >
-          <Box />
-          {sortedTimeSlotIds.map((tsId) => (
-            <Typography key={tsId} variant="caption" align="center" sx={{ fontWeight: 600 }}>
-              {formatTimeSlotLabel(tsId)}
-            </Typography>
-          ))}
+          <Box role="row" sx={{ display: 'contents' }}>
+            <Box />
+            {sortedTimeSlotIds.map((tsId) => (
+              <Typography
+                key={tsId}
+                role="columnheader"
+                variant="caption"
+                align="center"
+                sx={{ fontWeight: 600 }}
+              >
+                {formatTimeSlotLabel(tsId)}
+              </Typography>
+            ))}
+          </Box>
 
           {sortedRooms.map((room) => (
-            <Fragment key={room.id}>
+            <Box key={room.id} role="row" sx={{ display: 'contents' }}>
               <Typography
+                role="rowheader"
                 variant="caption"
                 sx={{ fontWeight: 600, display: 'flex', alignItems: 'center' }}
               >
@@ -105,14 +126,18 @@ export default function RoomUtilisationHeatmap({
                 const label = pct === null
                   ? `${formatRoomLabel(room.id)} unbooked at ${formatTimeSlotLabel(tsId)}`
                   : `${formatRoomLabel(room.id)} ${pct}% full at ${formatTimeSlotLabel(tsId)}`;
+                const tooltipTitle = pct === null
+                  ? 'Unbooked'
+                  : `${pct}% full — ${resolveClassTitles(cell)}${cell?.hasConflict === true ? ' — conflict' : ''}`;
 
                 return (
                   <Tooltip
                     key={`${room.id}-${tsId}`}
-                    title={pct === null ? 'Unbooked' : `${pct}% full${cell?.hasConflict === true ? ' — conflict' : ''}`}
+                    title={tooltipTitle}
                     enterDelay={300}
                   >
                     <Box
+                      role="gridcell"
                       sx={{ bgcolor: bg, minHeight: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       aria-label={label}
                     >
@@ -123,7 +148,7 @@ export default function RoomUtilisationHeatmap({
                   </Tooltip>
                 );
               })}
-            </Fragment>
+            </Box>
           ))}
         </Box>
       )}
