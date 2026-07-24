@@ -49,6 +49,13 @@ describe('aggregateOccupancy', () => {
     expect(result.size).toBe(0);
   });
 
+  it('skips a class whose room has zero capacity', () => {
+    const zeroCapacityRoom: RawRoom = { id: 'RM_ZERO', name: 'Room Zero', capacity: 0, building: 'Building A' };
+    const cls = makeClass({ roomId: 'RM_ZERO' });
+    const result = aggregateOccupancy([cls], [zeroCapacityRoom], [GROUP]);
+    expect(result.size).toBe(0);
+  });
+
   it('skips a class whose student group is missing from the groups list', () => {
     const cls = makeClass({ studentGroupId: 'GRP_UNKNOWN' });
     const result = aggregateOccupancy([cls], [ROOM], [GROUP]);
