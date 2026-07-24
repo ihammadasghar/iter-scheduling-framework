@@ -34,7 +34,7 @@ describe('scheduleSlice', () => {
 
   it('stores rooms and studentGroups on fulfilled', async () => {
     vi.mocked(simulationService.getSchedule).mockResolvedValue({
-      metadata: {}, courses: [], professors: [], timeSlots: [], classes: [],
+      metadata: { semesterId: 'sem-1', semesterName: 'Fall 2026', academicYear: '2026-2027' }, courses: [], professors: [], timeSlots: [], classes: [],
       rooms: [ROOM], studentGroups: [GROUP],
     });
     const store = makeStore();
