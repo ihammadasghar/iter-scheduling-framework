@@ -49,23 +49,22 @@ TimetablePage
 
 ### New backend endpoint — `GET /simulations/:id/schedule`
 
-Room `capacity` and student-group `size` already live in the graph DB per branch (hydrated by `GraphService`) but are never read back out. Add a small, read-only endpoint returning that master data:
+Room `capacity` and student-group `size` already live in the graph DB per branch, and `GraphService.exportScheduleJson(simulationId)` **already exists** and already returns the full `ScheduleJson` (courses, professors, studentGroups, rooms, timeSlots, classes) as a JSON string — it's just never read back out through any route today (its only caller is `SimulationService.commit()`, which writes it to GitHub). No new Cypher or `IGraphService` method is needed — just a thin read path reusing what's already there:
 
-- `IGraphService`/`GraphService`: new `getScheduleMasterData(simulationId)` — two parallel Cypher queries (`MATCH (n:Room {branchId: $branchId}) RETURN {...}`, same for `StudentGroup`), following the exact pattern `exportScheduleJson()`/`queryConflicts()` already use.
-- `ISimulationService`/`SimulationService`: new `getSchedule(simulationId)` — same registry-touch/404-guard pattern as `getConflicts`/`getMetrics`, delegating to `graph.getScheduleMasterData`.
+- `ISimulationService`/`SimulationService`: new `getSchedule(simulationId)` — same registry-touch/404-guard pattern as `getConflicts`/`getMetrics`, calling `this.graph.exportScheduleJson(simulationId)` and `JSON.parse`-ing the result.
 - `SimulationController`: new `getSchedule` handler, same try/catch/`res.json` shape as `getConflicts`/`getMetrics`.
 - `routes/simulations.ts`: new `GET /:id/schedule` route.
-- Frontend `simulationService.ts`: new `getSchedule(simId)` method, same shape as `getConflicts`/`getMetrics`.
-- No mutation, no new business logic — this is a straightforward read of data the system already computes today.
+- Frontend `simulationService.ts`: new `getSchedule(simId)` method, same shape as `getConflicts`/`getMetrics`, typed to return the fields the frontend needs (`rooms`, `studentGroups`).
+- No mutation, no new business logic, no new backend query — this is a straightforward read of data the system already computes today via an already-tested method.
 
 ### Gantt (Grid View tab) enhancements
 
 Visual polish only — no new interaction model:
 
-- **Resource grouping/collapsing**: rows collapse by building/department; a collapsed group shows an aggregate chip (e.g. "Building A · 6 rooms · 1 conflict").
+- **Resource grouping/collapsing**: rows collapse by building (room view only, using the new schedule master data's `RawRoom.building`); a collapsed group shows an aggregate chip (e.g. "Building A · 6 rooms · 1 conflict").
 - **Density/zoom control**: a "Compact / Comfortable" toggle changes row height.
-- **Persistent conflict highlighting**: conflicted chips get a visible amber ring directly on the grid (not only surfaced via HUD/Inspector).
-- **Hover tooltip**: hovering a chip shows course/lecturer/room/time inline; clicking still opens the full Inspector, unchanged.
+- **Persistent conflict highlighting**: `TimetableGrid` already accepts a `conflictedClassIds` prop and already renders a distinct amber/warning-icon chip style for it (`ClassChip`'s `'conflicted'` state) — it's just never populated today (`TimetablePage` renders `<TimetableGrid />` with no prop passed). This is a wiring fix: pass the current `conflictSlice` conflicts' `classIds` through as a `Set`.
+- ~~Hover tooltip~~ — already implemented: `ClassChip` already wraps every chip variant in a `Tooltip` showing title/room/professor. No work needed here.
 
 ### Room Utilisation Heatmap
 
@@ -104,7 +103,7 @@ Single column, same max-width convention as other screens (per `docs/stitch-prom
 
 ## Testing
 
-- **Backend unit tests**: `GraphService.test.ts` addition for `getScheduleMasterData` (mirrors existing `queryConflicts()`/`exportScheduleJson()` blocks), `SimulationService.test.ts` addition for `getSchedule` (404-when-expired + happy path, mirrors `getConflicts`/`getMetrics` tests).
+- **Backend unit tests**: `SimulationService.test.ts` addition for `getSchedule` (404-when-expired + happy path + confirms it parses `exportScheduleJson`'s output, mirrors `getConflicts`/`getMetrics` tests).
 - **Frontend unit tests** (pure functions, table-driven): `aggregateOccupancy.test.ts`, `groupConflictsByType.test.ts`.
 - **Frontend component tests**, following the existing `TimetableGrid.test.tsx`/`HUD.test.tsx` patterns: `RoomUtilisationHeatmap.test.tsx`, `SimulationOverview.test.tsx` (loading/empty/zero-conflict/normal states against mock Redux state), `ConflictBreakdownChart.test.tsx`.
 - **Manual accessibility check**: run the dataviz skill's palette validator against the heatmap's teal ramp and the conflict-breakdown bar colors (light and dark mode) before implementation is considered done.
@@ -112,8 +111,6 @@ Single column, same max-width convention as other screens (per `docs/stitch-prom
 ## Summary of new/changed files
 
 **Backend:**
-- `backend/src/interfaces/IGraphService.ts` (edit — add `getScheduleMasterData`)
-- `backend/src/services/GraphService.ts` / `.test.ts` (edit — implement + test `getScheduleMasterData`)
 - `backend/src/interfaces/ISimulationService.ts` (edit — add `getSchedule`)
 - `backend/src/services/SimulationService.ts` / `.test.ts` (edit — implement + test `getSchedule`)
 - `backend/src/controllers/SimulationController.ts` (edit — add `getSchedule` handler)
