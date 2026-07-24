@@ -77,8 +77,12 @@ if [ ! -f "$ENV_FILE" ]; then
   cp "$ENV_EXAMPLE" "$ENV_FILE"
 fi
 
-cp "$ENV_FILE" "$ENV_FILE.bak"
-echo "Backed up existing backend/.env to backend/.env.bak"
+if [ -f "$ENV_FILE.bak" ]; then
+  echo "backend/.env.bak already exists — preserving original backup (not overwriting)."
+else
+  cp "$ENV_FILE" "$ENV_FILE.bak"
+  echo "Backed up existing backend/.env to backend/.env.bak"
+fi
 
 set_env_var() {
   local key="$1"
