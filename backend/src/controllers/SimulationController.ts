@@ -87,6 +87,15 @@ export class SimulationController {
     }
   }
 
+  async getSchedule(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const schedule = await this.service.getSchedule(req.params['id'] as string);
+      res.status(200).json(schedule);
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async deleteSimulation(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       await this.service.delete(req.params['id'] as string);
