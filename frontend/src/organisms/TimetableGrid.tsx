@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState } from 'react';
-import { Box, Typography, Tooltip, IconButton } from '@mui/material';
+import { Box, Typography, Tooltip, IconButton, ToggleButton, ToggleButtonGroup } from '@mui/material';
 import { ExpandMore, ExpandLess } from '@mui/icons-material';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { deselectClass } from '@/store/reducers/uiSlice';
@@ -111,6 +111,8 @@ export default function TimetableGrid({
   const viewBy = useAppSelector((s) => s.ui.viewBy);
   const rooms = useAppSelector((s) => s.schedule.rooms);
   const [collapsedBuildings, setCollapsedBuildings] = useState<ReadonlySet<string>>(new Set());
+  const [density, setDensity] = useState<'compact' | 'comfortable'>('comfortable');
+  const rowHeight = density === 'compact' ? 44 : 72;
 
   const buildingOf = useMemo(
     () => new Map(rooms.map((r) => [r.id, r.building])),
@@ -168,6 +170,7 @@ export default function TimetableGrid({
             key={`${resId}-${tsId}`}
             sx={{
               ...cellSx,
+              minHeight: rowHeight,
               gridColumn: `${colIdx + 2} / span ${span}`,
             }}
           >
@@ -183,6 +186,7 @@ export default function TimetableGrid({
             key={`${resId}-${tsId}`}
             sx={{
               ...cellSx,
+              minHeight: rowHeight,
               gridColumn: colIdx + 2,
             }}
             aria-label="Empty time slot"
@@ -194,7 +198,7 @@ export default function TimetableGrid({
     return (
       <Fragment key={resId}>
         {/* Row label (sticky left) */}
-        <Box key={`label-${resId}`} sx={stickyLabelSx}>
+        <Box key={`label-${resId}`} sx={{ ...stickyLabelSx, minHeight: rowHeight }}>
           <Tooltip title={resId} enterDelay={300}>
             <Typography variant="caption" sx={{ fontWeight: 600 }} noWrap>
               {formatResourceLabel(resId, viewBy)}
@@ -207,99 +211,130 @@ export default function TimetableGrid({
   };
 
   return (
-    <Box
-      onClick={() => dispatch(deselectClass())}
-      sx={{
-        overflow: 'auto',
-        flex: 1,
-        // Custom scrollbar handled by GlobalStyles
-      }}
-      aria-label="Timetable grid"
-    >
+    <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
       <Box
         sx={{
-          display: 'grid',
-          gridTemplateColumns: `100px repeat(${colCount}, minmax(150px, 1fr))`,
-          width: 'max-content',
-          minWidth: '100%',
+          display: 'flex',
+          justifyContent: 'flex-end',
+          px: 1,
+          py: 0.5,
+          borderBottom: '1px solid',
+          borderColor: 'divider',
         }}
       >
-        {/* ── Row 0: sticky header ── */}
-        {/* Top-left corner cell */}
-        <Box sx={{ ...stickyHeaderSx, position: 'sticky', left: 0, zIndex: 20 }} />
+        <ToggleButtonGroup
+          value={density}
+          exclusive
+          size="small"
+          aria-label="Row density"
+          onChange={(_e, next: 'compact' | 'comfortable' | null) => {
+            if (next !== null) setDensity(next);
+          }}
+        >
+          <ToggleButton value="comfortable" aria-label="Comfortable row height">
+            Comfortable
+          </ToggleButton>
+          <ToggleButton value="compact" aria-label="Compact row height">
+            Compact
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
 
-        {sortedTsIds.map((tsId) => (
-          <Box key={tsId} sx={stickyHeaderSx}>
-            <Tooltip title={tsId} enterDelay={300}>
-              <Typography variant="caption" sx={{ fontWeight: 600 }} noWrap>
-                {formatTimeSlotLabel(tsId)}
-              </Typography>
-            </Tooltip>
-          </Box>
-        ))}
+      <Box
+        onClick={() => dispatch(deselectClass())}
+        sx={{
+          overflow: 'auto',
+          flex: 1,
+          // Custom scrollbar handled by GlobalStyles
+        }}
+        aria-label="Timetable grid"
+      >
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: `100px repeat(${colCount}, minmax(150px, 1fr))`,
+            width: 'max-content',
+            minWidth: '100%',
+          }}
+        >
+          {/* ── Row 0: sticky header ── */}
+          {/* Top-left corner cell */}
+          <Box sx={{ ...stickyHeaderSx, position: 'sticky', left: 0, zIndex: 20 }} />
 
-        {/* ── Data rows ── */}
-        {viewBy === 'room' ? (
-          Object.entries(
-            resourceIds.reduce<Record<string, string[]>>((acc, resId) => {
-              const building = buildingOf.get(resId) ?? 'Other';
-              (acc[building] ??= []).push(resId);
-              return acc;
-            }, {}),
-          )
-            .sort(([a], [b]) => a.localeCompare(b))
-            .map(([building, roomIds]) => {
-              const collapsed = collapsedBuildings.has(building);
-              const buildingConflictCount = roomIds
-                .flatMap((resId) => [...(lookup.get(resId)?.values() ?? [])])
-                .filter((cls) => conflictedClassIds.has(cls.id)).length;
+          {sortedTsIds.map((tsId) => (
+            <Box key={tsId} sx={stickyHeaderSx}>
+              <Tooltip title={tsId} enterDelay={300}>
+                <Typography variant="caption" sx={{ fontWeight: 600 }} noWrap>
+                  {formatTimeSlotLabel(tsId)}
+                </Typography>
+              </Tooltip>
+            </Box>
+          ))}
 
-              return (
-                <Fragment key={`building-${building}`}>
-                  <Box
-                    sx={{
-                      ...stickyLabelSx,
-                      gridColumn: `1 / span ${colCount + 1}`,
-                      justifyContent: 'space-between',
-                    }}
-                  >
-                    <Typography variant="caption" sx={{ fontWeight: 700 }}>
-                      {building} · {roomIds.length} room{roomIds.length === 1 ? '' : 's'}
-                      {buildingConflictCount > 0
-                        ? ` · ${buildingConflictCount} conflict${buildingConflictCount === 1 ? '' : 's'}`
-                        : ''}
-                    </Typography>
-                    <IconButton
-                      size="small"
-                      onClick={() => toggleBuilding(building)}
-                      aria-label={collapsed ? `Expand ${building}` : `Collapse ${building}`}
+          {/* ── Data rows ── */}
+          {viewBy === 'room' ? (
+            Object.entries(
+              resourceIds.reduce<Record<string, string[]>>((acc, resId) => {
+                const building = buildingOf.get(resId) ?? 'Other';
+                (acc[building] ??= []).push(resId);
+                return acc;
+              }, {}),
+            )
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([building, roomIds]) => {
+                const collapsed = collapsedBuildings.has(building);
+                const buildingConflictCount = roomIds
+                  .flatMap((resId) => [...(lookup.get(resId)?.values() ?? [])])
+                  .filter((cls) => conflictedClassIds.has(cls.id)).length;
+
+                return (
+                  <Fragment key={`building-${building}`}>
+                    <Box
+                      sx={{
+                        ...stickyLabelSx,
+                        minHeight: rowHeight,
+                        gridColumn: `1 / span ${colCount + 1}`,
+                        justifyContent: 'space-between',
+                      }}
                     >
-                      {collapsed ? <ExpandMore /> : <ExpandLess />}
-                    </IconButton>
-                  </Box>
-                  {!collapsed && roomIds.map((resId) => renderResourceRow(resId))}
-                </Fragment>
-              );
-            })
-        ) : (
-          resourceIds.map((resId) => renderResourceRow(resId))
-        )}
+                      <Typography variant="caption" sx={{ fontWeight: 700 }}>
+                        {building} · {roomIds.length} room{roomIds.length === 1 ? '' : 's'}
+                        {buildingConflictCount > 0
+                          ? ` · ${buildingConflictCount} conflict${buildingConflictCount === 1 ? '' : 's'}`
+                          : ''}
+                      </Typography>
+                      <IconButton
+                        size="small"
+                        onClick={() => toggleBuilding(building)}
+                        aria-label={collapsed ? `Expand ${building}` : `Collapse ${building}`}
+                      >
+                        {collapsed ? <ExpandMore /> : <ExpandLess />}
+                      </IconButton>
+                    </Box>
+                    {!collapsed && roomIds.map((resId) => renderResourceRow(resId))}
+                  </Fragment>
+                );
+              })
+          ) : (
+            resourceIds.map((resId) => renderResourceRow(resId))
+          )}
 
-        {/* Empty state when no classes loaded */}
-        {!loading && classes.length === 0 && (
-          <Box
-            sx={{
-              gridColumn: `1 / span ${colCount + 1}`,
-              display: 'flex',
-              justifyContent: 'center',
-              py: 8,
-            }}
-          >
-            <Typography color="text.secondary">
-              No classes loaded. The schedule may be empty.
-            </Typography>
-          </Box>
-        )}
+          {/* Empty state when no classes loaded */}
+          {!loading && classes.length === 0 && (
+            <Box
+              sx={{
+                gridColumn: `1 / span ${colCount + 1}`,
+                display: 'flex',
+                justifyContent: 'center',
+                py: 8,
+              }}
+            >
+              <Typography color="text.secondary">
+                No classes loaded. The schedule may be empty.
+              </Typography>
+            </Box>
+          )}
+        </Box>
       </Box>
     </Box>
   );

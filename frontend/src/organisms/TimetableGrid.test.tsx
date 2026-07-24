@@ -186,3 +186,18 @@ describe('TimetableGrid — building grouping', () => {
     expect(screen.queryByText(/room 101/i)).not.toBeInTheDocument();
   });
 });
+
+describe('TimetableGrid — density control', () => {
+  it('defaults to comfortable row height', () => {
+    render_([sampleClass]);
+    expect(screen.getByLabelText(/comfortable row height/i)).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('switches to compact row height when Compact is clicked', async () => {
+    const user = userEvent.setup();
+    render_([sampleClass]);
+    await user.click(screen.getByRole('button', { name: /compact row height/i }));
+    expect(screen.getByLabelText(/compact row height/i)).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByLabelText(/comfortable row height/i)).toHaveAttribute('aria-pressed', 'false');
+  });
+});
