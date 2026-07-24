@@ -191,6 +191,11 @@ describe('TimetableGrid — density control', () => {
   it('defaults to comfortable row height', () => {
     render_([sampleClass]);
     expect(screen.getByLabelText(/comfortable row height/i)).toHaveAttribute('aria-pressed', 'true');
+
+    // The row label's own Box is the actual styled element carrying rowHeight —
+    // assert its rendered minHeight, not just the toggle button's own state.
+    const rowLabel = screen.getByText(/room 101/i);
+    expect(rowLabel.parentElement).toHaveStyle({ minHeight: '72px' });
   });
 
   it('switches to compact row height when Compact is clicked', async () => {
@@ -199,5 +204,27 @@ describe('TimetableGrid — density control', () => {
     await user.click(screen.getByRole('button', { name: /compact row height/i }));
     expect(screen.getByLabelText(/compact row height/i)).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByLabelText(/comfortable row height/i)).toHaveAttribute('aria-pressed', 'false');
+
+    const rowLabel = screen.getByText(/room 101/i);
+    expect(rowLabel.parentElement).toHaveStyle({ minHeight: '44px' });
+  });
+
+  it('applies the density change to the building header row too', async () => {
+    const user = userEvent.setup();
+    const classInBuildingA = { ...sampleClass, id: 'CLS_A', roomId: 'RM_101' };
+    const ROOMS = [{ id: 'RM_101', name: 'Room 101', capacity: 40, building: 'Building A' }];
+    render(
+      <Provider store={makeStoreWithRooms([classInBuildingA], ROOMS)}>
+        <MemoryRouter>
+          <TimetableGrid />
+        </MemoryRouter>
+      </Provider>,
+    );
+
+    const header = screen.getByText(/building a/i);
+    expect(header.parentElement).toHaveStyle({ minHeight: '72px' });
+
+    await user.click(screen.getByRole('button', { name: /compact row height/i }));
+    expect(header.parentElement).toHaveStyle({ minHeight: '44px' });
   });
 });
