@@ -23,6 +23,7 @@ const makeStore = (overrides: {
   classes?: ScheduleClass[];
   classLoading?: boolean;
   scheduleLoading?: boolean;
+  scheduleError?: string | null;
 } = {}) =>
   configureStore({
     reducer: {
@@ -46,7 +47,7 @@ const makeStore = (overrides: {
         rooms: [{ id: 'RM_101', name: 'Room 101', capacity: 40, building: 'Building A' }],
         studentGroups: [{ id: 'GRP_BIO_Y1', name: 'Bio Year 1', size: 32 }],
         loading: overrides.scheduleLoading ?? false,
-        error: null,
+        error: overrides.scheduleError ?? null,
       },
     },
   });
@@ -90,6 +91,19 @@ describe('SimulationOverview', () => {
     expect(screen.getByText(/no scheduling conflicts/i)).toBeInTheDocument();
     expect(screen.getByText(/room utilisation/i)).toBeInTheDocument();
     expect(screen.getByText(/conflicts by type/i)).toBeInTheDocument();
+    expect(screen.getByText(/^metrics$/i)).toBeInTheDocument();
+  });
+
+  it('shows an error alert when the schedule fetch failed, while still rendering the rest of the overview', () => {
+    render(
+      <Provider
+        store={makeStore({ classes: [sampleClass], scheduleError: 'Network error' })}
+      >
+        <SimulationOverview onGoToGridView={vi.fn()} onSelectConflictType={vi.fn()} />
+      </Provider>,
+    );
+    expect(screen.getByText(/couldn't load room data for this draft/i)).toBeInTheDocument();
+    expect(screen.getByText(/no scheduling conflicts/i)).toBeInTheDocument();
     expect(screen.getByText(/^metrics$/i)).toBeInTheDocument();
   });
 });

@@ -3,6 +3,8 @@ import type { ScheduleClass, RawRoom, RawStudentGroup } from '@/types';
 export interface OccupancyCell {
   readonly seatFillRatio: number;
   readonly classIds: readonly string[];
+  // Structural room+slot overlap detected locally here, independent of the
+  // backend's conflictSlice — by design, not something to unify with the Gantt.
   readonly hasConflict: boolean;
 }
 

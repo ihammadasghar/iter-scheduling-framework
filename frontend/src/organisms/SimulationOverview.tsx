@@ -1,4 +1,4 @@
-import { Box, Button, Stack, Typography } from '@mui/material';
+import { Alert, Box, Button, Stack, Typography } from '@mui/material';
 import { useAppSelector } from '@/store/hooks';
 import GridSkeleton from '@/organisms/GridSkeleton';
 import RoomUtilisationHeatmap from '@/organisms/RoomUtilisationHeatmap';
@@ -26,6 +26,7 @@ export default function SimulationOverview({
   const rooms = useAppSelector((s) => s.schedule.rooms);
   const studentGroups = useAppSelector((s) => s.schedule.studentGroups);
   const scheduleLoading = useAppSelector((s) => s.schedule.loading);
+  const scheduleError = useAppSelector((s) => s.schedule.error);
 
   if ((classesLoading || scheduleLoading) && classes.length === 0) {
     return <GridSkeleton />;
@@ -51,6 +52,11 @@ export default function SimulationOverview({
   return (
     <Stack spacing={3} sx={{ p: 3, maxWidth: 900, mx: 'auto' }}>
       <HealthSummaryTile conflictCount={conflicts.length} />
+      {scheduleError && (
+        <Alert severity="error">
+          Couldn&apos;t load room data for this draft — try refreshing the page.
+        </Alert>
+      )}
       <RoomUtilisationHeatmap
         occupancy={occupancy}
         rooms={rooms}
