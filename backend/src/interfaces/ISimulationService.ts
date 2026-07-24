@@ -9,6 +9,7 @@ import type {
   Conflict,
   MetricResult,
 } from '../types/domain.js';
+import type { ScheduleJson } from '../types/scheduleJson.js';
 
 export interface ISimulationService {
   create(params: CreateSimulationParams): Promise<Simulation>;
@@ -19,5 +20,6 @@ export interface ISimulationService {
   getSuggestions(simulationId: string, classId: string): Promise<readonly Suggestion[]>;
   getConflicts(simulationId: string): Promise<readonly Conflict[]>;
   getMetrics(simulationId: string): Promise<readonly MetricResult[]>;
+  getSchedule(simulationId: string): Promise<ScheduleJson>;
   delete(simulationId: string): Promise<void>;
 }

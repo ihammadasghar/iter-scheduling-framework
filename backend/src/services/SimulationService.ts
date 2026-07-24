@@ -17,6 +17,7 @@ import type {
   MetricResult,
 } from '../types/domain.js';
 import type { RulesJson } from '../types/rulesJson.js';
+import type { ScheduleJson } from '../types/scheduleJson.js';
 
 const SOURCE_BRANCH = 'main';
 const SCHEDULE_JSON_PATH = 'schedule.json';
@@ -159,6 +160,16 @@ export class SimulationService implements ISimulationService {
     }
 
     return this.graph.evaluateMetrics(simulationId, rules);
+  }
+
+  async getSchedule(simulationId: string): Promise<ScheduleJson> {
+    const touched = this.registry.touch(simulationId);
+    if (!touched) {
+      throw ApiError.notFound('Simulation not found or expired');
+    }
+
+    const exportedJson = await this.graph.exportScheduleJson(simulationId);
+    return JSON.parse(exportedJson) as ScheduleJson;
   }
 
   async delete(simulationId: string): Promise<void> {

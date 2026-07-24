@@ -421,6 +421,56 @@ describe('SimulationService.getMetrics()', () => {
   });
 });
 
+describe('SimulationService.getSchedule()', () => {
+  const SIM_ID = 'sim-alice-abc123';
+  const FAKE_SCHEDULE_JSON = JSON.stringify({
+    metadata: {},
+    courses: [{ id: 'CRS_BIO101', code: 'BIO101', name: 'Intro to Biology', department: 'Biology' }],
+    professors: [{ id: 'PRF_SMITH', name: 'Dr. Smith', department: 'Biology' }],
+    studentGroups: [{ id: 'GRP_BIO_Y1', name: 'Bio Year 1', size: 32 }],
+    rooms: [{ id: 'RM_101', name: 'Room 101', capacity: 40, building: 'Building A' }],
+    timeSlots: [{ id: 'TS_MON_P1', day: 'MON', name: 'Period 1', startTime: '09:00', endTime: '10:00' }],
+    classes: [],
+  });
+
+  let github: IGitHubService;
+  let graph: IGraphService;
+  let registry: ISessionRegistry;
+  let service: SimulationService;
+
+  beforeEach(() => {
+    github = makeGitHub();
+    graph = makeGraph();
+    registry = makeRegistry(true);
+    (graph.exportScheduleJson as ReturnType<typeof vi.fn>).mockResolvedValue(FAKE_SCHEDULE_JSON);
+    service = new SimulationService(github, graph, registry);
+  });
+
+  it('throws 404 when the simulation session is not found', async () => {
+    const expiredRegistry = makeRegistry(false);
+    const svc = new SimulationService(github, graph, expiredRegistry);
+
+    await expect(svc.getSchedule(SIM_ID)).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Simulation not found or expired',
+    });
+  });
+
+  it('delegates to graph.exportScheduleJson with the simulationId', async () => {
+    await service.getSchedule(SIM_ID);
+
+    expect(graph.exportScheduleJson).toHaveBeenCalledOnce();
+    expect(graph.exportScheduleJson).toHaveBeenCalledWith(SIM_ID);
+  });
+
+  it('parses and returns the ScheduleJson from graph.exportScheduleJson', async () => {
+    const result = await service.getSchedule(SIM_ID);
+
+    expect(result.rooms).toEqual([{ id: 'RM_101', name: 'Room 101', capacity: 40, building: 'Building A' }]);
+    expect(result.studentGroups).toEqual([{ id: 'GRP_BIO_Y1', name: 'Bio Year 1', size: 32 }]);
+  });
+});
+
 describe('SimulationService.getSuggestions()', () => {
   const SIM_ID = 'sim-alice-abc123';
   const CLASS_ID = 'CLS_001';
