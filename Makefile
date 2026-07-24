@@ -1,4 +1,4 @@
-.PHONY: install dev test test-e2e lint build clean help
+.PHONY: install setup-github dev test test-e2e lint build clean help
 
 # Resolve pnpm — try known install locations, fall back to plain 'pnpm' (relies on PATH)
 PNPM := $(firstword $(wildcard $(HOME)/.local/share/pnpm/pnpm $(HOME)/.pnpm/pnpm /usr/local/bin/pnpm /usr/bin/pnpm) pnpm)
@@ -16,6 +16,9 @@ help: ## Show available commands
 install: ## Install dependencies for backend and frontend
 	$(PNPM) --dir backend install
 	$(PNPM) --dir frontend install
+
+setup-github: ## Create/reuse a real GitHub repo with large mock data, link backend/.env to it
+	./scripts/setup-github-repo.sh
 
 # ─────────────────────────────────────────────────────────────
 # Development
