@@ -8,6 +8,7 @@ import type {
   PaginatedResponse,
   UpdateClassRequest,
   ApiError,
+  ScheduleJson,
 } from '@/types';
 
 // Returns true when an ApiError represents a "not found / gone" response.
@@ -58,6 +59,12 @@ export const simulationService = {
   getMetrics(simId: string): Promise<MetricResult[]> {
     return apiClient
       .get<MetricResult[]>(`/simulations/${simId}/metrics`)
+      .then((r) => r.data);
+  },
+
+  getSchedule(simId: string): Promise<ScheduleJson> {
+    return apiClient
+      .get<ScheduleJson>(`/simulations/${simId}/schedule`)
       .then((r) => r.data);
   },
 
