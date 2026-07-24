@@ -75,9 +75,9 @@ Encodes **seat-fill density**, not raw booking status — this is what makes it 
 - Unbooked cells render as neutral pale gray — "no data," not "zero density."
 - A multi-period class (spanning several `timeSlotIds`) applies the same seat-fill value to each time-slot column it spans, matching how the Gantt grid already renders spanning chips.
 - A cell with a hard-constraint conflict (`ROOM_DOUBLE_BOOK` — two classes assigned to the same room+slot) sums the overlapping classes' seat-fill values (which can exceed 100%) and gets a small conflict indicator overlaid on the cell, rather than blending colors — this keeps the heatmap's color meaning ("how full") separate from the Gantt's conflict signal, while still surfacing that the cell is in a bad state.
-- Color: sequential single-hue ramp (light → dark) built from the existing UniSchedule teal accent (`#00695C`), kept visually distinct from the primary blue used for interactive Gantt chips.
+- Color: sequential single-hue teal ramp (light → dark), 5 steps: `#6fae9f`, `#4c9385`, `#2c7d6c`, `#046b5e` (anchor — matches `theme.palette.secondary.main`), `#023b33`. Kept visually distinct from the primary blue used for interactive Gantt chips.
 - A visible legend ("Emptier → Fuller") plus a hover tooltip per cell showing the exact percentage and class name — magnitude is never color-only.
-- Palette validated for contrast/colorblind-safety via the dataviz skill's validator before implementation.
+- Palette validated via the dataviz skill's `validate_palette.js --ordinal` check: lightness monotone, adjacent-step gaps, light-end contrast ≥ 2:1, single hue — all pass with the 5 hex values above. (The app has no dark-mode theme today, so only the light-mode ramp is in scope.)
 - A "View as table" text link provides an accessible tabular fallback, consistent with the existing 50+/low-vision-friendly design mandate.
 
 ### Diagnostics dashboard (Overview tab contents)
@@ -94,6 +94,7 @@ Single column, same max-width convention as other screens (per `docs/stitch-prom
 - `@mui/x-charts` (community/free tier) is adopted for the diagnostics dashboard's simple charts (`ConflictBreakdownChart`). Rationale: the app is already all-MUI v9, so `@mui/x-charts` inherits the existing theme tokens (colors, typography, spacing) automatically rather than introducing a second visual language. Its free tier covers bar charts, which is all this design needs.
 - The heatmap is **not** built with a charting library — it's a specialized colored grid that must mirror the exact day/period column layout of the existing `TimetableGrid`; no generic heatmap component (including `@mui/x-charts`'s own Heatmap, which is Pro-only) would replicate that alignment.
 - All new colors follow the dataviz skill's rules: sequential ramp = one hue light→dark; categorical bars = fixed hue order, never cycled; status colors (green/amber/red) reserved for health/conflict state and never reused as categorical/sequential encodings.
+- Conflicts-by-Type categorical palette (fixed order, validated via `validate_palette.js`, all six checks pass): Room → `#2f6fc4` (blue), Professor → `#b35c00` (amber), Group → `#5b3a9e` (purple). Deliberately distinct from the teal heatmap ramp and from the green/amber/red status colors used for health/conflict state.
 
 ### States
 
@@ -115,18 +116,19 @@ Single column, same max-width convention as other screens (per `docs/stitch-prom
 - `backend/src/services/SimulationService.ts` / `.test.ts` (edit — implement + test `getSchedule`)
 - `backend/src/controllers/SimulationController.ts` (edit — add `getSchedule` handler)
 - `backend/src/routes/simulations.ts` (edit — add `GET /:id/schedule` route)
-- `backend/src/types/domain.ts` (edit — add `ScheduleMasterData` type)
+- No new backend types — `getSchedule` returns the existing `ScheduleJson` type (`backend/src/types/scheduleJson.ts`) that `exportScheduleJson` already produces.
 
 **Frontend:**
-- `frontend/src/pages/TimetablePage.tsx` (edit — add `WorkspaceTabs`, conditional Grid/Overview content, dispatch schedule fetch)
-- `frontend/src/services/simulationService.ts` (edit — add `getSchedule` method)
-- `frontend/src/store/reducers/scheduleSlice.ts` / `.test.ts` (new)
+- `frontend/src/pages/TimetablePage.tsx` (edit — add `WorkspaceTabs`, conditional Grid/Overview content, dispatch schedule fetch, wire `conflictedClassIds`)
+- `frontend/src/services/simulationService.ts` (edit — add `getSchedule` method, returns existing `ScheduleJson` type)
+- `frontend/src/store/reducers/scheduleSlice.ts` / `.test.ts` (new — stores `rooms`/`studentGroups` extracted from `ScheduleJson`)
 - `frontend/src/store/store.ts` (edit — register `schedule` reducer)
-- `frontend/src/types/schedule.ts` + `frontend/src/types/index.ts` (edit — add/export `ScheduleMasterData`)
+- No new frontend types — `ScheduleJson`, `RawRoom`, `RawStudentGroup` already exist in `frontend/src/types/schedule.ts` and are already exported via `frontend/src/types/index.ts`.
 - `frontend/src/organisms/SimulationOverview.tsx` / `.test.tsx` (new)
 - `frontend/src/organisms/RoomUtilisationHeatmap.tsx` / `.test.tsx` (new)
 - `frontend/src/molecules/ConflictBreakdownChart.tsx` / `.test.tsx` (new)
-- `frontend/src/molecules/HealthSummaryTile.tsx` (new)
+- `frontend/src/molecules/HealthSummaryTile.tsx` / `.test.tsx` (new)
+- `frontend/src/molecules/MetricTileRow.tsx` / `.test.tsx` (new)
 - `frontend/src/utils/aggregateOccupancy.ts` / `.test.ts` (new)
 - `frontend/src/utils/groupConflictsByType.ts` / `.test.ts` (new)
 - `frontend/src/organisms/TimetableGrid.tsx` (edit — resource grouping/collapsing, density/zoom control, persistent conflict ring, hover tooltip)
