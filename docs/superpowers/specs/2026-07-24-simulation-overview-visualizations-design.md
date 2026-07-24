@@ -13,8 +13,9 @@ Add a second tab, "Overview," to the existing Timetable workspace, containing a 
 - Drag-and-drop rescheduling on the grid — interactivity stays at click-to-inspect (existing Inspector flow); this design only adds hover tooltips, resource grouping/collapsing, and a density/zoom control.
 - Any change to the Simulation Dashboard (`SimulationDashboardPage.tsx`) home page — its per-draft summary cards are out of scope; deeper visualization lives only inside the per-simulation workspace.
 - A draft-vs-published-schedule comparison view — the diagnostics dashboard shows the current draft's own snapshot only.
-- Backend changes — no new API endpoints. All new data is aggregated client-side from data the workspace already fetches (`classSlice`, `conflictSlice`, `metricSlice`).
 - A generic charting/calendar library for the heatmap or the Gantt grid — both stay hand-rolled to preserve pixel-aligned consistency with the existing grid layout.
+
+**Scope correction from the original brainstorm:** the design originally assumed zero backend changes. Investigation during planning found that room `capacity` and student-group `size` — required for the seat-fill heatmap — are hydrated into the graph DB per simulation but never re-exposed through any API route; the frontend only ever sees IDs (`roomId`, `studentGroupId`), never the numbers. A minimal read-only endpoint is therefore in scope (see below); everything else (conflict breakdown, metric tiles, health summary) still needs no backend changes since `conflictSlice`/`metricSlice` already carry that data.
 
 ## Design
 
@@ -35,7 +36,7 @@ TimetablePage
 ```
 
 - `WorkspaceTabs` selection is local component state (not URL/Redux) — switching tabs doesn't refetch data, since `TimetablePage`'s existing effects already load classes/conflicts/metrics once per simulation.
-- `SimulationOverview` is a pure derived-data view: it reads the same Redux state the Grid/HUD already consume and renders from it. No new Redux slices, no new API calls.
+- `SimulationOverview` is mostly a derived-data view: conflicts/metrics come from the Redux state the Grid/HUD already consume, with one addition — a new `scheduleSlice` fetches room/student-group master data once per simulation (mirroring how `classSlice` fetches classes), since that data doesn't exist client-side today.
 - New reusable pieces:
   - `frontend/src/organisms/SimulationOverview.tsx`
   - `frontend/src/organisms/RoomUtilisationHeatmap.tsx`
@@ -43,7 +44,19 @@ TimetablePage
   - `frontend/src/molecules/HealthSummaryTile.tsx`
   - `frontend/src/utils/aggregateOccupancy.ts` — pure function `aggregateOccupancy(classes, rooms, timeSlots, studentGroups)` → per-cell seat-fill grid
   - `frontend/src/utils/groupConflictsByType.ts` — pure function grouping `Conflict[]` by `type`
+  - `frontend/src/store/reducers/scheduleSlice.ts` — new slice holding `{ rooms: RawRoom[], studentGroups: RawStudentGroup[] }`, fetched via a new `getSchedule` service call
 - The Simulation Dashboard (`SimulationDashboardPage.tsx`) is untouched.
+
+### New backend endpoint — `GET /simulations/:id/schedule`
+
+Room `capacity` and student-group `size` already live in the graph DB per branch (hydrated by `GraphService`) but are never read back out. Add a small, read-only endpoint returning that master data:
+
+- `IGraphService`/`GraphService`: new `getScheduleMasterData(simulationId)` — two parallel Cypher queries (`MATCH (n:Room {branchId: $branchId}) RETURN {...}`, same for `StudentGroup`), following the exact pattern `exportScheduleJson()`/`queryConflicts()` already use.
+- `ISimulationService`/`SimulationService`: new `getSchedule(simulationId)` — same registry-touch/404-guard pattern as `getConflicts`/`getMetrics`, delegating to `graph.getScheduleMasterData`.
+- `SimulationController`: new `getSchedule` handler, same try/catch/`res.json` shape as `getConflicts`/`getMetrics`.
+- `routes/simulations.ts`: new `GET /:id/schedule` route.
+- Frontend `simulationService.ts`: new `getSchedule(simId)` method, same shape as `getConflicts`/`getMetrics`.
+- No mutation, no new business logic — this is a straightforward read of data the system already computes today.
 
 ### Gantt (Grid View tab) enhancements
 
@@ -91,19 +104,31 @@ Single column, same max-width convention as other screens (per `docs/stitch-prom
 
 ## Testing
 
-- **Unit tests** (pure functions, table-driven): `aggregateOccupancy.test.ts`, `groupConflictsByType.test.ts`.
-- **Component tests**, following the existing `TimetableGrid.test.tsx` pattern: `RoomUtilisationHeatmap.test.tsx`, `SimulationOverview.test.tsx` (loading/empty/zero-conflict/normal states against mock Redux state), `ConflictBreakdownChart.test.tsx`.
+- **Backend unit tests**: `GraphService.test.ts` addition for `getScheduleMasterData` (mirrors existing `queryConflicts()`/`exportScheduleJson()` blocks), `SimulationService.test.ts` addition for `getSchedule` (404-when-expired + happy path, mirrors `getConflicts`/`getMetrics` tests).
+- **Frontend unit tests** (pure functions, table-driven): `aggregateOccupancy.test.ts`, `groupConflictsByType.test.ts`.
+- **Frontend component tests**, following the existing `TimetableGrid.test.tsx`/`HUD.test.tsx` patterns: `RoomUtilisationHeatmap.test.tsx`, `SimulationOverview.test.tsx` (loading/empty/zero-conflict/normal states against mock Redux state), `ConflictBreakdownChart.test.tsx`.
 - **Manual accessibility check**: run the dataviz skill's palette validator against the heatmap's teal ramp and the conflict-breakdown bar colors (light and dark mode) before implementation is considered done.
 
 ## Summary of new/changed files
 
-- `frontend/src/pages/TimetablePage.tsx` (edit — add `WorkspaceTabs`, conditional Grid/Overview content)
-- `frontend/src/organisms/SimulationOverview.tsx` (new)
-- `frontend/src/organisms/SimulationOverview.test.tsx` (new)
-- `frontend/src/organisms/RoomUtilisationHeatmap.tsx` (new)
-- `frontend/src/organisms/RoomUtilisationHeatmap.test.tsx` (new)
-- `frontend/src/molecules/ConflictBreakdownChart.tsx` (new)
-- `frontend/src/molecules/ConflictBreakdownChart.test.tsx` (new)
+**Backend:**
+- `backend/src/interfaces/IGraphService.ts` (edit — add `getScheduleMasterData`)
+- `backend/src/services/GraphService.ts` / `.test.ts` (edit — implement + test `getScheduleMasterData`)
+- `backend/src/interfaces/ISimulationService.ts` (edit — add `getSchedule`)
+- `backend/src/services/SimulationService.ts` / `.test.ts` (edit — implement + test `getSchedule`)
+- `backend/src/controllers/SimulationController.ts` (edit — add `getSchedule` handler)
+- `backend/src/routes/simulations.ts` (edit — add `GET /:id/schedule` route)
+- `backend/src/types/domain.ts` (edit — add `ScheduleMasterData` type)
+
+**Frontend:**
+- `frontend/src/pages/TimetablePage.tsx` (edit — add `WorkspaceTabs`, conditional Grid/Overview content, dispatch schedule fetch)
+- `frontend/src/services/simulationService.ts` (edit — add `getSchedule` method)
+- `frontend/src/store/reducers/scheduleSlice.ts` / `.test.ts` (new)
+- `frontend/src/store/store.ts` (edit — register `schedule` reducer)
+- `frontend/src/types/schedule.ts` + `frontend/src/types/index.ts` (edit — add/export `ScheduleMasterData`)
+- `frontend/src/organisms/SimulationOverview.tsx` / `.test.tsx` (new)
+- `frontend/src/organisms/RoomUtilisationHeatmap.tsx` / `.test.tsx` (new)
+- `frontend/src/molecules/ConflictBreakdownChart.tsx` / `.test.tsx` (new)
 - `frontend/src/molecules/HealthSummaryTile.tsx` (new)
 - `frontend/src/utils/aggregateOccupancy.ts` / `.test.ts` (new)
 - `frontend/src/utils/groupConflictsByType.ts` / `.test.ts` (new)
