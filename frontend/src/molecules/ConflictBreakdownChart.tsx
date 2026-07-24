@@ -28,9 +28,18 @@ export default function ConflictBreakdownChart({
   return (
     <BarChart
       dataset={counts as unknown as Record<string, unknown>[]}
-      xAxis={[{ scaleType: 'band', dataKey: 'label' }]}
+      xAxis={[
+        {
+          scaleType: 'band',
+          dataKey: 'label',
+          colorMap: {
+            type: 'ordinal',
+            values: counts.map((c) => c.label),
+            colors: counts.map((c) => BAR_COLORS[c.type]),
+          },
+        },
+      ]}
       series={[{ dataKey: 'count', label: 'Conflicts' }]}
-      colors={counts.map((c) => BAR_COLORS[c.type])}
       onItemClick={(_event, item) => {
         const clicked = counts[item.dataIndex];
         if (clicked !== undefined) onBarClick?.(clicked.type);

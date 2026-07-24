@@ -19,4 +19,18 @@ describe('ConflictBreakdownChart', () => {
     render(<ConflictBreakdownChart counts={counts} />);
     expect(screen.getByLabelText(/conflicts by type/i)).toBeInTheDocument();
   });
+
+  it('renders each bar in its own distinct, validated color', () => {
+    const counts = [
+      { type: 'ROOM_DOUBLE_BOOK' as const, label: 'Room double-booked', count: 2 },
+      { type: 'PROFESSOR_OVERLAP' as const, label: 'Lecturer double-booked', count: 3 },
+      { type: 'GROUP_OVERLAP' as const, label: 'Student group overlap', count: 1 },
+    ];
+    const { container } = render(<ConflictBreakdownChart counts={counts} />);
+
+    const bars = container.querySelectorAll('.MuiBarChart-element');
+    expect(bars).toHaveLength(3);
+    const fills = Array.from(bars).map((bar) => bar.getAttribute('fill'));
+    expect(fills).toEqual(['#2f6fc4', '#b35c00', '#5b3a9e']);
+  });
 });
