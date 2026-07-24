@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
-import { Box, Typography, Tooltip } from '@mui/material';
+import { Fragment, useMemo, useState } from 'react';
+import { Box, Typography, Tooltip, IconButton } from '@mui/material';
+import { ExpandMore, ExpandLess } from '@mui/icons-material';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { deselectClass } from '@/store/reducers/uiSlice';
 import ClassChip from '@/atoms/ClassChip';
@@ -108,6 +109,22 @@ export default function TimetableGrid({
   const classes = useAppSelector((s) => s.class.classes);
   const loading = useAppSelector((s) => s.class.loading);
   const viewBy = useAppSelector((s) => s.ui.viewBy);
+  const rooms = useAppSelector((s) => s.schedule.rooms);
+  const [collapsedBuildings, setCollapsedBuildings] = useState<ReadonlySet<string>>(new Set());
+
+  const buildingOf = useMemo(
+    () => new Map(rooms.map((r) => [r.id, r.building])),
+    [rooms],
+  );
+
+  const toggleBuilding = (building: string): void => {
+    setCollapsedBuildings((prev) => {
+      const next = new Set(prev);
+      if (next.has(building)) next.delete(building);
+      else next.add(building);
+      return next;
+    });
+  };
 
   const sortedTsIds = useMemo(() => {
     const allIds = classes.flatMap((c) => [...c.timeSlotIds]);
@@ -129,6 +146,65 @@ export default function TimetableGrid({
   }
 
   const colCount = sortedTsIds.length;
+
+  const renderResourceRow = (resId: string): React.ReactNode => {
+    const rowLookup = lookup.get(resId) ?? new Map<string, ScheduleClass>();
+    const cells: React.ReactNode[] = [];
+    let skipCols = 0;
+
+    sortedTsIds.forEach((tsId, colIdx) => {
+      if (skipCols > 0) {
+        skipCols--;
+        return;
+      }
+
+      const cls = rowLookup.get(tsId);
+      if (cls !== undefined) {
+        const span = calcSpan(cls, sortedTsIds);
+        skipCols = span - 1;
+        const isConflicted = conflictedClassIds.has(cls.id);
+        cells.push(
+          <Box
+            key={`${resId}-${tsId}`}
+            sx={{
+              ...cellSx,
+              gridColumn: `${colIdx + 2} / span ${span}`,
+            }}
+          >
+            <ClassChip
+              classItem={cls}
+              state={isConflicted ? 'conflicted' : 'default'}
+            />
+          </Box>,
+        );
+      } else {
+        cells.push(
+          <Box
+            key={`${resId}-${tsId}`}
+            sx={{
+              ...cellSx,
+              gridColumn: colIdx + 2,
+            }}
+            aria-label="Empty time slot"
+          />,
+        );
+      }
+    });
+
+    return (
+      <Fragment key={resId}>
+        {/* Row label (sticky left) */}
+        <Box key={`label-${resId}`} sx={stickyLabelSx}>
+          <Tooltip title={resId} enterDelay={300}>
+            <Typography variant="caption" sx={{ fontWeight: 600 }} noWrap>
+              {formatResourceLabel(resId, viewBy)}
+            </Typography>
+          </Tooltip>
+        </Box>
+        {cells}
+      </Fragment>
+    );
+  };
 
   return (
     <Box
@@ -163,64 +239,51 @@ export default function TimetableGrid({
         ))}
 
         {/* ── Data rows ── */}
-        {resourceIds.map((resId) => {
-          const rowLookup = lookup.get(resId) ?? new Map<string, ScheduleClass>();
-          const cells: React.ReactNode[] = [];
-          let skipCols = 0;
+        {viewBy === 'room' ? (
+          Object.entries(
+            resourceIds.reduce<Record<string, string[]>>((acc, resId) => {
+              const building = buildingOf.get(resId) ?? 'Other';
+              (acc[building] ??= []).push(resId);
+              return acc;
+            }, {}),
+          )
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([building, roomIds]) => {
+              const collapsed = collapsedBuildings.has(building);
+              const buildingConflictCount = roomIds
+                .flatMap((resId) => [...(lookup.get(resId)?.values() ?? [])])
+                .filter((cls) => conflictedClassIds.has(cls.id)).length;
 
-          sortedTsIds.forEach((tsId, colIdx) => {
-            if (skipCols > 0) {
-              skipCols--;
-              return;
-            }
-
-            const cls = rowLookup.get(tsId);
-            if (cls !== undefined) {
-              const span = calcSpan(cls, sortedTsIds);
-              skipCols = span - 1;
-              const isConflicted = conflictedClassIds.has(cls.id);
-              cells.push(
-                <Box
-                  key={`${resId}-${tsId}`}
-                  sx={{
-                    ...cellSx,
-                    gridColumn: `${colIdx + 2} / span ${span}`,
-                  }}
-                >
-                  <ClassChip
-                    classItem={cls}
-                    state={isConflicted ? 'conflicted' : 'default'}
-                  />
-                </Box>,
+              return (
+                <Fragment key={`building-${building}`}>
+                  <Box
+                    sx={{
+                      ...stickyLabelSx,
+                      gridColumn: `1 / span ${colCount + 1}`,
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <Typography variant="caption" sx={{ fontWeight: 700 }}>
+                      {building} · {roomIds.length} room{roomIds.length === 1 ? '' : 's'}
+                      {buildingConflictCount > 0
+                        ? ` · ${buildingConflictCount} conflict${buildingConflictCount === 1 ? '' : 's'}`
+                        : ''}
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      onClick={() => toggleBuilding(building)}
+                      aria-label={collapsed ? `Expand ${building}` : `Collapse ${building}`}
+                    >
+                      {collapsed ? <ExpandMore /> : <ExpandLess />}
+                    </IconButton>
+                  </Box>
+                  {!collapsed && roomIds.map((resId) => renderResourceRow(resId))}
+                </Fragment>
               );
-            } else {
-              cells.push(
-                <Box
-                  key={`${resId}-${tsId}`}
-                  sx={{
-                    ...cellSx,
-                    gridColumn: colIdx + 2,
-                  }}
-                  aria-label="Empty time slot"
-                />,
-              );
-            }
-          });
-
-          return (
-            <>
-              {/* Row label (sticky left) */}
-              <Box key={`label-${resId}`} sx={stickyLabelSx}>
-                <Tooltip title={resId} enterDelay={300}>
-                  <Typography variant="caption" sx={{ fontWeight: 600 }} noWrap>
-                    {formatResourceLabel(resId, viewBy)}
-                  </Typography>
-                </Tooltip>
-              </Box>
-              {cells}
-            </>
-          );
-        })}
+            })
+        ) : (
+          resourceIds.map((resId) => renderResourceRow(resId))
+        )}
 
         {/* Empty state when no classes loaded */}
         {!loading && classes.length === 0 && (

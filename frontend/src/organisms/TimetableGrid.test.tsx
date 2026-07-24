@@ -1,11 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import TimetableGrid from './TimetableGrid';
 import classReducer from '@/store/reducers/classSlice';
 import uiReducer from '@/store/reducers/uiSlice';
+import scheduleReducer from '@/store/reducers/scheduleSlice';
 import type { ScheduleClass } from '@/types';
 
 const makeStore = (classes: ScheduleClass[] = [], viewBy: 'room' | 'professor' | 'studentGroup' = 'room') =>
@@ -13,6 +15,7 @@ const makeStore = (classes: ScheduleClass[] = [], viewBy: 'room' | 'professor' |
     reducer: {
       class: classReducer,
       ui: uiReducer,
+      schedule: scheduleReducer,
     },
     preloadedState: {
       class: {
@@ -29,6 +32,25 @@ const makeStore = (classes: ScheduleClass[] = [], viewBy: 'room' | 'professor' |
         inspectorOpen: false,
         viewBy,
       },
+      schedule: {
+        rooms: [],
+        studentGroups: [],
+        loading: false,
+        error: null,
+      },
+    },
+  });
+
+const makeStoreWithRooms = (
+  classes: ScheduleClass[],
+  rooms: Array<{ id: string; name: string; capacity: number; building: string }>,
+) =>
+  configureStore({
+    reducer: { class: classReducer, ui: uiReducer, schedule: scheduleReducer },
+    preloadedState: {
+      class: { classes, total: classes.length, currentPage: 1, hasMore: false, loading: false, error: null },
+      ui: { role: 'user' as const, selectedClassId: null, inspectorOpen: false, viewBy: 'room' as const },
+      schedule: { rooms, studentGroups: [], loading: false, error: null },
     },
   });
 
@@ -112,10 +134,11 @@ describe('TimetableGrid', () => {
 
   it('renders GridSkeleton when loading with no classes', () => {
     const store = configureStore({
-      reducer: { class: classReducer, ui: uiReducer },
+      reducer: { class: classReducer, ui: uiReducer, schedule: scheduleReducer },
       preloadedState: {
         class: { classes: [], total: 0, currentPage: 0, hasMore: true, loading: true, error: null },
         ui: { role: 'user' as const, selectedClassId: null, inspectorOpen: false, viewBy: 'room' as const },
+        schedule: { rooms: [], studentGroups: [], loading: false, error: null },
       },
     });
     render(
@@ -126,5 +149,40 @@ describe('TimetableGrid', () => {
       </Provider>,
     );
     expect(screen.getByLabelText('Loading timetable…')).toBeInTheDocument();
+  });
+});
+
+describe('TimetableGrid — building grouping', () => {
+  const classInBuildingA = { ...sampleClass, id: 'CLS_A', roomId: 'RM_101' };
+  const classInBuildingB = { ...sampleClass, id: 'CLS_B', roomId: 'RM_201' };
+  const ROOMS = [
+    { id: 'RM_101', name: 'Room 101', capacity: 40, building: 'Building A' },
+    { id: 'RM_201', name: 'Room 201', capacity: 30, building: 'Building B' },
+  ];
+
+  it('renders a building header row for each distinct building when viewBy=room', () => {
+    render(
+      <Provider store={makeStoreWithRooms([classInBuildingA, classInBuildingB], ROOMS)}>
+        <MemoryRouter>
+          <TimetableGrid />
+        </MemoryRouter>
+      </Provider>,
+    );
+    expect(screen.getByText(/building a/i)).toBeInTheDocument();
+    expect(screen.getByText(/building b/i)).toBeInTheDocument();
+  });
+
+  it("hides a building's room rows when its header is collapsed", async () => {
+    const user = userEvent.setup();
+    render(
+      <Provider store={makeStoreWithRooms([classInBuildingA], ROOMS)}>
+        <MemoryRouter>
+          <TimetableGrid />
+        </MemoryRouter>
+      </Provider>,
+    );
+    expect(screen.getByText(/room 101/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /collapse building a/i }));
+    expect(screen.queryByText(/room 101/i)).not.toBeInTheDocument();
   });
 });
