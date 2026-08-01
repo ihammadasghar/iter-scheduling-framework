@@ -31,5 +31,8 @@ Thumbs.db
 coverage/
 .nyc_output/
 
+# Test run artifacts
+backend/allure-results/
+
 # pnpm
 .pnpm-store/

@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>UniSchedule - Scheduling & Management</title>
+    
+    <!-- Scripts & Stylesheets -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+    <script>
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "on-tertiary-fixed": "#321200",
+                "surface": "#f9f9ff",
+                "surface-container-low": "#f2f3fb",
+                "inverse-surface": "#2e3037",
+                "surface-container-high": "#e7e8f0",
+                "surface-variant": "#e1e2ea",
+                "background": "#f9f9ff",
+                "error-container": "#ffdad6",
+                "primary-fixed-dim": "#a9c7ff",
+                "on-secondary-fixed": "#00201b",
+                "on-primary-container": "#dae5ff",
+                "on-primary-fixed": "#001b3d",
+                "surface-dim": "#d8dae2",
+                "tertiary-fixed-dim": "#ffb68c",
+                "tertiary": "#813900",
+                "inverse-on-surface": "#eff0f9",
+                "primary-container": "#1565c0",
+                "secondary-fixed-dim": "#84d5c5",
+                "on-tertiary-fixed-variant": "#753400",
+                "surface-container-lowest": "#ffffff",
+                "on-surface-variant": "#424752",
+                "outline-variant": "#c2c6d4",
+                "on-background": "#191c21",
+                "surface-container": "#ecedf6",
+                "on-secondary-fixed-variant": "#005046",
+                "surface-bright": "#f9f9ff",
+                "outline": "#727783",
+                "on-secondary-container": "#0f6f62",
+                "secondary-container": "#9defde",
+                "primary": "#004d99",
+                "inverse-primary": "#a9c7ff",
+                "secondary-fixed": "#a0f2e1",
+                "on-error": "#ffffff",
+                "on-primary-fixed-variant": "#00468c",
+                "on-primary": "#ffffff",
+                "tertiary-container": "#a64c00",
+                "on-tertiary-container": "#ffdece",
+                "primary-fixed": "#d6e3ff",
+                "secondary": "#046b5e",
+                "tertiary-fixed": "#ffdbc9",
+                "error": "#ba1a1a",
+                "on-secondary": "#ffffff",
+                "on-error-container": "#93000a",
+                "surface-container-highest": "#e1e2ea",
+                "on-surface": "#191c21",
+                "surface-tint": "#005db7",
+                "on-tertiary": "#ffffff",
+                "success": "#198754",
+                "success-container": "#d1e7dd",
+                "on-success-container": "#0f5132"
+              },
+              borderRadius: {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+              },
+              spacing: {
+                "base": "4px",
+                "gutter": "16px",
+                "margin": "24px",
+                "touch-target": "44px",
+                "container-max-width": "1280px"
+              },
+              fontFamily: {
+                "label-sm": ["Inter"],
+                "page-title": ["Inter"],
+                "section-label": ["Inter"],
+                "body-md": ["Inter"],
+                "card-title": ["Inter"]
+              },
+              fontSize: {
+                "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                "page-title": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                "section-label": ["13px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                "card-title": ["18px", {"lineHeight": "24px", "fontWeight": "600"}]
+              }
+            }
+          }
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f2f3fb; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #c2c6d4; 
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #727783; 
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: 100px repeat(10, minmax(150px, 1fr));
+            grid-template-rows: 50px repeat(6, minmax(80px, auto));
+        }
+        .sticky-col {
+            position: sticky;
+            left: 0;
+            z-index: 10;
+            background-color: #f9f9ff;
+            border-right: 1px solid #c2c6d4;
+        }
+        .sticky-row {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: #f9f9ff;
+            border-bottom: 1px solid #c2c6d4;
+        }
+        .sticky-corner {
+            position: sticky;
+            top: 0;
+            left: 0;
+            z-index: 20;
+            background-color: #f9f9ff;
+            border-right: 1px solid #c2c6d4;
+            border-bottom: 1px solid #c2c6d4;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-body-md">
+    <div id="root"></div>
+
+    <!-- React Dependencies -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/history@5/umd/history.development.js"></script>
+    <script src="https://unpkg.com/react-router@6.3.0/umd/react-router.development.js"></script>
+    <script src="https://unpkg.com/react-router-dom@6.3.0/umd/react-router-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { createRoot } = ReactDOM;
+        const { MemoryRouter, Routes, Route, Link, useNavigate, useLocation } = ReactRouterDOM;
+
+        // Shared Components
+        const TopNavBar = ({ active }) => {
+            return (
+                <header class="bg-surface dark:bg-inverse-surface border-b border-outline-variant dark:border-outline sticky top-0 z-50 h-[64px]">
+                    <div class="flex justify-between items-center w-full px-margin max-w-container-max-width mx-auto h-full">
+                        <div class="flex items-center gap-8">
+                            <div class="text-[20px] font-bold text-primary dark:text-inverse-primary flex items-center gap-2">
+                                <span class="material-symbols-outlined fill">event_available</span>
+                                UniSchedule
+                            </div>
+                            <nav class="hidden md:flex gap-6 h-full items-center">
+                                <Link to="/" class={`${active === 'simulations' ? 'text-primary dark:text-inverse-primary border-b-2 border-primary font-bold' : 'text-on-surface-variant'} hover:bg-surface-container-low transition-colors h-full flex items-center px-2 font-label-sm text-label-sm`}>My Simulations</Link>
+                                <Link to="/proposals" class={`${active === 'proposals' ? 'text-primary dark:text-inverse-primary border-b-2 border-primary font-bold' : 'text-on-surface-variant'} hover:bg-surface-container-low transition-colors h-full flex items-center px-2 font-label-sm text-label-sm`}>Proposals</Link>
+                                <Link to="/rules" class={`${active === 'rules' ? 'text-primary dark:text-inverse-primary border-b-2 border-primary font-bold' : 'text-on-surface-variant'} hover:bg-surface-container-low transition-colors h-full flex items-center px-2 font-label-sm text-label-sm`}>Rules</Link>
+                            </nav>
+                        </div>
+                        <div class="hidden md:flex items-center gap-4">
+                            <span class="text-label-sm font-label-sm text-on-surface-variant">DEMO ONLY</span>
+                            <button class="bg-primary-container text-on-primary-container px-4 py-2 rounded-lg font-label-sm text-label-sm font-semibold hover:opacity-90 transition-opacity">Switch to Admin View</button>
+                        </div>
+                    </div>
+                </header>
+            );
+        };
+
+        const BottomNavBar = ({ active }) => {
+            return (
+                <nav class="md:hidden bg-surface dark:bg-inverse-surface border-t border-outline-variant dark:border-outline shadow-sm fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-gutter h-[60px]">
+                    <Link to="/grid" class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-surface-container rounded-xl">
+                        <span class="material-symbols-outlined">warning</span>
+                        <span class="font-label-sm text-label-sm mt-1">Conflicts</span>
+                    </Link>
+                    <Link to="/" class={`flex flex-col items-center justify-center ${active === 'simulations' ? 'bg-primary-container text-on-primary-container' : 'text-on-surface-variant'} rounded-xl px-4 py-1 scale-95 transition-transform`}>
+                        <span class="material-symbols-outlined">analytics</span>
+                        <span class="font-label-sm text-label-sm mt-1">Metrics</span>
+                    </Link>
+                    <Link to="/proposals" class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-surface-container rounded-xl">
+                        <span class="material-symbols-outlined">send</span>
+                        <span class="font-label-sm text-label-sm mt-1">Submit</span>
+                    </Link>
+                </nav>
+            );
+        };
+
+        // --- Screen Components ---
+
+        const DashboardPage = () => {
+            return (
+                <div className="min-h-screen bg-background">
+                    <TopNavBar active="simulations" />
+                    <main class="max-w-[900px] mx-auto px-gutter md:px-margin pt-8 md:pt-12 pb-24 md:pb-16 flex flex-col gap-8">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <h1 class="font-page-title text-page-title text-on-background">My Simulations</h1>
+                            <button class="bg-primary text-on-primary hover:bg-surface-tint rounded-lg px-6 py-2 h-touch-target flex items-center justify-center gap-2 font-medium transition-all shadow-sm">
+                                <span class="material-symbols-outlined" style={{fontVariationSettings: "'FILL' 1"}}>add</span>
+                                Create New Simulation
+                            </button>
+                        </div>
+                        <section class="flex flex-col gap-4">
+                            <h2 class="font-section-label text-section-label text-on-surface-variant uppercase tracking-wider">PUBLISHED SCHEDULE</h2>
+                            <div class="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-sm p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 rounded-full bg-primary-fixed flex items-center justify-center shrink-0">
+                                        <span class="material-symbols-outlined text-primary" style={{fontVariationSettings: "'FILL' 1"}}>calendar_month</span>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-card-title text-card-title text-on-background">Fall Semester 2026 — Current Published Schedule</h3>
+                                        <p class="font-body-md text-body-md text-on-surface-variant mt-1">Live schedule visible to all faculty and students.</p>
+                                    </div>
+                                </div>
+                                <button class="border border-outline hover:border-primary text-primary px-5 py-2 h-touch-target rounded-lg font-medium transition-colors w-full md:w-auto shrink-0">View Schedule</button>
+                            </div>
+                        </section>
+                        <section class="flex flex-col gap-4">
+                            <h2 class="font-section-label text-section-label text-on-surface-variant uppercase tracking-wider">MY DRAFT SIMULATIONS</h2>
+                            <div class="grid grid-cols-1 gap-4">
+                                <div class="bg-surface-container-lowest rounded-lg border border-outline-variant shadow-sm flex overflow-hidden group hover:shadow-md transition-shadow">
+                                    <div class="w-1 bg-[#046b5e] shrink-0"></div>
+                                    <div class="p-5 flex-1 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                                        <div class="flex flex-col gap-1">
+                                            <h3 class="font-card-title text-card-title text-on-background">Draft from 2 hours ago</h3>
+                                            <div class="flex items-center gap-2 font-label-sm text-label-sm text-on-surface-variant">
+                                                <span class="material-symbols-outlined text-[#046b5e] text-[16px]">check_circle</span>
+                                                <span>No scheduling conflicts · Room Utilisation: 74%</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-3 w-full md:w-auto">
+                                            <button class="border border-error hover:bg-error-container text-error px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 flex-1 md:flex-none">
+                                                <span class="material-symbols-outlined text-[18px]">delete</span> Delete
+                                            </button>
+                                            <Link to="/grid" class="bg-primary text-on-primary hover:bg-surface-tint px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 flex-1 md:flex-none">Open Draft</Link>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="bg-surface-container-lowest rounded-lg border border-outline-variant shadow-sm flex overflow-hidden group hover:shadow-md transition-shadow">
+                                    <div class="w-1 bg-[#a64c00] shrink-0"></div>
+                                    <div class="p-5 flex-1 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                                        <div class="flex flex-col gap-1">
+                                            <h3 class="font-card-title text-card-title text-on-background">Draft from yesterday</h3>
+                                            <div class="flex items-center gap-2 font-label-sm text-label-sm text-on-surface-variant">
+                                                <span class="material-symbols-outlined text-[#a64c00] text-[16px]">warning</span>
+                                                <span>3 scheduling conflicts found · Room Utilisation: 68%</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-3 w-full md:w-auto">
+                                            <button class="border border-error hover:bg-error-container text-error px-4 py-2 rounded-lg font-medium transition-colors flex-1 md:flex-none">Delete</button>
+                                            <Link to="/grid" class="bg-primary text-on-primary hover:bg-surface-tint px-4 py-2 rounded-lg font-medium transition-colors flex-1 md:flex-none text-center">Open Draft</Link>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </main>
+                    <BottomNavBar active="simulations" />
+                </div>
+            );
+        };
+
+        const ProposalsPage = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="min-h-screen bg-background">
+                    <TopNavBar active="proposals" />
+                    <main class="flex-grow w-full max-w-[900px] mx-auto px-margin py-8 md:py-12">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+                            <h1 class="font-page-title text-page-title text-on-background">Proposals for Review</h1>
+                            <button class="flex items-center gap-2 text-primary hover:text-primary-container font-label-sm text-label-sm transition-colors min-h-[44px] px-2 rounded hover:bg-surface-container-low">
+                                <span class="material-symbols-outlined text-[18px]">refresh</span>
+                                Refresh List
+                            </button>
+                        </div>
+                        <section class="mb-12">
+                            <div class="mb-6">
+                                <span class="inline-flex items-center gap-1 bg-success-container text-on-success-container px-3 py-1 rounded-full font-label-sm text-label-sm uppercase tracking-wider mb-2">
+                                    <span class="material-symbols-outlined text-[16px] fill">check_circle</span> READY TO PUBLISH (2)
+                                </span>
+                                <p class="text-on-surface-variant font-body-md text-body-md">The system has checked these — no scheduling conflicts were found.</p>
+                            </div>
+                            <div class="flex flex-col gap-4">
+                                <div class="bg-surface-container-lowest rounded-lg border border-outline-variant shadow-sm border-l-4 border-l-success flex flex-col md:flex-row overflow-hidden hover:shadow-md transition-shadow">
+                                    <div class="p-6 flex-grow">
+                                        <div class="flex justify-between items-start mb-3">
+                                            <h3 class="font-card-title text-card-title text-on-background">Dr. Alice Brown</h3>
+                                            <span class="text-on-surface-variant font-label-sm text-label-sm">1h ago</span>
+                                        </div>
+                                        <p class="text-on-surface-variant font-body-md text-body-md mb-4 line-clamp-2">Moving BIO101 to Wednesday mornings to accommodate lab availability.</p>
+                                        <div class="flex items-center gap-2 text-success font-label-sm text-label-sm">
+                                            <span class="material-symbols-outlined text-[16px]">verified</span> 0 Conflicts Detected
+                                        </div>
+                                    </div>
+                                    <div class="bg-surface-container-low p-6 md:w-[240px] flex flex-col justify-center border-t md:border-t-0 md:border-l border-outline-variant">
+                                        <button onClick={() => navigate('/diff')} class="w-full bg-primary-container text-on-primary-container hover:bg-primary hover:text-on-primary min-h-[44px] rounded-lg font-label-sm text-label-sm flex items-center justify-center gap-2 transition-colors">
+                                            Review & Publish
+                                            <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </main>
+                    <BottomNavBar active="proposals" />
+                </div>
+            );
+        };
+
+        const RulesPage = () => {
+            const [showModal, setShowModal] = useState(false);
+            return (
+                <div className="min-h-screen bg-background">
+                    <TopNavBar active="rules" />
+                    <main class="flex-1 w-full max-w-[1100px] mx-auto px-gutter md:px-margin py-8">
+                        <div class="mb-8">
+                            <h1 class="font-page-title text-page-title text-on-surface mb-2">Rules Configuration</h1>
+                            <p class="font-body-md text-body-md text-on-surface-variant">These rules evaluate simulations and generate conflict reports.</p>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <section class="flex flex-col gap-4">
+                                <h2 class="font-section-label text-section-label text-on-surface uppercase tracking-wider mb-2">PERFORMANCE METRICS</h2>
+                                <div class="bg-surface-container-lowest rounded-lg border border-outline-variant shadow-sm p-4 relative overflow-hidden group">
+                                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+                                    <div class="flex justify-between items-start mb-2 pl-2">
+                                        <h3 class="font-card-title text-card-title text-on-surface">Room Utilisation</h3>
+                                        <button class="text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined">more_vert</span></button>
+                                    </div>
+                                    <div class="pl-2">
+                                        <span class="font-page-title text-page-title text-primary">Target: 80%</span>
+                                    </div>
+                                </div>
+                                <button onClick={() => setShowModal(true)} class="mt-2 flex items-center justify-center gap-2 w-full border border-outline text-primary hover:bg-primary-container hover:text-on-primary-container font-label-sm text-label-sm font-medium rounded-lg h-[44px]">
+                                    <span class="material-symbols-outlined text-[18px]">add</span> Add Metric
+                                </button>
+                            </section>
+                            <section class="flex flex-col gap-4">
+                                <h2 class="font-section-label text-section-label text-on-surface uppercase tracking-wider mb-2">SCHEDULING CONSTRAINTS</h2>
+                                <div class="bg-surface-container-lowest rounded-lg border border-outline-variant shadow-sm p-4 relative overflow-hidden">
+                                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-error"></div>
+                                    <div class="flex justify-between items-start mb-2 pl-2">
+                                        <div class="flex items-center gap-2">
+                                            <h3 class="font-card-title text-card-title text-on-surface">No Room Double-Booking</h3>
+                                            <span class="bg-surface-variant text-on-surface-variant font-label-sm text-[10px] px-2 py-0.5 rounded-full uppercase">System</span>
+                                        </div>
+                                        <span class="material-symbols-outlined text-outline text-[18px]">lock</span>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+                    </main>
+                    {showModal && (
+                        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-on-surface/50 backdrop-blur-sm">
+                            <div class="bg-surface-container-lowest rounded-xl shadow-lg w-full max-w-md overflow-hidden flex flex-col">
+                                <div class="px-6 py-4 border-b border-outline-variant flex justify-between items-center">
+                                    <h2 class="font-page-title text-[20px] text-on-surface font-semibold">Add a New Metric</h2>
+                                    <button onClick={() => setShowModal(false)} class="text-on-surface-variant hover:text-on-surface h-[44px] w-[44px] flex items-center justify-center">
+                                        <span class="material-symbols-outlined">close</span>
+                                    </button>
+                                </div>
+                                <div class="p-6 flex flex-col gap-5">
+                                    <div class="flex flex-col gap-1">
+                                        <label class="font-label-sm text-label-sm text-on-surface font-medium">Metric Name</label>
+                                        <input class="h-[44px] px-3 rounded border border-outline-variant bg-surface" placeholder="e.g., Target Class Size" />
+                                    </div>
+                                    <div class="flex flex-col gap-1">
+                                        <label class="font-label-sm text-label-sm text-on-surface font-medium">Target Value</label>
+                                        <div class="flex gap-2">
+                                            <input class="h-[44px] w-full px-3 rounded border border-outline-variant bg-surface" placeholder="85" />
+                                            <select class="h-[44px] w-1/3 px-2 rounded border border-outline-variant bg-surface">
+                                                <option>%</option><option>hrs</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="px-6 py-4 bg-surface-container flex justify-end gap-3">
+                                    <button onClick={() => setShowModal(false)} class="h-[44px] px-4 font-label-sm text-label-sm font-medium">Cancel</button>
+                                    <button onClick={() => setShowModal(false)} class="h-[44px] px-6 font-label-sm text-label-sm font-medium bg-primary text-on-primary rounded-lg">Save Metric</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    <BottomNavBar active="rules" />
+                </div>
+            );
+        };
+
+        const DiffReviewPage = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="min-h-screen bg-background pb-[100px]">
+                    <TopNavBar active="proposals" />
+                    <main class="max-w-[860px] mx-auto px-margin pt-margin pb-12">
+                        <button onClick={() => navigate('/proposals')} class="inline-flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors mb-8 group h-touch-target">
+                            <span class="material-symbols-outlined group-hover:-translate-x-1 transition-transform">arrow_back</span>
+                            Back to Proposals
+                        </button>
+                        <header class="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <h1 class="text-[22px] leading-[28px] font-bold text-on-background">Proposal by Dr. Alice Brown</h1>
+                            <div class="inline-flex items-center gap-2 bg-success-container text-on-success-container px-3 py-1.5 rounded-full font-label-sm text-label-sm">
+                                <span class="material-symbols-outlined text-[16px]">check_circle</span> Checked — no conflicts
+                            </div>
+                        </header>
+                        <section class="mb-10">
+                            <h2 class="font-section-label text-section-label text-on-surface-variant uppercase mb-4">Reason for Change</h2>
+                            <div class="bg-surface-container-low rounded-lg p-6 border border-outline-variant relative">
+                                <span class="material-symbols-outlined absolute top-4 left-4 text-surface-variant text-[40px] opacity-50">format_quote</span>
+                                <p class="font-body-md text-body-md text-on-background pl-8 italic">"Moving my Biology lecture to Wednesday reduces back-to-back scheduling strain for first-year cohorts..."</p>
+                            </div>
+                        </section>
+                        <section class="mb-10">
+                            <h2 class="font-section-label text-section-label text-on-surface-variant uppercase mb-4">What Will Change</h2>
+                            <div class="bg-surface-container-lowest border border-outline-variant rounded-lg overflow-hidden shadow-sm">
+                                <div class="bg-surface-container px-6 py-4 border-b border-outline-variant flex items-center gap-3">
+                                    <span class="material-symbols-outlined text-primary">book</span>
+                                    <h3 class="font-card-title text-card-title text-on-background">Intro to Biology — Section A</h3>
+                                </div>
+                                <div class="px-6 py-5 border-b border-outline-variant flex items-center gap-8">
+                                    <span class="font-body-md text-on-surface-variant font-medium w-24">Room:</span>
+                                    <div class="flex items-center gap-3">
+                                        <span class="line-through bg-error-container px-2 rounded">Room 101</span>
+                                        <span class="material-symbols-outlined text-outline-variant">arrow_forward</span>
+                                        <span class="bg-success-container px-2 rounded font-semibold">Room 102</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </main>
+                    <div class="fixed bottom-0 left-0 w-full bg-surface-container-lowest border-t border-outline-variant shadow-lg z-50">
+                        <div class="max-w-[860px] mx-auto px-margin py-4 flex justify-between gap-4">
+                            <button onClick={() => navigate('/proposals')} class="px-6 h-[44px] rounded border border-outline font-semibold">Close</button>
+                            <button onClick={() => navigate('/proposals')} class="px-6 h-[44px] rounded bg-primary text-on-primary font-semibold flex items-center gap-2">
+                                <span class="material-symbols-outlined">check</span> Approve & Publish
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const GridSimulationPage = () => {
+            const [inspectorOpen, setInspectorOpen] = useState(true);
+            const navigate = useNavigate();
+            
+            return (
+                <div class="bg-background text-on-background h-screen overflow-hidden flex flex-col">
+                    <TopNavBar active="simulations" />
+                    <main class="flex-1 flex flex-col relative overflow-hidden">
+                        <div class="bg-surface-container-lowest border-b border-outline-variant px-margin py-3 flex items-center justify-between z-20 shadow-sm">
+                            <div class="flex items-center gap-4">
+                                <h1 class="text-[20px] font-bold">Your Draft Simulation</h1>
+                                <span class="text-outline text-sm">Saved 5 mins ago</span>
+                            </div>
+                            <button onClick={() => navigate('/')} class="bg-primary text-on-primary h-[40px] px-4 rounded-lg flex items-center gap-2">
+                                <span class="material-symbols-outlined fill">save</span> Save
+                            </button>
+                        </div>
+                        <div class="flex-1 flex overflow-hidden relative bg-surface-container-low">
+                            <div class="flex-1 overflow-auto custom-scrollbar">
+                                <div class="grid-container w-[1600px] bg-surface-container-lowest">
+                                    <div class="sticky-corner flex items-center justify-center p-2"><span class="material-symbols-outlined">meeting_room</span></div>
+                                    {[1,2,3,4,5,6,7,8,9,10].map(i => (
+                                        <div key={i} class="sticky-row flex items-center justify-center border-r border-outline-variant">
+                                            <span class="text-xs text-center font-bold">Day {i} <br/><span class="font-normal text-outline">08:00</span></span>
+                                        </div>
+                                    ))}
+                                    <div class="sticky-col flex items-center justify-center border-b border-outline-variant font-bold">Room 101</div>
+                                    <div class="border-b border-r border-outline-variant p-2 col-span-2">
+                                        <div class="bg-primary-container text-on-primary-container rounded-full px-3 py-1 text-xs cursor-pointer hover:shadow ring-2 ring-primary" onClick={() => setInspectorOpen(true)}>
+                                            BIO101 - Sec A
+                                        </div>
+                                    </div>
+                                    <div class="border-b border-r border-outline-variant p-2"></div>
+                                    <div class="border-b border-r border-outline-variant p-2">
+                                        <div class="bg-error-container text-error rounded-full px-3 py-1 text-xs">Conflict: CHEM301</div>
+                                    </div>
+                                    {[1,2,3,4,5].map(j => <div key={j} class="border-b border-r border-outline-variant"></div>)}
+
+                                    <div class="sticky-col flex items-center justify-center border-b border-outline-variant font-bold">Room 102</div>
+                                    {[1,2,3,4,5,6,7,8,9,10].map(k => <div key={k} class="border-b border-r border-outline-variant"></div>)}
+                                </div>
+                            </div>
+
+                            <aside className={`w-[380px] bg-surface-container-lowest border-l border-outline-variant flex-none flex flex-col shadow-lg transition-transform duration-300 absolute right-0 top-0 bottom-0 z-30 ${inspectorOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                                <div class="p-margin border-b border-outline-variant flex justify-between items-start">
+                                    <div>
+                                        <h2 class="font-card-title">BIO101 — Intro to Biology</h2>
+                                        <span class="bg-surface-variant px-2 rounded-full text-xs">Section A</span>
+                                    </div>
+                                    <button onClick={() => setInspectorOpen(false)}><span class="material-symbols-outlined">close</span></button>
+                                </div>
+                                <div class="flex-1 overflow-auto p-margin space-y-6">
+                                    <section>
+                                        <h3 class="text-xs uppercase text-outline mb-3">Current Assignment</h3>
+                                        <div class="bg-surface rounded-lg border p-4 space-y-2 border-l-4 border-l-primary shadow-sm">
+                                            <div class="flex items-center gap-2"><span class="material-symbols-outlined text-primary text-sm">person</span> Dr. Sarah Smith</div>
+                                            <div class="flex items-center gap-2"><span class="material-symbols-outlined text-primary text-sm">meeting_room</span> Room 101</div>
+                                        </div>
+                                    </section>
+                                    <section>
+                                        <h3 class="text-xs uppercase text-outline mb-3">Smart Suggestions</h3>
+                                        <div class="space-y-3">
+                                            <div class="bg-surface-container-lowest rounded-lg border p-4 hover:border-primary cursor-pointer transition-colors">
+                                                <div class="flex justify-between font-bold"><span>Room 102 · Wed P1</span> <span class="material-symbols-outlined">arrow_forward</span></div>
+                                                <span class="text-xs text-secondary flex items-center gap-1 mt-1"><span class="material-symbols-outlined text-sm">check_circle</span> Better capacity match.</span>
+                                            </div>
+                                        </div>
+                                    </section>
+                                </div>
+                            </aside>
+                        </div>
+                    </main>
+                    <footer class="bg-surface border-t border-outline-variant h-[60px] flex items-center px-4 justify-between">
+                        <div class="flex items-center gap-2 bg-error-container text-error rounded-full px-3 py-1 font-semibold text-xs border border-error">
+                            <span class="material-symbols-outlined text-[18px]">warning</span> 2 conflicts
+                        </div>
+                        <button onClick={() => navigate('/')} class="bg-primary text-on-primary h-[40px] px-6 rounded-lg font-medium flex items-center gap-2">
+                            Submit Proposal <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+                        </button>
+                    </footer>
+                </div>
+            );
+        };
+
+        // --- App Shell ---
+
+        const App = () => {
+            return (
+                <MemoryRouter>
+                    <Routes>
+                        <Route path="/" element={<DashboardPage />} />
+                        <Route path="/proposals" element={<ProposalsPage />} />
+                        <Route path="/rules" element={<RulesPage />} />
+                        <Route path="/diff" element={<DiffReviewPage />} />
+                        <Route path="/grid" element={<GridSimulationPage />} />
+                    </Routes>
+                </MemoryRouter>
+            );
+        };
+
+        const container = document.getElementById('root');
+        const root = createRoot(container);
+        root.render(<App />);
+
+    </script>
+</body>
+</html>
