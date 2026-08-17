@@ -3,7 +3,7 @@ import { ApiError } from '../types/ApiError.js';
 import { parseScheduleJson } from '../utils/ScheduleHydrator.js';
 import type { IGitHubService } from '../interfaces/IGitHubService.js';
 import type { IGraphService } from '../interfaces/IGraphService.js';
-import type { ISimulationService } from '../interfaces/ISimulationService.js';
+import type { ISimulationService, PreviewClassUpdateResult } from '../interfaces/ISimulationService.js';
 import type { ISessionRegistry } from '../sessions/ISessionRegistry.js';
 import type {
   Simulation,
@@ -15,6 +15,8 @@ import type {
   Suggestion,
   Conflict,
   MetricResult,
+  MetricRule,
+  WeightedScoreResult,
 } from '../types/domain.js';
 import type { RulesJson } from '../types/rulesJson.js';
 
@@ -151,13 +153,67 @@ export class SimulationService implements ISimulationService {
       throw ApiError.notFound('Simulation not found or expired');
     }
 
-    const rulesJson = await this.github.readFile(SOURCE_BRANCH, RULES_JSON_PATH);
-    const rules = (JSON.parse(rulesJson) as RulesJson).metrics ?? [];
-
+    const rules = await this.readMetricRules();
     if (rules.length === 0) {
       return [];
     }
 
     return this.graph.evaluateMetrics(simulationId, rules);
+  }
+
+  async getScore(simulationId: string): Promise<WeightedScoreResult> {
+    const touched = this.registry.touch(simulationId);
+    if (!touched) {
+      throw ApiError.notFound('Simulation not found or expired');
+    }
+
+    const rules = await this.readMetricRules();
+    return this.graph.scoreTimetable(simulationId, rules);
+  }
+
+  async previewClassUpdate(
+    simulationId: string,
+    classId: string,
+    patch: UpdateClassParams,
+  ): Promise<PreviewClassUpdateResult> {
+    const touched = this.registry.touch(simulationId);
+    if (!touched) {
+      throw ApiError.notFound('Simulation not found or expired');
+    }
+
+    if (patch.roomId === undefined && patch.timeSlotIds === undefined && patch.professorId === undefined) {
+      throw ApiError.badRequest('Patch must include at least one field: roomId, timeSlotIds, or professorId');
+    }
+
+    const exportedJson = await this.graph.exportScheduleJson(simulationId);
+    const schedule = parseScheduleJson(exportedJson);
+
+    const classIndex = schedule.classes.findIndex((c) => c.id === classId);
+    if (classIndex === -1) {
+      throw ApiError.notFound(`Class "${classId}" not found`);
+    }
+
+    const patchedClasses = [...schedule.classes];
+    patchedClasses[classIndex] = { ...patchedClasses[classIndex]!, ...patch };
+    const patchedSchedule = { ...schedule, classes: patchedClasses };
+
+    const rules = await this.readMetricRules();
+    const previewBranchId = `preview-${simulationId}-${randomUUID().slice(0, 8)}`;
+
+    await this.graph.hydrate(previewBranchId, JSON.stringify(patchedSchedule));
+    try {
+      const [metrics, score] = await Promise.all([
+        this.graph.evaluateMetrics(previewBranchId, rules),
+        this.graph.scoreTimetable(previewBranchId, rules),
+      ]);
+      return { metrics, score };
+    } finally {
+      await this.graph.flush(previewBranchId);
+    }
+  }
+
+  private async readMetricRules(): Promise<readonly MetricRule[]> {
+    const rulesJson = await this.github.readFile(SOURCE_BRANCH, RULES_JSON_PATH);
+    return (JSON.parse(rulesJson) as RulesJson).metrics ?? [];
   }
 }

@@ -31,7 +31,7 @@ const fakeProposal = {
   createdAt: new Date().toISOString(),
 };
 
-const fakeDetail = { ...fakeProposal, diff: '', userId: 'alice' };
+const fakeDetail = { ...fakeProposal, diff: '', userId: 'alice', score: { score: 0, breakdown: [] } };
 
 describe('proposalSlice', () => {
   it('initialises with empty state', () => {

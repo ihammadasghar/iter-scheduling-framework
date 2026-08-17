@@ -8,6 +8,7 @@ const makeRule = (target: string, condition: string): MetricRule => ({
   target,
   condition,
   threshold: 0,
+  weight: 1,
 });
 
 describe('MetricRuleTranslator', () => {
@@ -47,6 +48,32 @@ describe('MetricRuleTranslator', () => {
       expect(result.cypher).toContain('$branchId');
     });
 
+    it('translates Professor/back_to_back_ratio with correct unit', () => {
+      const result = translateRule(makeRule('Professor', 'back_to_back_ratio'));
+
+      expect(result.unit).toBe('%');
+      expect(result.cypher).toContain('NEXT');
+      expect(result.cypher).toContain('Professor');
+      expect(result.cypher).toContain('$branchId');
+    });
+
+    it('translates Professor/room_consistency with correct unit', () => {
+      const result = translateRule(makeRule('Professor', 'room_consistency'));
+
+      expect(result.unit).toBe('%');
+      expect(result.cypher).toContain('Room');
+      expect(result.cypher).toContain('HELD_IN');
+      expect(result.cypher).toContain('$branchId');
+    });
+
+    it('translates StudentGroup/free_day_ratio with correct unit', () => {
+      const result = translateRule(makeRule('StudentGroup', 'free_day_ratio'));
+
+      expect(result.unit).toBe('%');
+      expect(result.cypher).toContain('StudentGroup');
+      expect(result.cypher).toContain('$branchId');
+    });
+
     it('throws 400 ApiError for an unsupported target/condition combination', () => {
       expect(() => translateRule(makeRule('Professor', 'unknown_metric'))).toThrow();
       try {
@@ -71,6 +98,9 @@ describe('MetricRuleTranslator', () => {
         ['Professor', 'avg_classes_per_day'],
         ['Professor', 'max_classes_per_day'],
         ['Room', 'utilization'],
+        ['Professor', 'back_to_back_ratio'],
+        ['Professor', 'room_consistency'],
+        ['StudentGroup', 'free_day_ratio'],
       ];
       conditions.forEach(([target, condition]) => {
         const { cypher } = translateRule(makeRule(target, condition));

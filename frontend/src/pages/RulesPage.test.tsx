@@ -28,15 +28,16 @@ vi.mock('@/services/rulesService', () => ({
 const fakeMetric = {
   id: 'm1',
   name: 'Max daily load',
-  target: 'lecturers',
+  target: 'Professor',
   condition: 'max_classes_per_day',
   threshold: 4,
+  weight: 1,
 };
 
 const fakeConstraint = {
   id: 'c1',
   name: 'No room double booking',
-  target: 'rooms',
+  target: 'Room',
   violationCondition: 'room_double_book',
 };
 

@@ -29,6 +29,9 @@ export default function MetricRuleCard({
         <Typography variant="body2" color="text.secondary">
           Target value: {rule.threshold}
         </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Weight: {rule.weight}
+        </Typography>
       </CardContent>
       <CardActions sx={{ justifyContent: 'flex-end', pt: 0 }}>
         <Tooltip title="Delete this rule">

@@ -3,6 +3,7 @@ import simulationReducer from './reducers/simulationSlice';
 import classReducer from './reducers/classSlice';
 import conflictReducer from './reducers/conflictSlice';
 import metricReducer from './reducers/metricSlice';
+import scoreReducer from './reducers/scoreSlice';
 import proposalReducer from './reducers/proposalSlice';
 import rulesReducer from './reducers/rulesSlice';
 import sessionReducer from './reducers/sessionSlice';
@@ -14,6 +15,7 @@ export const store = configureStore({
     class: classReducer,
     conflict: conflictReducer,
     metric: metricReducer,
+    score: scoreReducer,
     proposal: proposalReducer,
     rules: rulesReducer,
     session: sessionReducer,

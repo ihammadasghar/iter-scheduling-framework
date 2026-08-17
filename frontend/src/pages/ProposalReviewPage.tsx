@@ -18,6 +18,7 @@ import {
 import AppShell from '@/templates/AppShell';
 import BackButton from '@/atoms/BackButton';
 import CIStatusBadge from '@/molecules/CIStatusBadge';
+import WeightedScoreChip from '@/molecules/WeightedScoreChip';
 import ChangeCard from '@/molecules/ChangeCard';
 import TechnicalDiffAccordion from '@/organisms/TechnicalDiffAccordion';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -135,8 +136,9 @@ export default function ProposalReviewPage(): React.ReactElement {
                 <Typography variant="overline" color="text.secondary">
                   Automated Check
                 </Typography>
-                <Box sx={{ mt: 0.5 }}>
+                <Box sx={{ mt: 0.5, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
                   <CIStatusBadge status={proposal.status} />
+                  <WeightedScoreChip score={proposal.score} />
                 </Box>
               </Box>
             )}

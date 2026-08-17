@@ -86,4 +86,26 @@ export class SimulationController {
       next(err);
     }
   }
+
+  async getScore(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const score = await this.service.getScore(req.params['id'] as string);
+      res.status(200).json(score);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async previewClassUpdate(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const preview = await this.service.previewClassUpdate(
+        req.params['id'] as string,
+        req.params['classId'] as string,
+        req.body,
+      );
+      res.status(200).json(preview);
+    } catch (err) {
+      next(err);
+    }
+  }
 }

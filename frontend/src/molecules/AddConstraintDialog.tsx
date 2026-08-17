@@ -32,7 +32,7 @@ export default function AddConstraintDialog({
   const dispatch = useAppDispatch();
 
   const [name, setName] = useState('');
-  const [target, setTarget] = useState<RuleTarget>('classes');
+  const [target, setTarget] = useState<RuleTarget>('Class');
   const [violationCondition, setViolationCondition] = useState('');
   const [loading, setLoading] = useState(false);
   const [nameError, setNameError] = useState(false);
@@ -40,7 +40,7 @@ export default function AddConstraintDialog({
 
   const handleClose = (): void => {
     setName('');
-    setTarget('classes');
+    setTarget('Class');
     setViolationCondition('');
     setNameError(false);
     setConditionError(false);

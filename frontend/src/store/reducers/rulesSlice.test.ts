@@ -16,6 +16,7 @@ const fakeMetricRule: MetricRule = {
   target: 'Room',
   condition: 'utilization',
   threshold: 80,
+  weight: 2,
 };
 
 const fakeConstraint: Constraint = {
@@ -73,7 +74,7 @@ describe('rulesSlice', () => {
     store.dispatch(fetchMetricRulesThunk.fulfilled([fakeMetricRule], 'r', undefined));
     const newRule: MetricRule = { ...fakeMetricRule, id: 'metric-002', name: 'Avg Load' };
     store.dispatch(createMetricRuleThunk.fulfilled(newRule, 'c', {
-      name: 'Avg Load', target: 'Professor', condition: 'avg_classes_per_day', threshold: 4,
+      name: 'Avg Load', target: 'Professor', condition: 'avg_classes_per_day', threshold: 4, weight: 1,
     }));
     expect(store.getState().rules.metrics).toHaveLength(2);
   });

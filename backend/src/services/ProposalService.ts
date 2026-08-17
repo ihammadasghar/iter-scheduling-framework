@@ -3,16 +3,19 @@ import type { IGitHubService } from '../interfaces/IGitHubService.js';
 import type { IGraphService } from '../interfaces/IGraphService.js';
 import type { ICiPipelineService } from '../interfaces/ICiPipelineService.js';
 import type { IProposalService } from '../interfaces/IProposalService.js';
-import type { Proposal, ProposalDetail, CreateProposalParams } from '../types/domain.js';
+import type { IRulesService } from '../interfaces/IRulesService.js';
+import type { Proposal, ProposalDetail, CreateProposalParams, WeightedScoreResult } from '../types/domain.js';
 
 const CI_LABEL_READY = 'ci:ready';
 const CI_LABEL_BLOCKED = 'ci:blocked';
+const SCHEDULE_JSON_PATH = 'schedule.json';
 
 export class ProposalService implements IProposalService {
   constructor(
     private readonly github: IGitHubService,
     private readonly graph: IGraphService,
     private readonly ciPipeline: ICiPipelineService,
+    private readonly rulesService: IRulesService,
   ) {}
 
   async submit(params: CreateProposalParams): Promise<Proposal> {
@@ -63,9 +66,12 @@ export class ProposalService implements IProposalService {
       this.github.getPullRequestDiff(proposalId),
     ]);
 
+    const score = await this.computeScore(proposalId, pr.head);
+
     return {
       ...toProposal(proposalId, pr.head, pr.labels, pr.createdAt),
       diff,
+      score,
     };
   }
 
@@ -84,6 +90,21 @@ export class ProposalService implements IProposalService {
       status: 'MERGED',
       createdAt: pr.createdAt,
     };
+  }
+
+  // Computed live against the institution's *current* rules.json (not what was
+  // true at submit time) — reflects the criteria the institution values now.
+  private async computeScore(proposalId: string, headBranch: string): Promise<WeightedScoreResult> {
+    const scoreRunId = `score-${proposalId}-${Date.now()}`;
+    const scheduleJson = await this.github.readFile(headBranch, SCHEDULE_JSON_PATH);
+    await this.graph.hydrate(scoreRunId, scheduleJson);
+
+    try {
+      const metricRules = await this.rulesService.listMetrics();
+      return await this.graph.scoreTimetable(scoreRunId, metricRules);
+    } finally {
+      await this.graph.flush(scoreRunId);
+    }
   }
 }
 

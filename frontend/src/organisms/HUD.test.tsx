@@ -5,6 +5,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import HUD from './HUD';
 import conflictReducer from '@/store/reducers/conflictSlice';
 import metricReducer from '@/store/reducers/metricSlice';
+import scoreReducer from '@/store/reducers/scoreSlice';
 import sessionReducer from '@/store/reducers/sessionSlice';
 import classReducer from '@/store/reducers/classSlice';
 import uiReducer from '@/store/reducers/uiSlice';
@@ -15,6 +16,7 @@ vi.mock('@/services/simulationService', () => ({
   simulationService: {
     getConflicts: vi.fn().mockResolvedValue([]),
     getMetrics: vi.fn().mockResolvedValue([]),
+    getScore: vi.fn().mockResolvedValue({ score: 0, breakdown: [] }),
   },
 }));
 
@@ -23,6 +25,7 @@ const makeStore = () =>
     reducer: {
       conflict: conflictReducer,
       metric: metricReducer,
+      score: scoreReducer,
       session: sessionReducer,
       class: classReducer,
       ui: uiReducer,

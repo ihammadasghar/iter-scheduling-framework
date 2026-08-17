@@ -3,6 +3,7 @@ import { ProposalService } from './ProposalService.js';
 import type { IGitHubService } from '../interfaces/IGitHubService.js';
 import type { IGraphService } from '../interfaces/IGraphService.js';
 import type { ICiPipelineService } from '../interfaces/ICiPipelineService.js';
+import type { IRulesService } from '../interfaces/IRulesService.js';
 import type { Conflict } from '../types/domain.js';
 
 const FAKE_CONFLICT: Conflict = {
@@ -11,6 +12,8 @@ const FAKE_CONFLICT: Conflict = {
   classIds: ['CLS_001', 'CLS_002'],
   message: 'Room RM_101 is double-booked',
 };
+
+const FAKE_SCORE = { score: 0, breakdown: [] };
 
 const makeGitHub = (): IGitHubService => ({
   createBranch: vi.fn().mockResolvedValue(undefined),
@@ -41,13 +44,24 @@ const makeGraph = (): IGraphService => ({
   getSuggestions: vi.fn().mockResolvedValue([]),
   queryConflicts: vi.fn().mockResolvedValue([]),
   evaluateMetrics: vi.fn().mockResolvedValue([]),
+  scoreTimetable: vi.fn().mockResolvedValue(FAKE_SCORE),
 });
 
 const makeCi = (conflicts: readonly Conflict[] = []): ICiPipelineService => ({
   run: vi.fn().mockResolvedValue({
     status: conflicts.length > 0 ? 'BLOCKED' : 'READY',
     conflicts,
+    score: FAKE_SCORE,
   }),
+});
+
+const makeRules = (): IRulesService => ({
+  listMetrics: vi.fn().mockResolvedValue([]),
+  createMetric: vi.fn(),
+  deleteMetric: vi.fn().mockResolvedValue(undefined),
+  listConstraints: vi.fn().mockResolvedValue([]),
+  createConstraint: vi.fn(),
+  deleteConstraint: vi.fn().mockResolvedValue(undefined),
 });
 
 describe('ProposalService.submit()', () => {
@@ -59,13 +73,15 @@ describe('ProposalService.submit()', () => {
   let github: IGitHubService;
   let graph: IGraphService;
   let ci: ICiPipelineService;
+  let rules: IRulesService;
   let service: ProposalService;
 
   beforeEach(() => {
     github = makeGitHub();
     graph = makeGraph();
     ci = makeCi();
-    service = new ProposalService(github, graph, ci);
+    rules = makeRules();
+    service = new ProposalService(github, graph, ci, rules);
   });
 
   it('throws 400 when simulationId is empty', async () => {
@@ -133,7 +149,7 @@ describe('ProposalService.submit()', () => {
 
   it('returns status BLOCKED when CI finds conflicts', async () => {
     ci = makeCi([FAKE_CONFLICT]);
-    service = new ProposalService(github, graph, ci);
+    service = new ProposalService(github, graph, ci, rules);
 
     const proposal = await service.submit(VALID_PARAMS);
 
@@ -160,7 +176,7 @@ describe('ProposalService.submit()', () => {
 
   it('posts a BLOCKED comment to the PR when conflicts found', async () => {
     ci = makeCi([FAKE_CONFLICT]);
-    service = new ProposalService(github, graph, ci);
+    service = new ProposalService(github, graph, ci, rules);
 
     await service.submit(VALID_PARAMS);
 
@@ -192,7 +208,7 @@ describe('ProposalService.submit()', () => {
 
   it('sets ci:blocked label on the PR when CI fails', async () => {
     ci = makeCi([FAKE_CONFLICT]);
-    service = new ProposalService(github, graph, ci);
+    service = new ProposalService(github, graph, ci, rules);
 
     await service.submit(VALID_PARAMS);
 
@@ -206,7 +222,7 @@ describe('ProposalService.list()', () => {
 
   beforeEach(() => {
     github = makeGitHub();
-    service = new ProposalService(github, makeGraph(), makeCi());
+    service = new ProposalService(github, makeGraph(), makeCi(), makeRules());
   });
 
   it('returns empty array when no open PRs', async () => {
@@ -248,11 +264,15 @@ describe('ProposalService.list()', () => {
 
 describe('ProposalService.get()', () => {
   let github: IGitHubService;
+  let graph: IGraphService;
+  let rules: IRulesService;
   let service: ProposalService;
 
   beforeEach(() => {
     github = makeGitHub();
-    service = new ProposalService(github, makeGraph(), makeCi());
+    graph = makeGraph();
+    rules = makeRules();
+    service = new ProposalService(github, graph, makeCi(), rules);
   });
 
   it('returns ProposalDetail with diff and status', async () => {
@@ -290,6 +310,41 @@ describe('ProposalService.get()', () => {
 
     expect(detail.status).toBe('PENDING');
   });
+
+  it('hydrates a scratch "score-" branch from the PR head branch schedule.json', async () => {
+    await service.get('42');
+
+    expect(github.readFile).toHaveBeenCalledWith('sim-alice-abc123', 'schedule.json');
+    expect(graph.hydrate).toHaveBeenCalledOnce();
+    const [scoreRunId] = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string];
+    expect(scoreRunId).toContain('42');
+    expect(scoreRunId).not.toBe('sim-alice-abc123');
+  });
+
+  it('reads current metric rules via rulesService.listMetrics()', async () => {
+    await service.get('42');
+
+    expect(rules.listMetrics).toHaveBeenCalledOnce();
+  });
+
+  it('scores against the scratch branch and attaches the result to ProposalDetail', async () => {
+    const fakeScore = { score: 64, breakdown: [] };
+    (graph.scoreTimetable as ReturnType<typeof vi.fn>).mockResolvedValue(fakeScore);
+
+    const detail = await service.get('42');
+
+    expect(detail.score).toEqual(fakeScore);
+    const [scoreRunId] = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string];
+    expect(graph.scoreTimetable).toHaveBeenCalledWith(scoreRunId, []);
+  });
+
+  it('always flushes the scratch branch, including when scoring fails', async () => {
+    (graph.scoreTimetable as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('score error'));
+
+    await expect(service.get('42')).rejects.toThrow('score error');
+
+    expect(graph.flush).toHaveBeenCalledOnce();
+  });
 });
 
 describe('ProposalService.merge()', () => {
@@ -298,7 +353,7 @@ describe('ProposalService.merge()', () => {
 
   beforeEach(() => {
     github = makeGitHub();
-    service = new ProposalService(github, makeGraph(), makeCi());
+    service = new ProposalService(github, makeGraph(), makeCi(), makeRules());
   });
 
   it('merges the PR and returns Proposal with MERGED status', async () => {
@@ -344,4 +399,3 @@ describe('ProposalService.merge()', () => {
     expect(proposal.createdAt).toBe('2026-06-11T10:00:00.000Z');
   });
 });
-

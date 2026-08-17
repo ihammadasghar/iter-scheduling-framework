@@ -6,6 +6,7 @@ import MetricChip from '@/molecules/MetricChip';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchConflictsThunk } from '@/store/reducers/conflictSlice';
 import { fetchMetricsThunk } from '@/store/reducers/metricSlice';
+import { fetchScoreThunk } from '@/store/reducers/scoreSlice';
 
 interface HUDProps {
   readonly simId: string;
@@ -30,6 +31,7 @@ export default function HUD({ simId, onSubmitProposal }: HUDProps): React.ReactE
   useEffect(() => {
     void dispatch(fetchConflictsThunk(simId));
     void dispatch(fetchMetricsThunk(simId));
+    void dispatch(fetchScoreThunk(simId));
     setInitialised(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [simId]);
@@ -42,6 +44,7 @@ export default function HUD({ simId, onSubmitProposal }: HUDProps): React.ReactE
     debounceRef.current = setTimeout(() => {
       void dispatch(fetchConflictsThunk(simId));
       void dispatch(fetchMetricsThunk(simId));
+      void dispatch(fetchScoreThunk(simId));
     }, 300);
 
     return () => {

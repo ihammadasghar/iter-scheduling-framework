@@ -3,7 +3,7 @@ import type { MockInstance } from 'vitest';
 import type { AxiosResponse } from 'axios';
 import apiClient from './apiClient';
 import { simulationService } from './simulationService';
-import type { Simulation, ScheduleClass, Conflict, MetricResult, Suggestion, ApiError } from '@/types';
+import type { Simulation, ScheduleClass, Conflict, MetricResult, Suggestion, WeightedScoreResult, ApiError } from '@/types';
 
 // Helper to build a minimal Axios response wrapper
 const axiosOk = <T>(data: T): Promise<AxiosResponse<T>> =>
@@ -88,6 +88,25 @@ describe('simulationService', () => {
     getSpy.mockReturnValue(axiosOk(metrics));
     const result = await simulationService.getMetrics('sim-1');
     expect(result[0].name).toBe('Room Utilization');
+  });
+
+  it('getScore returns a WeightedScoreResult', async () => {
+    const score: WeightedScoreResult = { score: 82, breakdown: [] };
+    getSpy.mockReturnValue(axiosOk(score));
+    const result = await simulationService.getScore('sim-1');
+    expect(getSpy).toHaveBeenCalledWith('/simulations/sim-1/score');
+    expect(result.score).toBe(82);
+  });
+
+  it('previewClassUpdate calls POST preview and returns metrics + score', async () => {
+    const preview = { metrics: [{ name: 'Room Utilization', value: 73.4, unit: '%' }], score: { score: 90, breakdown: [] } };
+    postSpy.mockReturnValue(axiosOk(preview));
+    const result = await simulationService.previewClassUpdate('sim-1', 'CLS_00001', { roomId: 'RM_102' });
+    expect(postSpy).toHaveBeenCalledWith(
+      '/simulations/sim-1/classes/CLS_00001/preview',
+      { roomId: 'RM_102' },
+    );
+    expect(result).toEqual(preview);
   });
 
   it('commitSimulation calls POST commit and resolves void', async () => {

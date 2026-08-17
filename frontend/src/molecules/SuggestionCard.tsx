@@ -1,6 +1,7 @@
 import { Box, Button, Chip, CircularProgress, Typography } from '@mui/material';
 import { CheckCircle } from '@mui/icons-material';
 import { formatRoomLabel, formatTimeSlotFull } from '@/utils/scheduleFormatters';
+import type { ScoreDelta } from '@/hooks/useApplySuggestion';
 import type { Suggestion, MetricDelta } from '@/types';
 
 interface SuggestionCardProps {
@@ -8,6 +9,7 @@ interface SuggestionCardProps {
   readonly onApply: () => void;
   readonly applying: boolean;
   readonly metricDelta?: MetricDelta;
+  readonly scoreDelta?: ScoreDelta;
   readonly loadingDelta: boolean;
 }
 
@@ -26,11 +28,27 @@ const DeltaChip = ({ delta }: { delta: MetricDelta }): React.ReactElement => {
   );
 };
 
+const ScoreDeltaChip = ({ delta }: { delta: ScoreDelta }): React.ReactElement => {
+  const diff = delta.after - delta.before;
+  const improved = diff > 0;
+  const label = `${improved ? '+' : ''}${diff.toFixed(1)} score`;
+  return (
+    <Chip
+      label={label}
+      size="small"
+      color={improved ? 'success' : 'error'}
+      variant="outlined"
+      aria-label={`Institution score change: ${label}`}
+    />
+  );
+};
+
 export default function SuggestionCard({
   suggestion,
   onApply,
   applying,
   metricDelta,
+  scoreDelta,
   loadingDelta,
 }: SuggestionCardProps): React.ReactElement {
   const roomLabel = formatRoomLabel(suggestion.roomId);
@@ -66,6 +84,7 @@ export default function SuggestionCard({
 
         {loadingDelta && <CircularProgress size={16} aria-label="Computing metric impact…" />}
         {!loadingDelta && metricDelta !== undefined && <DeltaChip delta={metricDelta} />}
+        {!loadingDelta && scoreDelta !== undefined && <ScoreDeltaChip delta={scoreDelta} />}
       </Box>
 
       <Button

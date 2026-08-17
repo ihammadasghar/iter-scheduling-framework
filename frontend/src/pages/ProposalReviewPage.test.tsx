@@ -24,6 +24,12 @@ const { fakeProposal, mockProposalService } = vi.hoisted(() => {
     description: 'Moved Biology class',
     diff: '',
     userId: 'alice',
+    score: {
+      score: 82,
+      breakdown: [
+        { name: 'Room Utilization', value: 78, unit: '%', weight: 2, threshold: 80, normalizedScore: 90 },
+      ],
+    },
   };
   const svc = {
     listProposals: vi.fn().mockResolvedValue([]),
@@ -139,6 +145,13 @@ describe('ProposalReviewPage', () => {
     renderPage();
     await waitFor(() =>
       expect(screen.getByRole('button', { name: /back to proposals/i })).toBeInTheDocument(),
+    );
+  });
+
+  it('shows the weighted score chip next to the CI status badge', async () => {
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByText(/score: 82\/100/i)).toBeInTheDocument(),
     );
   });
 

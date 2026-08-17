@@ -3,7 +3,15 @@ import { parseScheduleJson, buildHydrationBatches } from '../utils/ScheduleHydra
 import { translateRule } from '../utils/MetricRuleTranslator.js';
 import type { IMemgraphClient } from '../clients/IMemgraphClient.js';
 import type { IGraphService } from '../interfaces/IGraphService.js';
-import type { ScheduleClass, Conflict, MetricResult, MetricRule, Suggestion } from '../types/domain.js';
+import type {
+  ScheduleClass,
+  Conflict,
+  MetricResult,
+  MetricRule,
+  Suggestion,
+  WeightedScoreResult,
+  MetricScoreBreakdown,
+} from '../types/domain.js';
 import type {
   ScheduleJson,
   RawCourse,
@@ -320,6 +328,44 @@ export class GraphService implements IGraphService {
     }
 
     return results;
+  }
+
+  async scoreTimetable(simulationId: string, rules: readonly MetricRule[]): Promise<WeightedScoreResult> {
+    if (rules.length === 0) {
+      return { score: 0, breakdown: [] };
+    }
+
+    const results = await this.evaluateMetrics(simulationId, rules);
+
+    const breakdown: MetricScoreBreakdown[] = rules.map((rule, i) => {
+      const result = results[i]!;
+      // How close `value` is to `threshold`, as a 0–100 score. Deviation is
+      // measured relative to the threshold's own magnitude (floored at 1 to
+      // avoid dividing by zero for a threshold of 0).
+      const denom = Math.max(Math.abs(rule.threshold), 1);
+      const normalizedScore = Math.max(
+        0,
+        Math.min(100, 100 * (1 - Math.abs(result.value - rule.threshold) / denom)),
+      );
+      return {
+        name: rule.name,
+        value: result.value,
+        unit: result.unit,
+        weight: rule.weight,
+        threshold: rule.threshold,
+        normalizedScore: Math.round(normalizedScore * 100) / 100,
+      };
+    });
+
+    const totalWeight = rules.reduce((sum, r) => sum + r.weight, 0);
+    const score =
+      totalWeight === 0
+        ? 0
+        : Math.round(
+            (breakdown.reduce((sum, b) => sum + b.weight * b.normalizedScore, 0) / totalWeight) * 100,
+          ) / 100;
+
+    return { score, breakdown };
   }
 }
 

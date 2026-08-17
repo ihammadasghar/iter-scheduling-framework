@@ -13,6 +13,8 @@ export type {
   ProposalDetail,
   MetricRule,
   Constraint,
+  MetricScoreBreakdown,
+  WeightedScoreResult,
   CiResult,
 } from './domain';
 

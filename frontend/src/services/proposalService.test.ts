@@ -51,7 +51,7 @@ describe('proposalService', () => {
   });
 
   it('getProposal calls GET /proposals/:id', async () => {
-    const detail: ProposalDetail = { ...fakeProposal, diff: '--- a\n+++ b' };
+    const detail: ProposalDetail = { ...fakeProposal, diff: '--- a\n+++ b', score: { score: 0, breakdown: [] } };
     getSpy.mockReturnValue(axiosOk(detail));
     const result = await proposalService.getProposal('42');
     expect(getSpy).toHaveBeenCalledWith('/proposals/42');

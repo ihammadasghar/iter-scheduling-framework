@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { ApiError } from '../types/ApiError.js';
 import type { IGitHubService } from '../interfaces/IGitHubService.js';
 import type { IRulesService } from '../interfaces/IRulesService.js';
@@ -7,31 +8,114 @@ import type {
   Constraint,
   CreateConstraintParams,
 } from '../types/domain.js';
+import type { RulesJson } from '../types/rulesJson.js';
+
+const SOURCE_BRANCH = 'main';
+const RULES_JSON_PATH = 'rules.json';
 
 export class RulesService implements IRulesService {
   constructor(private readonly github: IGitHubService) {}
 
   async listMetrics(): Promise<readonly MetricRule[]> {
-    throw ApiError.notImplemented();
+    const rules = await this.readRules();
+    return rules.metrics;
   }
 
-  async createMetric(_params: CreateMetricRuleParams): Promise<MetricRule> {
-    throw ApiError.notImplemented();
+  async createMetric(params: CreateMetricRuleParams): Promise<MetricRule> {
+    const { name, target, condition, threshold, weight } = params;
+    if (!name || name.trim() === '') throw ApiError.badRequest('name is required');
+    if (!target || target.trim() === '') throw ApiError.badRequest('target is required');
+    if (!condition || condition.trim() === '') throw ApiError.badRequest('condition is required');
+    if (!Number.isFinite(threshold)) throw ApiError.badRequest('threshold must be a finite number');
+    if (!Number.isFinite(weight) || weight <= 0) {
+      throw ApiError.badRequest('weight must be a positive finite number');
+    }
+
+    const rules = await this.readRules();
+    const metric: MetricRule = {
+      id: `metric-${randomUUID().slice(0, 8)}`,
+      name,
+      target,
+      condition,
+      threshold,
+      weight,
+    };
+
+    await this.writeRules(
+      { ...rules, metrics: [...rules.metrics, metric] },
+      `chore(rules): add metric rule "${name}"`,
+    );
+
+    return metric;
   }
 
-  async deleteMetric(_metricId: string): Promise<void> {
-    throw ApiError.notImplemented();
+  async deleteMetric(metricId: string): Promise<void> {
+    const rules = await this.readRules();
+    const filtered = rules.metrics.filter((m) => m.id !== metricId);
+    if (filtered.length === rules.metrics.length) {
+      throw ApiError.notFound(`Metric rule "${metricId}" not found`);
+    }
+
+    await this.writeRules(
+      { ...rules, metrics: filtered },
+      `chore(rules): delete metric rule "${metricId}"`,
+    );
   }
 
   async listConstraints(): Promise<readonly Constraint[]> {
-    throw ApiError.notImplemented();
+    const rules = await this.readRules();
+    return rules.constraints;
   }
 
-  async createConstraint(_params: CreateConstraintParams): Promise<Constraint> {
-    throw ApiError.notImplemented();
+  async createConstraint(params: CreateConstraintParams): Promise<Constraint> {
+    const { name, target, violationCondition } = params;
+    if (!name || name.trim() === '') throw ApiError.badRequest('name is required');
+    if (!target || target.trim() === '') throw ApiError.badRequest('target is required');
+    if (!violationCondition || violationCondition.trim() === '') {
+      throw ApiError.badRequest('violationCondition is required');
+    }
+
+    const rules = await this.readRules();
+    const constraint: Constraint = {
+      id: `constraint-${randomUUID().slice(0, 8)}`,
+      name,
+      target,
+      violationCondition,
+    };
+
+    await this.writeRules(
+      { ...rules, constraints: [...rules.constraints, constraint] },
+      `chore(rules): add constraint "${name}"`,
+    );
+
+    return constraint;
   }
 
-  async deleteConstraint(_constraintId: string): Promise<void> {
-    throw ApiError.notImplemented();
+  async deleteConstraint(constraintId: string): Promise<void> {
+    const rules = await this.readRules();
+    const filtered = rules.constraints.filter((c) => c.id !== constraintId);
+    if (filtered.length === rules.constraints.length) {
+      throw ApiError.notFound(`Constraint "${constraintId}" not found`);
+    }
+
+    await this.writeRules(
+      { ...rules, constraints: filtered },
+      `chore(rules): delete constraint "${constraintId}"`,
+    );
+  }
+
+  private async readRules(): Promise<RulesJson> {
+    const json = await this.github.readFile(SOURCE_BRANCH, RULES_JSON_PATH);
+    const parsed = JSON.parse(json) as Partial<RulesJson>;
+    return { metrics: parsed.metrics ?? [], constraints: parsed.constraints ?? [] };
+  }
+
+  private async writeRules(rules: RulesJson, message: string): Promise<void> {
+    await this.github.writeFile(
+      SOURCE_BRANCH,
+      RULES_JSON_PATH,
+      JSON.stringify(rules, null, 2),
+      message,
+    );
   }
 }

@@ -51,9 +51,9 @@ export function buildContainer(): Container {
 
   // Domain services
   const simulationService = new SimulationService(githubService, graphService, sessionRegistry);
-  const ciPipelineService = new CiPipelineService(githubService, graphService);
-  const proposalService = new ProposalService(githubService, graphService, ciPipelineService);
   const rulesService = new RulesService(githubService);
+  const ciPipelineService = new CiPipelineService(githubService, graphService, rulesService);
+  const proposalService = new ProposalService(githubService, graphService, ciPipelineService, rulesService);
 
   return {
     simulationController: new SimulationController(simulationService),

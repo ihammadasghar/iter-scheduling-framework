@@ -19,7 +19,7 @@ export default function SuggestionsList({
   const [fetchError, setFetchError] = useState('');
   const [appliedIndex, setAppliedIndex] = useState<number | null>(null);
 
-  const { apply, loading: applying, error: applyError, lastDelta, deltaLoading } =
+  const { apply, loading: applying, error: applyError, lastDelta, lastScoreDelta, deltaLoading } =
     useApplySuggestion(simId);
 
   // Re-fetch suggestions whenever the selected class changes
@@ -93,6 +93,7 @@ export default function SuggestionsList({
               onApply={() => void handleApply(index, suggestion)}
               applying={applying && appliedIndex === index}
               metricDelta={appliedIndex === index ? (lastDelta ?? undefined) : undefined}
+              scoreDelta={appliedIndex === index ? (lastScoreDelta ?? undefined) : undefined}
               loadingDelta={deltaLoading && appliedIndex === index}
             />
           ))}

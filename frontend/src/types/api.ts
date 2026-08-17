@@ -41,6 +41,7 @@ export interface CreateMetricRuleRequest {
   readonly target: string;
   readonly condition: string;
   readonly threshold: number;
+  readonly weight: number;
 }
 
 export interface CreateConstraintRequest {
