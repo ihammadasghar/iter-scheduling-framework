@@ -9,7 +9,8 @@
     "start": "node dist/server.js",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "benchmark": "ts-node --esm src/scripts/benchmark.ts"
   },
   "engines": {
     "node": ">=20.0.0"

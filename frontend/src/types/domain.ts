@@ -18,7 +18,11 @@ export interface ScheduleClass {
   readonly timeSlotIds: readonly string[];
 }
 
-export type ConflictType = 'ROOM_DOUBLE_BOOK' | 'PROFESSOR_OVERLAP' | 'GROUP_OVERLAP';
+export type ConflictType =
+  | 'ROOM_DOUBLE_BOOK'
+  | 'PROFESSOR_OVERLAP'
+  | 'GROUP_OVERLAP'
+  | 'ROOM_CAPACITY_EXCEEDED';
 
 export interface Conflict {
   readonly id: string;

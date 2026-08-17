@@ -21,6 +21,12 @@ describe('getConflictMessage', () => {
     expect(msg).not.toContain('GROUP_OVERLAP');
   });
 
+  it('ROOM_CAPACITY_EXCEEDED returns a plain English sentence with the combined resource name', () => {
+    const msg = getConflictMessage('ROOM_CAPACITY_EXCEEDED', 'Bio Y1 in Room 101');
+    expect(msg).toBe("Bio Y1 in Room 101 exceeds the room's capacity");
+    expect(msg).not.toContain('ROOM_CAPACITY_EXCEEDED');
+  });
+
   it('is a pure function — same inputs always produce same output', () => {
     expect(getConflictMessage('ROOM_DOUBLE_BOOK', 'Lab A'))
       .toBe(getConflictMessage('ROOM_DOUBLE_BOOK', 'Lab A'));

@@ -122,6 +122,21 @@ describe('CiPipelineService.run()', () => {
     expect(result.conflicts[0]).toEqual(FAKE_CONFLICT);
   });
 
+  it('returns BLOCKED when the only conflict is a room-capacity overrun', async () => {
+    const capacityConflict: Conflict = {
+      id: 'ROOM_CAPACITY_EXCEEDED_CLS_004',
+      type: 'ROOM_CAPACITY_EXCEEDED',
+      classIds: ['CLS_004', 'CLS_004'],
+      message: "Class CLS_004 assigned to room 'RM_101' (capacity 30) but group 'Bio Year 1' has 40 students",
+    };
+    (graph.queryConflicts as ReturnType<typeof vi.fn>).mockResolvedValue([capacityConflict]);
+
+    const result = await service.run(PARAMS);
+
+    expect(result.status).toBe('BLOCKED');
+    expect(result.conflicts).toEqual([capacityConflict]);
+  });
+
   it('always flushes the ciRunId even when no conflicts', async () => {
     await service.run(PARAMS);
 

@@ -48,7 +48,7 @@ export interface Suggestion {
 
 export interface Conflict {
   readonly id: string;
-  readonly type: 'ROOM_DOUBLE_BOOK' | 'PROFESSOR_OVERLAP' | 'GROUP_OVERLAP';
+  readonly type: 'ROOM_DOUBLE_BOOK' | 'PROFESSOR_OVERLAP' | 'GROUP_OVERLAP' | 'ROOM_CAPACITY_EXCEEDED';
   readonly classIds: readonly [string, string];
   readonly message: string;
 }

@@ -269,8 +269,15 @@ describe('GraphService', () => {
     const ROOM_ROW = { classId1: 'CLS_001', classId2: 'CLS_002', resourceName: 'Room 101' };
     const PROF_ROW = { classId1: 'CLS_001', classId2: 'CLS_003', resourceName: 'Dr. Smith' };
     const GROUP_ROW = { classId1: 'CLS_002', classId2: 'CLS_003', resourceName: 'Bio Year 1' };
+    const CAPACITY_ROW = {
+      classId: 'CLS_004',
+      roomName: 'Room 101',
+      capacity: 30,
+      groupName: 'Bio Year 1',
+      size: 40,
+    };
 
-    it('calls client.run() exactly 3 times (one per constraint type)', async () => {
+    it('calls client.run() exactly 4 times (one per constraint type)', async () => {
       mockClient = {
         run: vi.fn().mockResolvedValue([]),
         close: vi.fn(),
@@ -279,7 +286,7 @@ describe('GraphService', () => {
 
       await service.queryConflicts(BRANCH_ID);
 
-      expect(mockClient.run).toHaveBeenCalledTimes(3);
+      expect(mockClient.run).toHaveBeenCalledTimes(4);
     });
 
     it('passes branchId in params of every query', async () => {
@@ -313,7 +320,8 @@ describe('GraphService', () => {
         run: vi.fn()
           .mockResolvedValueOnce([ROOM_ROW]) // room query
           .mockResolvedValueOnce([])          // professor query
-          .mockResolvedValueOnce([]),         // group query
+          .mockResolvedValueOnce([])          // group query
+          .mockResolvedValueOnce([]),         // capacity query
         close: vi.fn(),
       };
       service = new GraphService(mockClient);
@@ -334,7 +342,8 @@ describe('GraphService', () => {
         run: vi.fn()
           .mockResolvedValueOnce([])           // room query
           .mockResolvedValueOnce([PROF_ROW])   // professor query
-          .mockResolvedValueOnce([]),           // group query
+          .mockResolvedValueOnce([])           // group query
+          .mockResolvedValueOnce([]),          // capacity query
         close: vi.fn(),
       };
       service = new GraphService(mockClient);
@@ -355,7 +364,8 @@ describe('GraphService', () => {
         run: vi.fn()
           .mockResolvedValueOnce([])            // room query
           .mockResolvedValueOnce([])            // professor query
-          .mockResolvedValueOnce([GROUP_ROW]),  // group query
+          .mockResolvedValueOnce([GROUP_ROW])   // group query
+          .mockResolvedValueOnce([]),           // capacity query
         close: vi.fn(),
       };
       service = new GraphService(mockClient);
@@ -371,23 +381,57 @@ describe('GraphService', () => {
       expect(result[0]!.message).toContain('Bio Year 1');
     });
 
-    it('returns conflicts from all three types in a single flat array', async () => {
+    it('maps a capacity conflict row to a ROOM_CAPACITY_EXCEEDED Conflict', async () => {
       mockClient = {
         run: vi.fn()
-          .mockResolvedValueOnce([ROOM_ROW])
-          .mockResolvedValueOnce([PROF_ROW])
-          .mockResolvedValueOnce([GROUP_ROW]),
+          .mockResolvedValueOnce([])              // room query
+          .mockResolvedValueOnce([])              // professor query
+          .mockResolvedValueOnce([])              // group query
+          .mockResolvedValueOnce([CAPACITY_ROW]), // capacity query
         close: vi.fn(),
       };
       service = new GraphService(mockClient);
 
       const result = await service.queryConflicts(BRANCH_ID);
 
-      expect(result).toHaveLength(3);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        id: 'ROOM_CAPACITY_EXCEEDED_CLS_004',
+        type: 'ROOM_CAPACITY_EXCEEDED',
+        classIds: ['CLS_004', 'CLS_004'],
+      });
+      expect(result[0]!.message).toContain('Room 101');
+      expect(result[0]!.message).toContain('40');
+    });
+
+    it('does not report a capacity conflict when the class is within capacity', async () => {
+      mockClient = { run: vi.fn().mockResolvedValue([]), close: vi.fn() };
+      service = new GraphService(mockClient);
+
+      const result = await service.queryConflicts(BRANCH_ID);
+
+      expect(result).toEqual([]);
+    });
+
+    it('returns conflicts from all four types in a single flat array', async () => {
+      mockClient = {
+        run: vi.fn()
+          .mockResolvedValueOnce([ROOM_ROW])
+          .mockResolvedValueOnce([PROF_ROW])
+          .mockResolvedValueOnce([GROUP_ROW])
+          .mockResolvedValueOnce([CAPACITY_ROW]),
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+
+      const result = await service.queryConflicts(BRANCH_ID);
+
+      expect(result).toHaveLength(4);
       const types = result.map((c) => c.type);
       expect(types).toContain('ROOM_DOUBLE_BOOK');
       expect(types).toContain('PROFESSOR_OVERLAP');
       expect(types).toContain('GROUP_OVERLAP');
+      expect(types).toContain('ROOM_CAPACITY_EXCEEDED');
     });
   });
 
