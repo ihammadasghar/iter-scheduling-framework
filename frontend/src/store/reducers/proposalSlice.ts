@@ -128,8 +128,7 @@ const proposalSlice = createSlice({
         state.current = null;
       })
       .addCase(fetchProposalDetailThunk.fulfilled, (state, action) => {
-        state.loading = false;
-        state.current = action.payload;
+        return { ...state, loading: false, current: action.payload };
       })
       .addCase(fetchProposalDetailThunk.rejected, (state, action) => {
         state.loading = false;

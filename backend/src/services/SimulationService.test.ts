@@ -29,6 +29,7 @@ const makeGraph = (): IGraphService => ({
   getSuggestions: vi.fn().mockResolvedValue([]),
   queryConflicts: vi.fn().mockResolvedValue([]),
   evaluateMetrics: vi.fn().mockResolvedValue([]),
+  scoreTimetable: vi.fn().mockResolvedValue({ score: 0, breakdown: [] }),
 });
 
 const makeRegistry = (touchResult = true): ISessionRegistry => ({
@@ -469,5 +470,160 @@ describe('SimulationService.getSuggestions()', () => {
     const result = await service.getSuggestions(SIM_ID, CLASS_ID);
 
     expect(result).toEqual([]);
+  });
+});
+
+describe('SimulationService.getScore()', () => {
+  const SIM_ID = 'sim-alice-abc123';
+  const METRIC_RULES = [
+    { id: 'mr-1', name: 'Class Count', target: 'Class', condition: 'count', threshold: 0, weight: 1 },
+  ];
+  const RULES_JSON = JSON.stringify({ metrics: METRIC_RULES, constraints: [] });
+  const FAKE_SCORE = { score: 88, breakdown: [{ name: 'Class Count', value: 42, unit: 'classes', weight: 1, threshold: 0, normalizedScore: 88 }] };
+
+  let github: IGitHubService;
+  let graph: IGraphService;
+  let registry: ISessionRegistry;
+  let service: SimulationService;
+
+  beforeEach(() => {
+    github = makeGitHub();
+    graph = makeGraph();
+    registry = makeRegistry(true);
+    (github.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(RULES_JSON);
+    (graph.scoreTimetable as ReturnType<typeof vi.fn>).mockResolvedValue(FAKE_SCORE);
+    service = new SimulationService(github, graph, registry);
+  });
+
+  it('throws 404 when the simulation session is not found', async () => {
+    const expiredRegistry = makeRegistry(false);
+    const svc = new SimulationService(github, graph, expiredRegistry);
+
+    await expect(svc.getScore(SIM_ID)).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Simulation not found or expired',
+    });
+  });
+
+  it('reads rules.json from the main branch', async () => {
+    await service.getScore(SIM_ID);
+
+    expect(github.readFile).toHaveBeenCalledWith('main', 'rules.json');
+  });
+
+  it('delegates to graph.scoreTimetable with the simulationId and parsed rules', async () => {
+    await service.getScore(SIM_ID);
+
+    expect(graph.scoreTimetable).toHaveBeenCalledWith(SIM_ID, METRIC_RULES);
+  });
+
+  it('returns the WeightedScoreResult from graph.scoreTimetable', async () => {
+    const result = await service.getScore(SIM_ID);
+
+    expect(result).toEqual(FAKE_SCORE);
+  });
+
+  it('still delegates to graph.scoreTimetable (which handles the empty-rules case) when rules.json has no metrics', async () => {
+    (github.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(JSON.stringify({ metrics: [], constraints: [] }));
+
+    await service.getScore(SIM_ID);
+
+    expect(graph.scoreTimetable).toHaveBeenCalledWith(SIM_ID, []);
+  });
+});
+
+describe('SimulationService.previewClassUpdate()', () => {
+  const SIM_ID = 'sim-alice-abc123';
+  const CLASS_ID = 'CLS_001';
+  const EXPORTED_SCHEDULE = {
+    metadata: {},
+    timeSlots: [], rooms: [], professors: [], studentGroups: [], courses: [],
+    classes: [
+      { id: CLASS_ID, courseId: 'CRS_001', title: 'Biology', professorId: 'PRF_001', studentGroupId: 'GRP_001', roomId: 'RM_101', timeSlotIds: ['TS_MON_P1'] },
+    ],
+  };
+  const METRIC_RULES = [
+    { id: 'mr-1', name: 'Class Count', target: 'Class', condition: 'count', threshold: 0, weight: 1 },
+  ];
+  const FAKE_METRICS = [{ name: 'Class Count', value: 1, unit: 'classes' }];
+  const FAKE_SCORE = { score: 90, breakdown: [] };
+
+  let github: IGitHubService;
+  let graph: IGraphService;
+  let registry: ISessionRegistry;
+  let service: SimulationService;
+
+  beforeEach(() => {
+    github = makeGitHub();
+    graph = makeGraph();
+    registry = makeRegistry(true);
+    (github.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+      JSON.stringify({ metrics: METRIC_RULES, constraints: [] }),
+    );
+    (graph.exportScheduleJson as ReturnType<typeof vi.fn>).mockResolvedValue(JSON.stringify(EXPORTED_SCHEDULE));
+    (graph.evaluateMetrics as ReturnType<typeof vi.fn>).mockResolvedValue(FAKE_METRICS);
+    (graph.scoreTimetable as ReturnType<typeof vi.fn>).mockResolvedValue(FAKE_SCORE);
+    service = new SimulationService(github, graph, registry);
+  });
+
+  it('throws 404 when the simulation session is not found', async () => {
+    const expiredRegistry = makeRegistry(false);
+    const svc = new SimulationService(github, graph, expiredRegistry);
+
+    await expect(svc.previewClassUpdate(SIM_ID, CLASS_ID, { roomId: 'RM_102' })).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Simulation not found or expired',
+    });
+  });
+
+  it('throws 400 when the patch is empty (no fields provided)', async () => {
+    await expect(service.previewClassUpdate(SIM_ID, CLASS_ID, {})).rejects.toMatchObject({
+      statusCode: 400,
+    });
+
+    expect(graph.exportScheduleJson).not.toHaveBeenCalled();
+  });
+
+  it('throws 404 when the classId does not exist in the exported schedule', async () => {
+    await expect(
+      service.previewClassUpdate(SIM_ID, 'CLS_UNKNOWN', { roomId: 'RM_102' }),
+    ).rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  it('hydrates a scratch "preview-" branch distinct from the live simulationId', async () => {
+    await service.previewClassUpdate(SIM_ID, CLASS_ID, { roomId: 'RM_102' });
+
+    expect(graph.hydrate).toHaveBeenCalledOnce();
+    const [previewBranchId] = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string];
+    expect(previewBranchId).toMatch(/^preview-sim-alice-abc123-[0-9a-f]{8}$/);
+    expect(previewBranchId).not.toBe(SIM_ID);
+  });
+
+  it('never mutates the live simulation graph', async () => {
+    await service.previewClassUpdate(SIM_ID, CLASS_ID, { roomId: 'RM_102' });
+
+    expect(graph.updateClass).not.toHaveBeenCalled();
+  });
+
+  it('hydrates the patched class into the scratch branch', async () => {
+    await service.previewClassUpdate(SIM_ID, CLASS_ID, { roomId: 'RM_102' });
+
+    const [, hydratedJson] = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string];
+    const hydrated = JSON.parse(hydratedJson) as { classes: Array<{ id: string; roomId: string }> };
+    expect(hydrated.classes.find((c) => c.id === CLASS_ID)?.roomId).toBe('RM_102');
+  });
+
+  it('always flushes the scratch branch, including when evaluation fails', async () => {
+    (graph.evaluateMetrics as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('graph down'));
+
+    await expect(service.previewClassUpdate(SIM_ID, CLASS_ID, { roomId: 'RM_102' })).rejects.toThrow('graph down');
+
+    expect(graph.flush).toHaveBeenCalledOnce();
+  });
+
+  it('returns metrics and score computed against the scratch branch', async () => {
+    const result = await service.previewClassUpdate(SIM_ID, CLASS_ID, { roomId: 'RM_102' });
+
+    expect(result).toEqual({ metrics: FAKE_METRICS, score: FAKE_SCORE });
   });
 });

@@ -31,6 +31,14 @@ export function createSimulationsRouter(controller: SimulationController): IRout
   // GET /simulations/:id/metrics — evaluate active metric rules
   router.get('/:id/metrics', (req, res, next) => controller.getMetrics(req, res, next));
 
+  // GET /simulations/:id/score — weighted institution-defined composite score
+  router.get('/:id/score', (req, res, next) => controller.getScore(req, res, next));
+
+  // POST /simulations/:id/classes/:classId/preview — dry-run metrics/score for a candidate patch
+  router.post('/:id/classes/:classId/preview', (req, res, next) =>
+    controller.previewClassUpdate(req, res, next),
+  );
+
   return router;
 }
 

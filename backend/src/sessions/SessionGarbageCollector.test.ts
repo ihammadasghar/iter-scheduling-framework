@@ -23,6 +23,7 @@ const makeGraph = (): IGraphService => ({
   getSuggestions: vi.fn().mockResolvedValue([]),
   queryConflicts: vi.fn().mockResolvedValue([]),
   evaluateMetrics: vi.fn().mockResolvedValue([]),
+  scoreTimetable: vi.fn().mockResolvedValue({ score: 0, breakdown: [] }),
 });
 
 describe('SessionGarbageCollector', () => {

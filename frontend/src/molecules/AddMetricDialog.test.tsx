@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -41,6 +41,8 @@ const renderDialog = (onSuccess = vi.fn(), onClose = vi.fn()) =>
   );
 
 describe('AddMetricDialog', () => {
+  beforeEach(() => vi.clearAllMocks());
+
   it('renders name field and target select', () => {
     renderDialog();
     expect(screen.getByLabelText(/^name/i)).toBeInTheDocument();
@@ -57,7 +59,7 @@ describe('AddMetricDialog', () => {
 
   it('calls onSuccess after successful submit', async () => {
     vi.mocked(rulesService.rulesService.createMetricRule).mockResolvedValueOnce({
-      id: 'new', name: 'Test', target: 'classes', condition: 'count', threshold: 5,
+      id: 'new', name: 'Test', target: 'Class', condition: 'count', threshold: 5, weight: 1,
     });
     const onSuccess = vi.fn();
     renderDialog(onSuccess);
@@ -70,5 +72,46 @@ describe('AddMetricDialog', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /add this metric/i }));
     await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+  });
+
+  it('renders a weight field defaulting to 1', () => {
+    renderDialog();
+    expect(screen.getByLabelText(/^weight/i)).toHaveValue(1);
+  });
+
+  it('shows validation error if weight is 0 or negative on submit', async () => {
+    renderDialog();
+    fireEvent.change(screen.getByLabelText(/^name/i), { target: { value: 'My Rule' } });
+    fireEvent.change(screen.getByLabelText(/^weight/i), { target: { value: '0' } });
+    fireEvent.mouseDown(screen.getByLabelText(/how to measure it/i));
+    await waitFor(() => screen.getByRole('option', { name: /total number/i }));
+    fireEvent.click(screen.getByRole('option', { name: /total number/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /add this metric/i }));
+    await waitFor(() =>
+      expect(screen.getByText(/weight must be a positive number/i)).toBeInTheDocument(),
+    );
+    expect(rulesService.rulesService.createMetricRule).not.toHaveBeenCalled();
+  });
+
+  it('submits with target "Class" (not "classes") and the entered weight', async () => {
+    vi.mocked(rulesService.rulesService.createMetricRule).mockResolvedValueOnce({
+      id: 'new', name: 'Test', target: 'Class', condition: 'count', threshold: 5, weight: 3,
+    });
+    renderDialog();
+
+    fireEvent.change(screen.getByLabelText(/^name/i), { target: { value: 'My Rule' } });
+    fireEvent.change(screen.getByLabelText(/^weight/i), { target: { value: '3' } });
+    fireEvent.mouseDown(screen.getByLabelText(/how to measure it/i));
+    await waitFor(() => screen.getByRole('option', { name: /total number/i }));
+    fireEvent.click(screen.getByRole('option', { name: /total number/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /add this metric/i }));
+
+    await waitFor(() =>
+      expect(rulesService.rulesService.createMetricRule).toHaveBeenCalledWith(
+        expect.objectContaining({ target: 'Class', weight: 3 }),
+      ),
+    );
   });
 });

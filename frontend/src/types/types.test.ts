@@ -81,6 +81,7 @@ describe('types barrel export', () => {
       status: 'READY',
       createdAt: '2026-06-11T10:15:00Z',
       diff: '--- a/schedule.json\n+++ b/schedule.json',
+      score: { score: 0, breakdown: [] },
     };
     expect(pd.diff).toContain('schedule.json');
     expect(pd.id).toBe('42');
@@ -93,6 +94,7 @@ describe('types barrel export', () => {
       target: 'Room',
       condition: 'utilization',
       threshold: 80,
+      weight: 1,
     };
     expect(rule.condition).toBe('utilization');
   });

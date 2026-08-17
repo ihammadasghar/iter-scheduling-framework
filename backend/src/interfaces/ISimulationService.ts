@@ -8,7 +8,13 @@ import type {
   Suggestion,
   Conflict,
   MetricResult,
+  WeightedScoreResult,
 } from '../types/domain.js';
+
+export interface PreviewClassUpdateResult {
+  readonly metrics: readonly MetricResult[];
+  readonly score: WeightedScoreResult;
+}
 
 export interface ISimulationService {
   create(params: CreateSimulationParams): Promise<Simulation>;
@@ -19,4 +25,10 @@ export interface ISimulationService {
   getSuggestions(simulationId: string, classId: string): Promise<readonly Suggestion[]>;
   getConflicts(simulationId: string): Promise<readonly Conflict[]>;
   getMetrics(simulationId: string): Promise<readonly MetricResult[]>;
+  getScore(simulationId: string): Promise<WeightedScoreResult>;
+  previewClassUpdate(
+    simulationId: string,
+    classId: string,
+    patch: UpdateClassParams,
+  ): Promise<PreviewClassUpdateResult>;
 }

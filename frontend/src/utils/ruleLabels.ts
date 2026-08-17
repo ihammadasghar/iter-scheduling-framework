@@ -1,13 +1,21 @@
 // Pure label-resolution utilities for rule builder UI.
 // Maps internal API keys to plain English labels.
 // All functions are pure — no side effects, no external dependencies.
+//
+// NOTE: `RuleTarget` values must match the backend's MetricRuleTranslator
+// catalog keys exactly (backend/src/utils/MetricRuleTranslator.ts) — these
+// are sent verbatim as the `target` field of a metric rule, and evaluation
+// 400s if they don't match one of the backend's `target:condition` pairs.
 
-export type RuleTarget = 'classes' | 'lecturers' | 'rooms';
+export type RuleTarget = 'Class' | 'Professor' | 'Room' | 'StudentGroup';
 export type RuleCondition =
   | 'count'
   | 'avg_classes_per_day'
   | 'max_classes_per_day'
-  | 'utilization';
+  | 'utilization'
+  | 'back_to_back_ratio'
+  | 'room_consistency'
+  | 'free_day_ratio';
 
 export interface ConditionOption {
   readonly value: RuleCondition;
@@ -16,9 +24,10 @@ export interface ConditionOption {
 }
 
 const TARGET_LABELS: Record<string, string> = {
-  classes: 'Classes',
-  lecturers: 'Lecturers',
-  rooms: 'Rooms',
+  Class: 'Classes',
+  Professor: 'Lecturers',
+  Room: 'Rooms',
+  StudentGroup: 'Student Groups',
 };
 
 const CONDITION_LABELS: Record<string, string> = {
@@ -26,18 +35,26 @@ const CONDITION_LABELS: Record<string, string> = {
   avg_classes_per_day: 'Average classes per lecturer per day',
   max_classes_per_day: 'Maximum classes any lecturer teaches in one day',
   utilization: 'Percentage of rooms in use',
+  back_to_back_ratio: 'Share of a lecturer\'s classes scheduled back-to-back',
+  room_consistency: 'Share of a lecturer\'s classes held in their most-used room',
+  free_day_ratio: 'Share of student groups with at least one free day',
 };
 
 const CONDITIONS_BY_TARGET: Record<string, readonly ConditionOption[]> = {
-  classes: [
+  Class: [
     { value: 'count', label: 'Total number of classes', unit: 'classes' },
   ],
-  lecturers: [
+  Professor: [
     { value: 'avg_classes_per_day', label: 'Average classes per lecturer per day', unit: 'classes/day' },
     { value: 'max_classes_per_day', label: 'Maximum classes any lecturer teaches in one day', unit: 'classes' },
+    { value: 'back_to_back_ratio', label: 'Share of a lecturer\'s classes scheduled back-to-back', unit: '%' },
+    { value: 'room_consistency', label: 'Share of a lecturer\'s classes held in their most-used room', unit: '%' },
   ],
-  rooms: [
+  Room: [
     { value: 'utilization', label: 'Percentage of rooms in use', unit: '%' },
+  ],
+  StudentGroup: [
+    { value: 'free_day_ratio', label: 'Share of student groups with at least one free day', unit: '%' },
   ],
 };
 
@@ -62,9 +79,10 @@ export const getViolationConditionLabel = (violationCondition: string): string =
   VIOLATION_CONDITION_LABELS[violationCondition] ?? violationCondition;
 
 export const TARGET_OPTIONS: readonly { value: RuleTarget; label: string }[] = [
-  { value: 'classes', label: 'Classes' },
-  { value: 'lecturers', label: 'Lecturers' },
-  { value: 'rooms', label: 'Rooms' },
+  { value: 'Class', label: 'Classes' },
+  { value: 'Professor', label: 'Lecturers' },
+  { value: 'Room', label: 'Rooms' },
+  { value: 'StudentGroup', label: 'Student Groups' },
 ];
 
 export const VIOLATION_CONDITION_OPTIONS: readonly { value: string; label: string }[] = [

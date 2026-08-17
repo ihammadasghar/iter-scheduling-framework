@@ -14,6 +14,7 @@ const fakeMetricRule: MetricRule = {
   target: 'Room',
   condition: 'utilization',
   threshold: 80,
+  weight: 2,
 };
 
 const fakeConstraint: Constraint = {
@@ -60,8 +61,12 @@ describe('rulesService', () => {
       target: 'Room',
       condition: 'utilization',
       threshold: 80,
+      weight: 2,
     });
-    expect(postSpy).toHaveBeenCalledWith('/rules/metrics', expect.objectContaining({ name: 'Room Utilization' }));
+    expect(postSpy).toHaveBeenCalledWith(
+      '/rules/metrics',
+      expect.objectContaining({ name: 'Room Utilization', weight: 2 }),
+    );
     expect(result.id).toBe('metric-001');
   });
 

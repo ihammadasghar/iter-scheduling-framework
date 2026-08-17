@@ -395,10 +395,10 @@ describe('GraphService', () => {
 
   describe('evaluateMetrics()', () => {
     const CLASS_COUNT_RULE = {
-      id: 'mr-1', name: 'Class Count', target: 'Class', condition: 'count', threshold: 0,
+      id: 'mr-1', name: 'Class Count', target: 'Class', condition: 'count', threshold: 0, weight: 1,
     };
     const PROF_AVG_RULE = {
-      id: 'mr-2', name: 'Avg Classes/Day', target: 'Professor', condition: 'avg_classes_per_day', threshold: 0,
+      id: 'mr-2', name: 'Avg Classes/Day', target: 'Professor', condition: 'avg_classes_per_day', threshold: 0, weight: 1,
     };
 
     it('returns an empty array when given no rules', async () => {
@@ -462,11 +462,98 @@ describe('GraphService', () => {
     });
 
     it('propagates 400 ApiError from translator for unsupported rule', async () => {
-      const badRule = { id: 'mr-x', name: 'Bad', target: 'Unknown', condition: 'metric', threshold: 0 };
+      const badRule = { id: 'mr-x', name: 'Bad', target: 'Unknown', condition: 'metric', threshold: 0, weight: 1 };
 
       await expect(
         service.evaluateMetrics(BRANCH_ID, [badRule]),
       ).rejects.toMatchObject({ statusCode: 400 });
+    });
+  });
+
+  // ── scoreTimetable ────────────────────────────────────────────────────────
+
+  describe('scoreTimetable()', () => {
+    it('returns {score: 0, breakdown: []} with no client calls when given no rules', async () => {
+      const result = await service.scoreTimetable(BRANCH_ID, []);
+
+      expect(result).toEqual({ score: 0, breakdown: [] });
+      expect(mockClient.run).not.toHaveBeenCalled();
+    });
+
+    it('gives normalizedScore 100 when value exactly matches threshold', async () => {
+      mockClient = {
+        run: vi.fn().mockResolvedValue([{ value: 10 }]),
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+      const rule = { id: 'mr-1', name: 'Class Count', target: 'Class', condition: 'count', threshold: 10, weight: 1 };
+
+      const result = await service.scoreTimetable(BRANCH_ID, [rule]);
+
+      expect(result.breakdown).toEqual([
+        { name: 'Class Count', value: 10, unit: 'classes', weight: 1, threshold: 10, normalizedScore: 100 },
+      ]);
+      expect(result.score).toBe(100);
+    });
+
+    it('clamps normalizedScore to 0 when value is far from threshold', async () => {
+      mockClient = {
+        run: vi.fn().mockResolvedValue([{ value: 0 }]),
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+      const rule = { id: 'mr-1', name: 'Class Count', target: 'Class', condition: 'count', threshold: 10, weight: 1 };
+
+      const result = await service.scoreTimetable(BRANCH_ID, [rule]);
+
+      expect(result.breakdown[0]?.normalizedScore).toBe(0);
+      expect(result.score).toBe(0);
+    });
+
+    it('combines multiple rules into a weighted average', async () => {
+      mockClient = {
+        run: vi.fn()
+          .mockResolvedValueOnce([{ value: 10 }]) // matches threshold exactly -> 100
+          .mockResolvedValueOnce([{ value: 0 }]),  // far from threshold -> 0
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+      const rules = [
+        { id: 'mr-1', name: 'A', target: 'Class', condition: 'count', threshold: 10, weight: 3 },
+        { id: 'mr-2', name: 'B', target: 'Class', condition: 'count', threshold: 10, weight: 1 },
+      ];
+
+      const result = await service.scoreTimetable(BRANCH_ID, rules);
+
+      // (3*100 + 1*0) / 4 = 75
+      expect(result.score).toBe(75);
+    });
+
+    it('returns score 0 without dividing by zero when total weight is 0', async () => {
+      mockClient = {
+        run: vi.fn().mockResolvedValue([{ value: 10 }]),
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+      const rule = { id: 'mr-1', name: 'Class Count', target: 'Class', condition: 'count', threshold: 10, weight: 0 };
+
+      const result = await service.scoreTimetable(BRANCH_ID, [rule]);
+
+      expect(result.score).toBe(0);
+      expect(Number.isNaN(result.score)).toBe(false);
+    });
+
+    it('carries name, weight, and threshold through to the breakdown', async () => {
+      mockClient = {
+        run: vi.fn().mockResolvedValue([{ value: 7 }]),
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+      const rule = { id: 'mr-1', name: 'Room Utilization', target: 'Room', condition: 'utilization', threshold: 5, weight: 2 };
+
+      const result = await service.scoreTimetable(BRANCH_ID, [rule]);
+
+      expect(result.breakdown[0]).toMatchObject({ name: 'Room Utilization', weight: 2, threshold: 5 });
     });
   });
 

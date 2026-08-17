@@ -41,6 +41,45 @@ const ROOM_UTILIZATION_CYPHER = `
          END AS value
 `.trim();
 
+// Stand-in for a "minimum gap" preference: what share of a professor's classes
+// are scheduled directly back-to-back (adjacent via the chronological :NEXT
+// chain between TimeSlots), with no gap in between. Lower is better.
+const PROFESSOR_BACK_TO_BACK_RATIO_CYPHER = `
+  MATCH (c1:Class {branchId: $branchId})-[:SCHEDULED_AT]->(t1:TimeSlot {branchId: $branchId})-[:NEXT]->(t2:TimeSlot {branchId: $branchId})<-[:SCHEDULED_AT]-(c2:Class {branchId: $branchId})
+  MATCH (c1)-[:TAUGHT_BY]->(p:Professor {branchId: $branchId})<-[:TAUGHT_BY]-(c2)
+  WITH count(DISTINCT c1) AS backToBack
+  MATCH (c:Class {branchId: $branchId})-[:TAUGHT_BY]->(:Professor {branchId: $branchId})
+  WITH backToBack, count(DISTINCT c) AS totalClasses
+  RETURN CASE WHEN totalClasses = 0 THEN 0.0
+              ELSE round(100.0 * toFloat(backToBack) / toFloat(totalClasses), 2)
+         END AS value
+`.trim();
+
+// Stand-in for a "room stability" preference: for each professor, what share
+// of their classes are held in their single most-used room, averaged across
+// all professors. Higher means a professor teaches consistently in one room.
+const PROFESSOR_ROOM_CONSISTENCY_CYPHER = `
+  MATCH (p:Professor {branchId: $branchId})<-[:TAUGHT_BY]-(c:Class {branchId: $branchId})-[:HELD_IN]->(r:Room {branchId: $branchId})
+  WITH p, r, count(c) AS classesInRoom
+  WITH p, max(classesInRoom) AS topRoomCount, sum(classesInRoom) AS totalClasses
+  WITH CASE WHEN totalClasses = 0 THEN 0.0 ELSE 100.0 * toFloat(topRoomCount) / toFloat(totalClasses) END AS pct
+  RETURN round(avg(pct), 2) AS value
+`.trim();
+
+// Compressed-schedule preference: what share of student groups have at least
+// one day (out of the days used anywhere in the timetable) with no classes.
+const STUDENT_GROUP_FREE_DAY_RATIO_CYPHER = `
+  MATCH (t:TimeSlot {branchId: $branchId})
+  WITH count(DISTINCT t.day) AS dayCount
+  MATCH (g:StudentGroup {branchId: $branchId})
+  OPTIONAL MATCH (g)<-[:ATTENDED_BY]-(c:Class {branchId: $branchId})-[:SCHEDULED_AT]->(t:TimeSlot {branchId: $branchId})
+  WITH g, dayCount, count(DISTINCT t.day) AS usedDays
+  WITH dayCount, count(g) AS totalGroups, sum(CASE WHEN usedDays < dayCount THEN 1 ELSE 0 END) AS withFreeDay
+  RETURN CASE WHEN totalGroups = 0 THEN 0.0
+              ELSE round(100.0 * toFloat(withFreeDay) / toFloat(totalGroups), 2)
+         END AS value
+`.trim();
+
 // ── Lookup map ────────────────────────────────────────────────────────────────
 
 const TRANSLATION_MAP: ReadonlyMap<string, TranslatedMetric> = new Map([
@@ -48,6 +87,9 @@ const TRANSLATION_MAP: ReadonlyMap<string, TranslatedMetric> = new Map([
   ['Professor:avg_classes_per_day',    { cypher: PROFESSOR_AVG_CLASSES_PER_DAY_CYPHER,    unit: 'classes/day' }],
   ['Professor:max_classes_per_day',    { cypher: PROFESSOR_MAX_CLASSES_PER_DAY_CYPHER,    unit: 'classes/day' }],
   ['Room:utilization',                 { cypher: ROOM_UTILIZATION_CYPHER,                 unit: '%'          }],
+  ['Professor:back_to_back_ratio',     { cypher: PROFESSOR_BACK_TO_BACK_RATIO_CYPHER,     unit: '%'          }],
+  ['Professor:room_consistency',       { cypher: PROFESSOR_ROOM_CONSISTENCY_CYPHER,       unit: '%'          }],
+  ['StudentGroup:free_day_ratio',      { cypher: STUDENT_GROUP_FREE_DAY_RATIO_CYPHER,     unit: '%'          }],
 ]);
 
 // ── Public API ────────────────────────────────────────────────────────────────

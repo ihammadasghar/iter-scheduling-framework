@@ -7,8 +7,14 @@ import type {
   Suggestion,
   PaginatedResponse,
   UpdateClassRequest,
+  WeightedScoreResult,
   ApiError,
 } from '@/types';
+
+export interface PreviewClassUpdateResponse {
+  readonly metrics: MetricResult[];
+  readonly score: WeightedScoreResult;
+}
 
 // Returns true when an ApiError represents a "not found / gone" response.
 const isNotFound = (err: ApiError): boolean => err.statusCode === 404;
@@ -58,6 +64,24 @@ export const simulationService = {
   getMetrics(simId: string): Promise<MetricResult[]> {
     return apiClient
       .get<MetricResult[]>(`/simulations/${simId}/metrics`)
+      .then((r) => r.data);
+  },
+
+  getScore(simId: string): Promise<WeightedScoreResult> {
+    return apiClient
+      .get<WeightedScoreResult>(`/simulations/${simId}/score`)
+      .then((r) => r.data);
+  },
+
+  // Dry-run: evaluates metrics/score against a candidate patch without
+  // committing it — used to preview a suggestion's impact before applying it.
+  previewClassUpdate(
+    simId: string,
+    classId: string,
+    params: UpdateClassRequest,
+  ): Promise<PreviewClassUpdateResponse> {
+    return apiClient
+      .post<PreviewClassUpdateResponse>(`/simulations/${simId}/classes/${classId}/preview`, params)
       .then((r) => r.data);
   },
 

@@ -36,12 +36,14 @@ export default function AddMetricDialog({
   const dispatch = useAppDispatch();
 
   const [name, setName] = useState('');
-  const [target, setTarget] = useState<RuleTarget>('classes');
+  const [target, setTarget] = useState<RuleTarget>('Class');
   const [condition, setCondition] = useState('');
   const [threshold, setThreshold] = useState('');
+  const [weight, setWeight] = useState('1');
   const [loading, setLoading] = useState(false);
   const [nameError, setNameError] = useState(false);
   const [conditionError, setConditionError] = useState(false);
+  const [weightError, setWeightError] = useState(false);
 
   const conditionOptions = getConditionsByTarget(target);
   const selectedCondition = conditionOptions.find((c) => c.value === condition);
@@ -54,21 +56,26 @@ export default function AddMetricDialog({
 
   const handleClose = (): void => {
     setName('');
-    setTarget('classes');
+    setTarget('Class');
     setCondition('');
     setThreshold('');
+    setWeight('1');
     setNameError(false);
     setConditionError(false);
+    setWeightError(false);
     onClose();
   };
 
   const handleSubmit = async (): Promise<void> => {
     const trimmedName = name.trim();
+    const parsedWeight = Number(weight);
     const hasNameError = trimmedName === '';
     const hasConditionError = condition === '';
+    const hasWeightError = !Number.isFinite(parsedWeight) || parsedWeight <= 0;
     setNameError(hasNameError);
     setConditionError(hasConditionError);
-    if (hasNameError || hasConditionError) return;
+    setWeightError(hasWeightError);
+    if (hasNameError || hasConditionError || hasWeightError) return;
 
     setLoading(true);
     const result = await dispatch(createMetricRuleThunk({
@@ -76,6 +83,7 @@ export default function AddMetricDialog({
       target,
       condition,
       threshold: Number(threshold) || 0,
+      weight: parsedWeight,
     }));
     setLoading(false);
 
@@ -143,6 +151,20 @@ export default function AddMetricDialog({
           slotProps={{ htmlInput: { min: 0 } }}
           fullWidth
         />
+
+        <Tooltip title="How much this metric should count toward the overall institution score, relative to other metrics" placement="right">
+          <TextField
+            label="Weight"
+            type="number"
+            value={weight}
+            onChange={(e) => setWeight(e.target.value)}
+            error={weightError}
+            helperText={weightError ? 'Weight must be a positive number' : ''}
+            slotProps={{ htmlInput: { min: 0, step: 'any' } }}
+            required
+            fullWidth
+          />
+        </Tooltip>
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose} disabled={loading}>

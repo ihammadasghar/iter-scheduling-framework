@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CiPipelineService } from './CiPipelineService.js';
 import type { IGitHubService } from '../interfaces/IGitHubService.js';
 import type { IGraphService } from '../interfaces/IGraphService.js';
+import type { IRulesService } from '../interfaces/IRulesService.js';
 import type { Conflict } from '../types/domain.js';
 
 const FAKE_CONFLICT: Conflict = {
@@ -45,6 +46,16 @@ const makeGraph = (): IGraphService => ({
   getSuggestions: vi.fn().mockResolvedValue([]),
   queryConflicts: vi.fn().mockResolvedValue([]),
   evaluateMetrics: vi.fn().mockResolvedValue([]),
+  scoreTimetable: vi.fn().mockResolvedValue({ score: 0, breakdown: [] }),
+});
+
+const makeRules = (): IRulesService => ({
+  listMetrics: vi.fn().mockResolvedValue([]),
+  createMetric: vi.fn(),
+  deleteMetric: vi.fn().mockResolvedValue(undefined),
+  listConstraints: vi.fn().mockResolvedValue([]),
+  createConstraint: vi.fn(),
+  deleteConstraint: vi.fn().mockResolvedValue(undefined),
 });
 
 describe('CiPipelineService.run()', () => {
@@ -52,12 +63,14 @@ describe('CiPipelineService.run()', () => {
 
   let github: IGitHubService;
   let graph: IGraphService;
+  let rules: IRulesService;
   let service: CiPipelineService;
 
   beforeEach(() => {
     github = makeGitHub();
     graph = makeGraph();
-    service = new CiPipelineService(github, graph);
+    rules = makeRules();
+    service = new CiPipelineService(github, graph, rules);
   });
 
   it('reads schedule.json from the simulation branch', async () => {
@@ -135,5 +148,40 @@ describe('CiPipelineService.run()', () => {
     const result = await service.run(PARAMS);
 
     expect(result.conflicts).toHaveLength(2);
+  });
+
+  it('reads metric rules via rules.listMetrics()', async () => {
+    await service.run(PARAMS);
+
+    expect(rules.listMetrics).toHaveBeenCalledOnce();
+  });
+
+  it('scores using the same ciRunId used for hydration, not the proposal/simulation branch', async () => {
+    const metricRules = [{ id: 'mr-1', name: 'Class Count', target: 'Class', condition: 'count', threshold: 0, weight: 1 }];
+    (rules.listMetrics as ReturnType<typeof vi.fn>).mockResolvedValue(metricRules);
+
+    await service.run(PARAMS);
+
+    const hydrateRunId = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
+    expect(graph.scoreTimetable).toHaveBeenCalledWith(hydrateRunId, metricRules);
+    expect(hydrateRunId).not.toBe(PARAMS.simulationId);
+  });
+
+  it('attaches the computed score to the returned CiResult', async () => {
+    const fakeScore = { score: 77, breakdown: [] };
+    (graph.scoreTimetable as ReturnType<typeof vi.fn>).mockResolvedValue(fakeScore);
+
+    const result = await service.run(PARAMS);
+
+    expect(result.score).toEqual(fakeScore);
+  });
+
+  it('still flushes the ciRunId when scoring fails', async () => {
+    (graph.scoreTimetable as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('score error'));
+
+    await expect(service.run(PARAMS)).rejects.toThrow('score error');
+
+    const hydrateRunId = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
+    expect(graph.flush).toHaveBeenCalledWith(hydrateRunId);
   });
 });
