@@ -284,7 +284,7 @@ export class GraphService implements IGraphService {
   async queryConflicts(simulationId: string): Promise<readonly Conflict[]> {
     const branchId = simulationId;
 
-    const [roomRows, professorRows, groupRows] = await Promise.all([
+    const [roomRows, professorRows, groupRows, capacityRows] = await Promise.all([
       this.client.run<ConflictRow>(
         `MATCH (c1:Class {branchId: $branchId})-[:HELD_IN]->(r:Room {branchId: $branchId})<-[:HELD_IN]-(c2:Class {branchId: $branchId})
          MATCH (c1)-[:SCHEDULED_AT]->(t:TimeSlot {branchId: $branchId})<-[:SCHEDULED_AT]-(c2)
@@ -306,12 +306,20 @@ export class GraphService implements IGraphService {
          RETURN c1.id AS classId1, c2.id AS classId2, g.name AS resourceName`.trim(),
         { branchId },
       ),
+      this.client.run<CapacityConflictRow>(
+        `MATCH (c:Class {branchId: $branchId})-[:HELD_IN]->(r:Room {branchId: $branchId})
+         MATCH (c)-[:ATTENDED_BY]->(g:StudentGroup {branchId: $branchId})
+         WHERE g.size > r.capacity
+         RETURN c.id AS classId, r.name AS roomName, r.capacity AS capacity, g.name AS groupName, g.size AS size`.trim(),
+        { branchId },
+      ),
     ]);
 
     return [
       ...roomRows.map((r) => toConflict(r, 'ROOM_DOUBLE_BOOK')),
       ...professorRows.map((r) => toConflict(r, 'PROFESSOR_OVERLAP')),
       ...groupRows.map((r) => toConflict(r, 'GROUP_OVERLAP')),
+      ...capacityRows.map(toCapacityConflict),
     ];
   }
 
@@ -398,6 +406,28 @@ const buildConflictMessage = (
   }
   return `Student group '${resourceName}' is scheduled in two classes simultaneously: ${classId1} and ${classId2}`;
 };
+
+// A room-capacity violation is a property of a single class (its room's
+// capacity vs. the size of the group assigned to it), not a pairwise clash
+// between two classes like the three conflict types above. `classIds` is
+// synthesized as a self-pair — [classId, classId] — to preserve the shared
+// `readonly [string, string]` tuple shape without widening the `Conflict`
+// type for one case; the second slot is never read differently from the
+// first by any consumer (`ConflictPopover` only reads `classIds[0]`).
+interface CapacityConflictRow {
+  readonly classId: string;
+  readonly roomName: string;
+  readonly capacity: number;
+  readonly groupName: string;
+  readonly size: number;
+}
+
+const toCapacityConflict = (row: CapacityConflictRow): Conflict => ({
+  id: `ROOM_CAPACITY_EXCEEDED_${row.classId}`,
+  type: 'ROOM_CAPACITY_EXCEEDED',
+  classIds: [row.classId, row.classId],
+  message: `Class ${row.classId} assigned to room '${row.roomName}' (capacity ${row.capacity}) but group '${row.groupName}' has ${row.size} students`,
+});
 
 // ── Suggestion helpers ────────────────────────────────────────────────────────
 

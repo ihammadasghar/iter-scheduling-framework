@@ -34,6 +34,8 @@ const resolveResourceName = (
     case 'ROOM_DOUBLE_BOOK':   return formatRoomLabel(cls.roomId);
     case 'PROFESSOR_OVERLAP':  return formatProfessorLabel(cls.professorId);
     case 'GROUP_OVERLAP':      return formatGroupLabel(cls.studentGroupId);
+    case 'ROOM_CAPACITY_EXCEEDED':
+      return `${formatGroupLabel(cls.studentGroupId)} in ${formatRoomLabel(cls.roomId)}`;
   }
 };
 

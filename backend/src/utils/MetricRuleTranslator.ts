@@ -80,6 +80,28 @@ const STUDENT_GROUP_FREE_DAY_RATIO_CYPHER = `
          END AS value
 `.trim();
 
+// Gap-based metric: how many idle time slots (on average) separate a
+// professor's classes, distinct from `back_to_back_ratio` above (which only
+// measures the *share* of zero-gap adjacent pairs). For each class, find the
+// nearest subsequent class taught by the same professor by walking the
+// chronological :NEXT chain; `hops - 1` is the number of empty slots between
+// them (0 = back-to-back). Averaged per professor first, then across
+// professors, so a professor with many classes doesn't dominate the figure.
+// The `*1..8` hop bound keeps the traversal cheap — :NEXT edges never cross
+// days (see ScheduleHydrator.buildChronologicalPairs), so 8 hops safely
+// covers a full day's worth of slots without an unbounded scan.
+const PROFESSOR_AVG_GAP_LENGTH_CYPHER = `
+  MATCH (c1:Class {branchId: $branchId})-[:SCHEDULED_AT]->(t1:TimeSlot {branchId: $branchId})
+  MATCH (c1)-[:TAUGHT_BY]->(p:Professor {branchId: $branchId})
+  MATCH path = (t1)-[:NEXT*1..8]->(t2:TimeSlot {branchId: $branchId})
+  MATCH (c2:Class {branchId: $branchId})-[:SCHEDULED_AT]->(t2)
+  MATCH (c2)-[:TAUGHT_BY]->(p)
+  WHERE c1 <> c2
+  WITH c1, p, min(length(path)) AS hops
+  WITH p, avg(hops - 1) AS avgGapPerProf
+  RETURN CASE WHEN avgGapPerProf IS NULL THEN 0.0 ELSE round(avg(avgGapPerProf), 2) END AS value
+`.trim();
+
 // ── Lookup map ────────────────────────────────────────────────────────────────
 
 const TRANSLATION_MAP: ReadonlyMap<string, TranslatedMetric> = new Map([
@@ -90,6 +112,7 @@ const TRANSLATION_MAP: ReadonlyMap<string, TranslatedMetric> = new Map([
   ['Professor:back_to_back_ratio',     { cypher: PROFESSOR_BACK_TO_BACK_RATIO_CYPHER,     unit: '%'          }],
   ['Professor:room_consistency',       { cypher: PROFESSOR_ROOM_CONSISTENCY_CYPHER,       unit: '%'          }],
   ['StudentGroup:free_day_ratio',      { cypher: STUDENT_GROUP_FREE_DAY_RATIO_CYPHER,     unit: '%'          }],
+  ['Professor:avg_gap_length',         { cypher: PROFESSOR_AVG_GAP_LENGTH_CYPHER,         unit: 'slots'      }],
 ]);
 
 // ── Public API ────────────────────────────────────────────────────────────────

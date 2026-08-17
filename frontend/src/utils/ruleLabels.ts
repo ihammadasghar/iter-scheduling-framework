@@ -15,7 +15,8 @@ export type RuleCondition =
   | 'utilization'
   | 'back_to_back_ratio'
   | 'room_consistency'
-  | 'free_day_ratio';
+  | 'free_day_ratio'
+  | 'avg_gap_length';
 
 export interface ConditionOption {
   readonly value: RuleCondition;
@@ -38,6 +39,7 @@ const CONDITION_LABELS: Record<string, string> = {
   back_to_back_ratio: 'Share of a lecturer\'s classes scheduled back-to-back',
   room_consistency: 'Share of a lecturer\'s classes held in their most-used room',
   free_day_ratio: 'Share of student groups with at least one free day',
+  avg_gap_length: 'Average idle gap between a lecturer\'s classes',
 };
 
 const CONDITIONS_BY_TARGET: Record<string, readonly ConditionOption[]> = {
@@ -49,6 +51,7 @@ const CONDITIONS_BY_TARGET: Record<string, readonly ConditionOption[]> = {
     { value: 'max_classes_per_day', label: 'Maximum classes any lecturer teaches in one day', unit: 'classes' },
     { value: 'back_to_back_ratio', label: 'Share of a lecturer\'s classes scheduled back-to-back', unit: '%' },
     { value: 'room_consistency', label: 'Share of a lecturer\'s classes held in their most-used room', unit: '%' },
+    { value: 'avg_gap_length', label: 'Average idle gap between a lecturer\'s classes', unit: 'slots' },
   ],
   Room: [
     { value: 'utilization', label: 'Percentage of rooms in use', unit: '%' },
@@ -64,6 +67,7 @@ const VIOLATION_CONDITION_LABELS: Record<string, string> = {
   group_overlap: 'Student group in two classes at once',
   consecutive_limit: 'Lecturer teaches more than allowed consecutive periods',
   gap_limit: 'Gap between a lecturer\'s classes exceeds the allowed maximum',
+  room_capacity_exceeded: 'Room assigned to a class smaller than the group it holds',
 };
 
 export const getTargetLabel = (target: string): string =>
@@ -91,4 +95,5 @@ export const VIOLATION_CONDITION_OPTIONS: readonly { value: string; label: strin
   { value: 'group_overlap', label: 'Student group in two classes at once' },
   { value: 'consecutive_limit', label: 'Lecturer teaches more than allowed consecutive periods' },
   { value: 'gap_limit', label: 'Gap between a lecturer\'s classes exceeds the allowed maximum' },
+  { value: 'room_capacity_exceeded', label: 'Room assigned to a class smaller than the group it holds' },
 ];

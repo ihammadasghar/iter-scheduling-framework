@@ -59,6 +59,15 @@ describe('ConflictPopover', () => {
     expect(screen.queryByText('GROUP_OVERLAP')).not.toBeInTheDocument();
   });
 
+  it('maps ROOM_CAPACITY_EXCEEDED to a combined room/group human message', () => {
+    renderPopover([{
+      id: 'c4', type: 'ROOM_CAPACITY_EXCEEDED',
+      classIds: ['CLS_001', 'CLS_001'], message: '',
+    }]);
+    expect(screen.getByText(/bio y1 in room 101 exceeds the room's capacity/i)).toBeInTheDocument();
+    expect(screen.queryByText('ROOM_CAPACITY_EXCEEDED')).not.toBeInTheDocument();
+  });
+
   it('does not show raw type codes in any conflict row', () => {
     renderPopover([
       { id: 'c1', type: 'ROOM_DOUBLE_BOOK',  classIds: ['CLS_001', 'CLS_002'], message: '' },

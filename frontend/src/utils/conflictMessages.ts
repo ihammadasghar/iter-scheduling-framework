@@ -12,5 +12,7 @@ export const getConflictMessage = (type: ConflictType, resourceName: string): st
       return `${resourceName} is already teaching another class at this time`;
     case 'GROUP_OVERLAP':
       return `${resourceName} students are in two classes at once`;
+    case 'ROOM_CAPACITY_EXCEEDED':
+      return `${resourceName} exceeds the room's capacity`;
   }
 };

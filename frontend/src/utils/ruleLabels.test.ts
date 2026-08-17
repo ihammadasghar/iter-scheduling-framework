@@ -40,14 +40,15 @@ describe('ruleLabels', () => {
       expect(opts[0]!.value).toBe('count');
     });
 
-    it('returns four options for Professor', () => {
+    it('returns five options for Professor', () => {
       const opts = getConditionsByTarget('Professor');
-      expect(opts).toHaveLength(4);
+      expect(opts).toHaveLength(5);
       const values = opts.map((o) => o.value);
       expect(values).toContain('avg_classes_per_day');
       expect(values).toContain('max_classes_per_day');
       expect(values).toContain('back_to_back_ratio');
       expect(values).toContain('room_consistency');
+      expect(values).toContain('avg_gap_length');
     });
 
     it('returns utilization for Room', () => {

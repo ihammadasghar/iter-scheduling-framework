@@ -29,5 +29,8 @@ Thumbs.db
 coverage/
 .nyc_output/
 
+# Benchmark run output (see docs/benchmark.md) — reproducible from source, not archived by default
+backend/benchmark-results/
+
 # pnpm
 .pnpm-store/
