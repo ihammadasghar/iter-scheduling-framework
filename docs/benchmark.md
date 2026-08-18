@@ -30,6 +30,15 @@ real one.
 5. Always flushes the scratch branch afterward, leaving no residue in
    Memgraph.
 
+Before any timing starts, the script calls `ensureIndexes()`
+(`backend/src/utils/schemaSetup.ts`) — the exact same call `container.ts`
+makes at app boot — so the measured numbers reflect the same indexed
+steady-state production actually runs with, not an artificially worse,
+never-deployed unindexed one. Without this, every hydration `MERGE` (which
+matches nodes by `{id, branchId}` properties, not internal node id) would be
+a full label scan across every node of that label the shared Memgraph
+instance has ever created.
+
 It intentionally uses the exact same `GraphService`/`MemgraphClient` code
 paths as the running API — this is not a separate, hand-tuned query, it is a
 timed run of production code.
@@ -96,13 +105,19 @@ architecture doc already discusses as a known trade-off.
 ## What this does *not* cover
 
 - **Not run in CI.** Timing numbers from a shared CI runner are noisy and
-  would misrepresent the measurement, so this is a manually-run, documented
-  script rather than a CI job. `docker-compose.yml`'s `memgraph` service also
-  isn't started by the existing CI workflow (`.github/workflows/ci.yml`),
-  which only runs lint/tests.
+  would misrepresent the measurement, so this stays a manually-run, documented
+  script rather than a CI job. (`.github/workflows/ci.yml` *does* now start a
+  `memgraph` service container and run real-Memgraph *correctness* tests on
+  every push — see [`docs/testing.md`](./testing.md) — but that's a
+  deliberately separate, deterministic suite; it doesn't run this timing
+  script.)
 - **Single-run, single-machine.** For a citable thesis-chapter number, run it
   a few times on consistent hardware and report the range/median rather than
   a single sample.
 - **No concurrency.** This benchmarks one sequential session; it does not
   measure multiple simultaneous users (that's RQ3's stated non-goal at this
   scope level, not RQ1's).
+- **Numbers below are still not filled in.** This script has not yet been run
+  against a real Memgraph instance to produce a citable result — do that
+  before citing a number in the thesis's evaluation chapter (see the
+  `timingsMs` shape above for what to record).
