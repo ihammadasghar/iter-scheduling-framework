@@ -505,6 +505,45 @@ describe('GraphService', () => {
       expect(result[0]?.value).toBe(0);
     });
 
+    // room_consistency's Cypher has no zero-guard of its own (see
+    // MetricRuleTranslator.ts) — for a branch with professors but where the
+    // final aggregation input is empty, avg() over an empty set returns a row
+    // with value: null. This proves the JS fallback (not the Cypher) is what
+    // turns that into a clean 0.
+    it('defaults room_consistency to 0 when the query returns a null value', async () => {
+      const roomConsistencyRule = {
+        id: 'mr-3', name: 'Room Consistency', target: 'Professor', condition: 'room_consistency', threshold: 0, weight: 1,
+      };
+      mockClient = {
+        run: vi.fn().mockResolvedValue([{ value: null }]),
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+
+      const result = await service.evaluateMetrics(BRANCH_ID, [roomConsistencyRule]);
+
+      expect(result[0]?.value).toBe(0);
+    });
+
+    // free_day_ratio's Cypher has no zero-guard of its own either — for a
+    // branch with zero StudentGroup nodes, the grouped aggregation produces
+    // zero rows entirely (not a row with totalGroups: 0). This proves the JS
+    // fallback (not the Cypher) is what turns that into a clean 0.
+    it('defaults free_day_ratio to 0 when the query returns no rows', async () => {
+      const freeDayRatioRule = {
+        id: 'mr-4', name: 'Free Day Ratio', target: 'StudentGroup', condition: 'free_day_ratio', threshold: 0, weight: 1,
+      };
+      mockClient = {
+        run: vi.fn().mockResolvedValue([]),
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+
+      const result = await service.evaluateMetrics(BRANCH_ID, [freeDayRatioRule]);
+
+      expect(result[0]?.value).toBe(0);
+    });
+
     it('propagates 400 ApiError from translator for unsupported rule', async () => {
       const badRule = { id: 'mr-x', name: 'Bad', target: 'Unknown', condition: 'metric', threshold: 0, weight: 1 };
 

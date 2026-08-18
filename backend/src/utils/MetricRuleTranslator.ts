@@ -58,16 +58,30 @@ const PROFESSOR_BACK_TO_BACK_RATIO_CYPHER = `
 // Stand-in for a "room stability" preference: for each professor, what share
 // of their classes are held in their single most-used room, averaged across
 // all professors. Higher means a professor teaches consistently in one room.
+// No zero-guard here: the leading (non-optional) MATCH means totalClasses is
+// always >= 1 for any row that reaches the final WITH, so a divide-by-zero
+// guard would be dead code. A branch with no matching professors at all
+// simply produces zero rows upstream — `avg()` over that empty set returns
+// null, and the "no data" case (empty branchId, e.g. a fresh scratch branch)
+// is handled by GraphService.evaluateMetrics()'s null/undefined fallback,
+// not by this Cypher.
 const PROFESSOR_ROOM_CONSISTENCY_CYPHER = `
   MATCH (p:Professor {branchId: $branchId})<-[:TAUGHT_BY]-(c:Class {branchId: $branchId})-[:HELD_IN]->(r:Room {branchId: $branchId})
   WITH p, r, count(c) AS classesInRoom
   WITH p, max(classesInRoom) AS topRoomCount, sum(classesInRoom) AS totalClasses
-  WITH CASE WHEN totalClasses = 0 THEN 0.0 ELSE 100.0 * toFloat(topRoomCount) / toFloat(totalClasses) END AS pct
+  WITH 100.0 * toFloat(topRoomCount) / toFloat(totalClasses) AS pct
   RETURN round(avg(pct), 2) AS value
 `.trim();
 
 // Compressed-schedule preference: what share of student groups have at least
 // one day (out of the days used anywhere in the timetable) with no classes.
+// No zero-guard here: `count(g)`/`sum(...)` are grouped aggregations (grouped
+// on `dayCount`), so if zero StudentGroup nodes exist for the branch the
+// query produces zero *rows* at that WITH — never a row with totalGroups = 0
+// — meaning a `CASE WHEN totalGroups = 0` guard here would never actually be
+// reached either way. The "no data" case is handled by
+// GraphService.evaluateMetrics()'s empty-result-set fallback, not by this
+// Cypher.
 const STUDENT_GROUP_FREE_DAY_RATIO_CYPHER = `
   MATCH (t:TimeSlot {branchId: $branchId})
   WITH count(DISTINCT t.day) AS dayCount
@@ -75,9 +89,7 @@ const STUDENT_GROUP_FREE_DAY_RATIO_CYPHER = `
   OPTIONAL MATCH (g)<-[:ATTENDED_BY]-(c:Class {branchId: $branchId})-[:SCHEDULED_AT]->(t:TimeSlot {branchId: $branchId})
   WITH g, dayCount, count(DISTINCT t.day) AS usedDays
   WITH dayCount, count(g) AS totalGroups, sum(CASE WHEN usedDays < dayCount THEN 1 ELSE 0 END) AS withFreeDay
-  RETURN CASE WHEN totalGroups = 0 THEN 0.0
-              ELSE round(100.0 * toFloat(withFreeDay) / toFloat(totalGroups), 2)
-         END AS value
+  RETURN round(100.0 * toFloat(withFreeDay) / toFloat(totalGroups), 2) AS value
 `.trim();
 
 // Gap-based metric: how many idle time slots (on average) separate a

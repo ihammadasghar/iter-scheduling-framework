@@ -9,6 +9,10 @@ const makeGitHub = (): IGitHubService => ({
   createBranch: vi.fn().mockResolvedValue(undefined),
   deleteBranch: vi.fn().mockResolvedValue(undefined),
   readFile: vi.fn().mockResolvedValue('{"metadata":[],"timeSlots":[],"rooms":[],"professors":[],"studentGroups":[],"courses":[],"classes":[]}'),
+  readFileWithSha: vi.fn().mockResolvedValue({
+    content: '{"metadata":[],"timeSlots":[],"rooms":[],"professors":[],"studentGroups":[],"courses":[],"classes":[]}',
+    sha: 'mock-sha',
+  }),
   writeFile: vi.fn().mockResolvedValue(undefined),
   createPullRequest: vi.fn().mockResolvedValue('pr-1'),
   mergePullRequest: vi.fn().mockResolvedValue(undefined),
@@ -619,6 +623,18 @@ describe('SimulationService.previewClassUpdate()', () => {
     await expect(service.previewClassUpdate(SIM_ID, CLASS_ID, { roomId: 'RM_102' })).rejects.toThrow('graph down');
 
     expect(graph.flush).toHaveBeenCalledOnce();
+  });
+
+  it('still flushes the scratch branch when hydrate itself throws', async () => {
+    (graph.hydrate as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('hydration failed'));
+
+    await expect(service.previewClassUpdate(SIM_ID, CLASS_ID, { roomId: 'RM_102' })).rejects.toThrow(
+      'hydration failed',
+    );
+
+    expect(graph.flush).toHaveBeenCalledOnce();
+    const hydrateBranchId = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
+    expect(graph.flush).toHaveBeenCalledWith(hydrateBranchId);
   });
 
   it('returns metrics and score computed against the scratch branch', async () => {

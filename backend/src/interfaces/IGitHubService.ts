@@ -5,7 +5,22 @@ export interface IGitHubService {
   createBranch(branchName: string, sourceBranch: string): Promise<void>;
   deleteBranch(branchName: string): Promise<void>;
   readFile(branch: string, path: string): Promise<string>;
-  writeFile(branch: string, path: string, content: string, message: string): Promise<void>;
+  // Like readFile, but also returns the blob SHA so a caller can pass it back
+  // to writeFile as expectedSha for optimistic-concurrency protection on a
+  // shared file (e.g. rules.json) that multiple callers may race to update.
+  readFileWithSha(branch: string, path: string): Promise<{ content: string; sha: string }>;
+  // expectedSha is optional: omit it to preserve today's "always write,
+  // fetching whatever SHA is current" behavior (used for per-simulation
+  // scratch files nothing else can race on). Pass it — from a prior
+  // readFileWithSha call — to reject the write with ApiError.conflict if the
+  // file changed since it was read.
+  writeFile(
+    branch: string,
+    path: string,
+    content: string,
+    message: string,
+    expectedSha?: string,
+  ): Promise<void>;
   createPullRequest(head: string, base: string, title: string, body: string): Promise<string>;
   mergePullRequest(pullRequestId: string): Promise<void>;
   getPullRequestDiff(pullRequestId: string): Promise<string>;

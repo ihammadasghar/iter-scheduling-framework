@@ -18,7 +18,7 @@ import type {
   MetricRule,
   WeightedScoreResult,
 } from '../types/domain.js';
-import type { RulesJson } from '../types/rulesJson.js';
+import { parseRulesJson } from '../types/rulesJson.js';
 
 const SOURCE_BRANCH = 'main';
 const SCHEDULE_JSON_PATH = 'schedule.json';
@@ -200,8 +200,8 @@ export class SimulationService implements ISimulationService {
     const rules = await this.readMetricRules();
     const previewBranchId = `preview-${simulationId}-${randomUUID().slice(0, 8)}`;
 
-    await this.graph.hydrate(previewBranchId, JSON.stringify(patchedSchedule));
     try {
+      await this.graph.hydrate(previewBranchId, JSON.stringify(patchedSchedule));
       const [metrics, score] = await Promise.all([
         this.graph.evaluateMetrics(previewBranchId, rules),
         this.graph.scoreTimetable(previewBranchId, rules),
@@ -214,6 +214,6 @@ export class SimulationService implements ISimulationService {
 
   private async readMetricRules(): Promise<readonly MetricRule[]> {
     const rulesJson = await this.github.readFile(SOURCE_BRANCH, RULES_JSON_PATH);
-    return (JSON.parse(rulesJson) as RulesJson).metrics ?? [];
+    return parseRulesJson(rulesJson).metrics;
   }
 }
