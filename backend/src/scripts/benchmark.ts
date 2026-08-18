@@ -18,6 +18,7 @@ import { performance } from 'node:perf_hooks';
 import neo4j from 'neo4j-driver';
 import { MemgraphClient } from '../clients/MemgraphClient.js';
 import { GraphService } from '../services/GraphService.js';
+import { ensureIndexes } from '../utils/schemaSetup.js';
 import { generateDataset } from './generateDataset.js';
 import type { MetricRule } from '../types/domain.js';
 
@@ -89,7 +90,15 @@ async function main(): Promise<void> {
     uri,
     neo4j.auth.basic(process.env['MEMGRAPH_USERNAME'] ?? '', process.env['MEMGRAPH_PASSWORD'] ?? ''),
   );
-  const graph = new GraphService(new MemgraphClient(driver));
+  const client = new MemgraphClient(driver);
+  const graph = new GraphService(client);
+
+  // Indexed before timing starts: this measures the same steady-state,
+  // indexed Memgraph production actually runs with (container.ts ensures
+  // the same indexes at boot), not an artificially worse, never-deployed
+  // unindexed state. See schemaSetup.ts.
+  console.log('Ensuring Memgraph indexes exist...');
+  await ensureIndexes(client);
 
   let conflictCount = 0;
   let score = 0;

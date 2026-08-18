@@ -1,6 +1,7 @@
 import neo4j from 'neo4j-driver';
 import { Octokit } from '@octokit/rest';
 import { MemgraphClient } from './clients/MemgraphClient.js';
+import { ensureIndexes } from './utils/schemaSetup.js';
 import { GitHubService } from './services/GitHubService.js';
 import { GraphService } from './services/GraphService.js';
 import { SimulationService } from './services/SimulationService.js';
@@ -41,6 +42,14 @@ export function buildContainer(): Container {
   );
   const graphClient = new MemgraphClient(driver);
   const graphService = new GraphService(graphClient);
+
+  // Fire-and-forget: CREATE INDEX is idempotent and cheap, so a handful of
+  // requests racing ahead of it before the app finishes booting just means
+  // those queries run unindexed once — not a correctness issue, only ever a
+  // performance one. Not worth making container construction async for.
+  void ensureIndexes(graphClient).catch((err: unknown) => {
+    console.error('Failed to ensure Memgraph indexes:', err);
+  });
 
   // Session registry + GC sweeper
   const sessionRegistry = new SessionRegistry();

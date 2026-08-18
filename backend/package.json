@@ -9,6 +9,7 @@
     "start": "node dist/server.js",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "lint": "tsc --noEmit",
     "benchmark": "ts-node --esm src/scripts/benchmark.ts"
   },

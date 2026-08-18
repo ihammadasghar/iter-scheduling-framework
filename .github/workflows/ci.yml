@@ -24,6 +24,20 @@ jobs:
       run:
         working-directory: backend
 
+    # Only the integration-test step below needs this — everything else in
+    # this job runs against fully mocked neo4j-driver/IMemgraphClient, same
+    # as before. Mirrors docker-compose.yml's memgraph service.
+    services:
+      memgraph:
+        image: memgraph/memgraph:latest
+        ports:
+          - 7687:7687
+        options: >-
+          --health-cmd "nc -z localhost 7687"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -48,6 +62,18 @@ jobs:
 
       - name: Run tests with coverage
         run: pnpm test:coverage
+
+      # Real-Memgraph correctness tests (GraphService.integration.test.ts) —
+      # kept as a separate step/suite from the fully mocked tests above, and
+      # entirely separate from the perf benchmark (`pnpm run benchmark`),
+      # which stays manual-only since timing numbers from a shared CI
+      # runner would be noisy/unrepresentative. These are fast, deterministic
+      # correctness assertions, not timing measurements, so CI is the right
+      # place for them.
+      - name: Run integration tests (real Memgraph)
+        run: pnpm run test:integration
+        env:
+          MEMGRAPH_URI: bolt://localhost:7687
 
       - name: Upload Allure results
         if: always()
