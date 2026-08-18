@@ -1,11 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RulesService } from './RulesService.js';
+import { ApiError } from '../types/ApiError.js';
 import type { IGitHubService } from '../interfaces/IGitHubService.js';
 
-const makeGitHub = (rulesJson = '{"metrics":[],"constraints":[]}'): IGitHubService => ({
+const DEFAULT_SHA = 'sha-1';
+
+const makeGitHub = (
+  rulesJson = '{"metrics":[],"constraints":[]}',
+  sha = DEFAULT_SHA,
+): IGitHubService => ({
   createBranch: vi.fn().mockResolvedValue(undefined),
   deleteBranch: vi.fn().mockResolvedValue(undefined),
   readFile: vi.fn().mockResolvedValue(rulesJson),
+  readFileWithSha: vi.fn().mockResolvedValue({ content: rulesJson, sha }),
   writeFile: vi.fn().mockResolvedValue(undefined),
   createPullRequest: vi.fn().mockResolvedValue('pr-1'),
   mergePullRequest: vi.fn().mockResolvedValue(undefined),
@@ -30,7 +37,7 @@ describe('RulesService.listMetrics()', () => {
 
     const result = await service.listMetrics();
 
-    expect(github.readFile).toHaveBeenCalledWith('main', 'rules.json');
+    expect(github.readFileWithSha).toHaveBeenCalledWith('main', 'rules.json');
     expect(result).toEqual(METRIC_RULES);
   });
 
@@ -39,6 +46,17 @@ describe('RulesService.listMetrics()', () => {
     const service = new RulesService(github);
 
     await expect(service.listMetrics()).resolves.toEqual([]);
+  });
+
+  it('rejects with a clean ApiError when rules.json contains invalid JSON', async () => {
+    const github = makeGitHub('{not valid json');
+    const service = new RulesService(github);
+
+    await expect(service.listMetrics()).rejects.toBeInstanceOf(ApiError);
+    await expect(service.listMetrics()).rejects.toMatchObject({
+      statusCode: 400,
+      message: expect.stringContaining('rules.json'),
+    });
   });
 });
 
@@ -84,6 +102,13 @@ describe('RulesService.createMetric()', () => {
     expect(written.constraints).toEqual(CONSTRAINTS);
   });
 
+  it('passes the SHA read from rules.json through to writeFile as expectedSha', async () => {
+    await service.createMetric(VALID_PARAMS);
+
+    const call = (github.writeFile as ReturnType<typeof vi.fn>).mock.calls[0] as unknown[];
+    expect(call[4]).toBe(DEFAULT_SHA);
+  });
+
   it('returns the created MetricRule with a generated id', async () => {
     const result = await service.createMetric(VALID_PARAMS);
 
@@ -101,6 +126,22 @@ describe('RulesService.createMetric()', () => {
       string,
     ];
     expect(message).toContain(VALID_PARAMS.name);
+  });
+
+  it('propagates a clean ApiError.conflict when the write races another writer (stale SHA)', async () => {
+    (github.writeFile as ReturnType<typeof vi.fn>).mockRejectedValue(
+      ApiError.conflict('"rules.json" on branch "main" was modified concurrently; retry your change'),
+    );
+
+    await expect(service.createMetric(VALID_PARAMS)).rejects.toMatchObject({ statusCode: 409 });
+  });
+
+  it('rejects with a clean ApiError when rules.json contains invalid JSON', async () => {
+    const badGithub = makeGitHub('{not valid json');
+    const badService = new RulesService(badGithub);
+
+    await expect(badService.createMetric(VALID_PARAMS)).rejects.toMatchObject({ statusCode: 400 });
+    expect(badGithub.writeFile).not.toHaveBeenCalled();
   });
 });
 
@@ -134,6 +175,13 @@ describe('RulesService.deleteMetric()', () => {
     expect(written.metrics).toEqual([]);
     expect(written.constraints).toEqual(CONSTRAINTS);
   });
+
+  it('passes the SHA read from rules.json through to writeFile as expectedSha', async () => {
+    await service.deleteMetric('mr-1');
+
+    const call = (github.writeFile as ReturnType<typeof vi.fn>).mock.calls[0] as unknown[];
+    expect(call[4]).toBe(DEFAULT_SHA);
+  });
 });
 
 describe('RulesService.listConstraints()', () => {
@@ -143,7 +191,7 @@ describe('RulesService.listConstraints()', () => {
 
     const result = await service.listConstraints();
 
-    expect(github.readFile).toHaveBeenCalledWith('main', 'rules.json');
+    expect(github.readFileWithSha).toHaveBeenCalledWith('main', 'rules.json');
     expect(result).toEqual(CONSTRAINTS);
   });
 
@@ -210,6 +258,14 @@ describe('RulesService.createConstraint()', () => {
       string,
     ];
     expect(message).toContain(VALID_PARAMS.name);
+  });
+
+  it('propagates a clean ApiError.conflict when the write races another writer (stale SHA)', async () => {
+    (github.writeFile as ReturnType<typeof vi.fn>).mockRejectedValue(
+      ApiError.conflict('"rules.json" on branch "main" was modified concurrently; retry your change'),
+    );
+
+    await expect(service.createConstraint(VALID_PARAMS)).rejects.toMatchObject({ statusCode: 409 });
   });
 });
 

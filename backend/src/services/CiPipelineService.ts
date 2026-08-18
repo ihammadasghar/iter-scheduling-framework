@@ -18,11 +18,11 @@ export class CiPipelineService implements ICiPipelineService {
     const ciRunId = `ci-${proposalId}-${Date.now()}`;
 
     const scheduleJson = await this.github.readFile(simulationId, SCHEDULE_JSON_PATH);
-    await this.graph.hydrate(ciRunId, scheduleJson);
 
     let conflicts: readonly Conflict[] = [];
     let score: WeightedScoreResult = { score: 0, breakdown: [] };
     try {
+      await this.graph.hydrate(ciRunId, scheduleJson);
       conflicts = await this.graph.queryConflicts(ciRunId);
       // Institution-defined score is informational alongside the hard-conflict
       // check — it doesn't (yet) affect READY/BLOCKED status.

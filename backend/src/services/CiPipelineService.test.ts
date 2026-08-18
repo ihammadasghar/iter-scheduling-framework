@@ -26,6 +26,7 @@ const makeGitHub = (): IGitHubService => ({
   createBranch: vi.fn().mockResolvedValue(undefined),
   deleteBranch: vi.fn().mockResolvedValue(undefined),
   readFile: vi.fn().mockResolvedValue(FAKE_SCHEDULE_JSON),
+  readFileWithSha: vi.fn().mockResolvedValue({ content: FAKE_SCHEDULE_JSON, sha: 'mock-sha' }),
   writeFile: vi.fn().mockResolvedValue(undefined),
   createPullRequest: vi.fn().mockResolvedValue('42'),
   mergePullRequest: vi.fn().mockResolvedValue(undefined),
@@ -195,6 +196,15 @@ describe('CiPipelineService.run()', () => {
     (graph.scoreTimetable as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('score error'));
 
     await expect(service.run(PARAMS)).rejects.toThrow('score error');
+
+    const hydrateRunId = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
+    expect(graph.flush).toHaveBeenCalledWith(hydrateRunId);
+  });
+
+  it('still flushes the ciRunId when hydrate itself throws', async () => {
+    (graph.hydrate as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('hydration failed'));
+
+    await expect(service.run(PARAMS)).rejects.toThrow('hydration failed');
 
     const hydrateRunId = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
     expect(graph.flush).toHaveBeenCalledWith(hydrateRunId);

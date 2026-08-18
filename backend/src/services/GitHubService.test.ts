@@ -121,6 +121,28 @@ describe('GitHubService', () => {
     });
   });
 
+  // ── readFileWithSha ─────────────────────────────────────────────────────────
+
+  it('readFileWithSha decodes content and returns the blob SHA', async () => {
+    const rawContent = JSON.stringify({ metrics: [], constraints: [] });
+    const encoded = Buffer.from(rawContent, 'utf-8').toString('base64');
+    mock.rest.repos.getContent.mockResolvedValue({
+      data: { type: 'file', content: encoded, sha: 'rules-sha-1' },
+    });
+
+    const result = await service.readFileWithSha('main', 'rules.json');
+
+    expect(result).toEqual({ content: rawContent, sha: 'rules-sha-1' });
+  });
+
+  it('readFileWithSha throws badRequest when path resolves to a directory', async () => {
+    mock.rest.repos.getContent.mockResolvedValue({ data: [{ type: 'dir' }] });
+
+    await expect(service.readFileWithSha('main', 'some-dir')).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+    });
+  });
+
   // ── writeFile ───────────────────────────────────────────────────────────────
 
   it('writeFile creates a new file when it does not yet exist', async () => {
@@ -147,6 +169,37 @@ describe('GitHubService', () => {
     const calls = mock.rest.repos.createOrUpdateFileContents.mock.calls;
     const call = calls[0]?.[0] as Record<string, unknown> | undefined;
     expect(call?.['sha']).toBe('existing-sha');
+  });
+
+  it('writeFile uses a passed expectedSha directly instead of re-fetching the current one', async () => {
+    mock.rest.repos.createOrUpdateFileContents.mockResolvedValue({});
+
+    await service.writeFile('main', 'rules.json', '{}', 'update', 'caller-supplied-sha');
+
+    expect(mock.rest.repos.getContent).not.toHaveBeenCalled();
+    const calls = mock.rest.repos.createOrUpdateFileContents.mock.calls;
+    const call = calls[0]?.[0] as Record<string, unknown> | undefined;
+    expect(call?.['sha']).toBe('caller-supplied-sha');
+  });
+
+  it('writeFile rethrows a 409 from a stale expectedSha as ApiError.conflict', async () => {
+    mock.rest.repos.createOrUpdateFileContents.mockRejectedValue({ status: 409 });
+
+    await expect(
+      service.writeFile('main', 'rules.json', '{}', 'update', 'stale-sha'),
+    ).rejects.toBeInstanceOf(ApiError);
+    await expect(
+      service.writeFile('main', 'rules.json', '{}', 'update', 'stale-sha'),
+    ).rejects.toMatchObject({ statusCode: 409, code: 'CONFLICT' });
+  });
+
+  it('writeFile rethrows non-conflict errors from createOrUpdateFileContents unchanged', async () => {
+    const boom = { status: 500, message: 'GitHub is down' };
+    mock.rest.repos.createOrUpdateFileContents.mockRejectedValue(boom);
+
+    await expect(
+      service.writeFile('main', 'rules.json', '{}', 'update', 'some-sha'),
+    ).rejects.toBe(boom);
   });
 
   // ── createPullRequest ───────────────────────────────────────────────────────

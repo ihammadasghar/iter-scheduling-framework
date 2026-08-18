@@ -97,9 +97,9 @@ export class ProposalService implements IProposalService {
   private async computeScore(proposalId: string, headBranch: string): Promise<WeightedScoreResult> {
     const scoreRunId = `score-${proposalId}-${Date.now()}`;
     const scheduleJson = await this.github.readFile(headBranch, SCHEDULE_JSON_PATH);
-    await this.graph.hydrate(scoreRunId, scheduleJson);
 
     try {
+      await this.graph.hydrate(scoreRunId, scheduleJson);
       const metricRules = await this.rulesService.listMetrics();
       return await this.graph.scoreTimetable(scoreRunId, metricRules);
     } finally {

@@ -33,6 +33,44 @@ export class GitHubService implements IGitHubService {
   }
 
   async readFile(branch: string, path: string): Promise<string> {
+    const { content } = await this.fetchFile(branch, path);
+    return content;
+  }
+
+  async readFileWithSha(branch: string, path: string): Promise<{ content: string; sha: string }> {
+    return this.fetchFile(branch, path);
+  }
+
+  async writeFile(
+    branch: string,
+    path: string,
+    content: string,
+    message: string,
+    expectedSha?: string,
+  ): Promise<void> {
+    const sha = expectedSha ?? (await this.getFileSha(branch, path)) ?? undefined;
+
+    try {
+      await this.octokit.rest.repos.createOrUpdateFileContents({
+        owner: this.owner,
+        repo: this.repo,
+        branch,
+        path,
+        message,
+        content: Buffer.from(content, 'utf-8').toString('base64'),
+        ...(sha !== undefined ? { sha } : {}),
+      });
+    } catch (err: unknown) {
+      if (isConflictError(err)) {
+        throw ApiError.conflict(
+          `"${path}" on branch "${branch}" was modified concurrently; retry your change`,
+        );
+      }
+      throw err;
+    }
+  }
+
+  private async fetchFile(branch: string, path: string): Promise<{ content: string; sha: string }> {
     const { data } = await this.octokit.rest.repos.getContent({
       owner: this.owner,
       repo: this.repo,
@@ -44,26 +82,10 @@ export class GitHubService implements IGitHubService {
       throw ApiError.badRequest(`Path "${path}" is not a file`);
     }
 
-    return Buffer.from(data.content, 'base64').toString('utf-8');
-  }
-
-  async writeFile(
-    branch: string,
-    path: string,
-    content: string,
-    message: string,
-  ): Promise<void> {
-    const existingSha = await this.getFileSha(branch, path);
-
-    await this.octokit.rest.repos.createOrUpdateFileContents({
-      owner: this.owner,
-      repo: this.repo,
-      branch,
-      path,
-      message,
-      content: Buffer.from(content, 'utf-8').toString('base64'),
-      ...(existingSha !== null ? { sha: existingSha } : {}),
-    });
+    return {
+      content: Buffer.from(data.content, 'base64').toString('utf-8'),
+      sha: data.sha,
+    };
   }
 
   async createPullRequest(
@@ -172,10 +194,21 @@ export class GitHubService implements IGitHubService {
 }
 
 function isNotFoundError(err: unknown): boolean {
+  return hasStatus(err, 404);
+}
+
+// GitHub's Contents API returns 409 when the `sha` passed to
+// createOrUpdateFileContents no longer matches the file's current blob SHA —
+// i.e. someone else wrote to this path since we read it.
+function isConflictError(err: unknown): boolean {
+  return hasStatus(err, 409);
+}
+
+function hasStatus(err: unknown, status: number): boolean {
   return (
     typeof err === 'object' &&
     err !== null &&
     'status' in err &&
-    (err as { status: unknown }).status === 404
+    (err as { status: unknown }).status === status
   );
 }

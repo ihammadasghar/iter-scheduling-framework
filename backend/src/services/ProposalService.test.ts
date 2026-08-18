@@ -19,6 +19,7 @@ const makeGitHub = (): IGitHubService => ({
   createBranch: vi.fn().mockResolvedValue(undefined),
   deleteBranch: vi.fn().mockResolvedValue(undefined),
   readFile: vi.fn().mockResolvedValue(''),
+  readFileWithSha: vi.fn().mockResolvedValue({ content: '', sha: 'mock-sha' }),
   writeFile: vi.fn().mockResolvedValue(undefined),
   createPullRequest: vi.fn().mockResolvedValue('42'),
   mergePullRequest: vi.fn().mockResolvedValue(undefined),
@@ -344,6 +345,16 @@ describe('ProposalService.get()', () => {
     await expect(service.get('42')).rejects.toThrow('score error');
 
     expect(graph.flush).toHaveBeenCalledOnce();
+  });
+
+  it('still flushes the scratch branch when hydrate itself throws', async () => {
+    (graph.hydrate as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('hydration failed'));
+
+    await expect(service.get('42')).rejects.toThrow('hydration failed');
+
+    expect(graph.flush).toHaveBeenCalledOnce();
+    const hydrateRunId = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
+    expect(graph.flush).toHaveBeenCalledWith(hydrateRunId);
   });
 });
 
