@@ -14,6 +14,9 @@ type ChipVariant = 'default' | 'conflicted' | 'selected';
 interface ClassChipProps {
   readonly classItem: ScheduleClass;
   readonly state?: ChipVariant;
+  // One-line "what's wrong" summary for the conflicted state — shown on hover
+  // so the warning icon is self-explanatory without clicking in first.
+  readonly conflictSummary?: string;
 }
 
 const buildTooltip = (cls: ScheduleClass): string => [
@@ -25,6 +28,7 @@ const buildTooltip = (cls: ScheduleClass): string => [
 export default function ClassChip({
   classItem,
   state = 'default',
+  conflictSummary,
 }: ClassChipProps): React.ReactElement {
   const dispatch = useAppDispatch();
   const selectedId = useAppSelector((s) => s.ui.selectedClassId);
@@ -75,15 +79,22 @@ export default function ClassChip({
   }
 
   if (resolvedState === 'conflicted') {
+    const conflictTooltip = conflictSummary !== undefined
+      ? `${conflictSummary} — click for details`
+      : buildTooltip(classItem);
+    const conflictAriaLabel = conflictSummary !== undefined
+      ? `${label} — ${conflictSummary}`
+      : `${label} — has conflict`;
+
     return (
-      <Tooltip title={buildTooltip(classItem)} enterDelay={300}>
+      <Tooltip title={conflictTooltip} enterDelay={300}>
         <Chip
           label={label}
           variant="outlined"
           color="warning"
           icon={<WarningAmber />}
           onClick={handleClick}
-          aria-label={`${label} — has conflict`}
+          aria-label={conflictAriaLabel}
           sx={{ maxWidth: 140, minWidth: 44, minHeight: 44, cursor: 'pointer' }}
         />
       </Tooltip>

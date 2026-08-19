@@ -3,16 +3,21 @@ import { Alert, Box, CircularProgress, Divider, Typography } from '@mui/material
 import SuggestionCard from '@/molecules/SuggestionCard';
 import { simulationService } from '@/services/simulationService';
 import { useApplySuggestion } from '@/hooks/useApplySuggestion';
-import type { Suggestion } from '@/types';
+import { formatCourseLabel } from '@/utils/scheduleFormatters';
+import type { ScheduleClass, Suggestion } from '@/types';
 
 interface SuggestionsListProps {
   readonly simId: string;
   readonly classId: string;
+  // The class these suggestions are for — used to show "currently at X, move
+  // to Y" comparisons in each card instead of the new slot in isolation.
+  readonly currentClass: ScheduleClass;
 }
 
 export default function SuggestionsList({
   simId,
   classId,
+  currentClass,
 }: SuggestionsListProps): React.ReactElement {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
@@ -58,6 +63,10 @@ export default function SuggestionsList({
       >
         Smart Suggestions
       </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ px: 2, pb: 1 }}>
+        Conflict-free rooms and times {formatCourseLabel(currentClass.courseId)} could move to.
+        Applying one moves the class immediately.
+      </Typography>
       <Divider />
 
       {applyError && (
@@ -90,6 +99,7 @@ export default function SuggestionsList({
             <SuggestionCard
               key={`${suggestion.roomId}-${suggestion.timeSlotIds.join('-')}`}
               suggestion={suggestion}
+              currentClass={currentClass}
               onApply={() => void handleApply(index, suggestion)}
               applying={applying && appliedIndex === index}
               metricDelta={appliedIndex === index ? (lastDelta ?? undefined) : undefined}
