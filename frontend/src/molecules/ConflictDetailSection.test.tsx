@@ -4,6 +4,7 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import ConflictDetailSection from './ConflictDetailSection';
 import uiReducer from '@/store/reducers/uiSlice';
+import scheduleReducer from '@/store/reducers/scheduleSlice';
 import type { Conflict, ScheduleClass } from '@/types';
 
 const classA: ScheduleClass = {
@@ -28,7 +29,7 @@ const renderSection = (
   conflicts: Conflict[],
   classes: ScheduleClass[] = [classA, classB],
 ) => {
-  const store = configureStore({ reducer: { ui: uiReducer } });
+  const store = configureStore({ reducer: { ui: uiReducer, schedule: scheduleReducer } });
   return {
     store,
     ...render(

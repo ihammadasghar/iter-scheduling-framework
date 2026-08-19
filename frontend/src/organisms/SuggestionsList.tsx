@@ -3,7 +3,7 @@ import { Alert, Box, CircularProgress, Divider, Typography } from '@mui/material
 import SuggestionCard from '@/molecules/SuggestionCard';
 import { simulationService } from '@/services/simulationService';
 import { useApplySuggestion } from '@/hooks/useApplySuggestion';
-import { formatCourseLabel } from '@/utils/scheduleFormatters';
+import { useScheduleNames } from '@/hooks/useScheduleNames';
 import type { ScheduleClass, Suggestion } from '@/types';
 
 interface SuggestionsListProps {
@@ -26,6 +26,7 @@ export default function SuggestionsList({
 
   const { apply, loading: applying, error: applyError, lastDelta, lastScoreDelta, deltaLoading } =
     useApplySuggestion(simId);
+  const { courseName } = useScheduleNames();
 
   // Re-fetch suggestions whenever the selected class changes
   useEffect(() => {
@@ -64,7 +65,7 @@ export default function SuggestionsList({
         Smart Suggestions
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ px: 2, pb: 1 }}>
-        Conflict-free rooms and times {formatCourseLabel(currentClass.courseId)} could move to.
+        Conflict-free rooms and times {courseName(currentClass.courseId)} could move to.
         Applying one moves the class immediately.
       </Typography>
       <Divider />

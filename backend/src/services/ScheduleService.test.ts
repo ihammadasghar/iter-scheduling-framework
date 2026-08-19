@@ -24,6 +24,17 @@ const scheduleJsonWith = (classCount: number): string =>
     classes: Array.from({ length: classCount }, (_, i) => makeClass(`CLS_${i + 1}`)),
   });
 
+const scheduleJsonWithRoster = (): string =>
+  JSON.stringify({
+    metadata: { name: 'Fall 2026' },
+    timeSlots: [{ id: 'TS_MON_P1', day: 'MON', name: 'Period 1', startTime: '09:00', endTime: '10:00' }],
+    rooms: [{ id: 'RM_101', name: 'Room 101', capacity: 40, building: 'Main' }],
+    professors: [{ id: 'PRF_SMITH', name: 'Dr. Jane Smith', department: 'Biology' }],
+    studentGroups: [{ id: 'GRP_BIO_Y1', name: 'Bio Year 1', size: 30 }],
+    courses: [{ id: 'CRS_BIO101', code: 'BIO101', name: 'Intro to Biology', department: 'Biology' }],
+    classes: [makeClass('CLS_1')],
+  });
+
 const makeGitHub = (scheduleJson = scheduleJsonWith(3)): IGitHubService => ({
   createBranch: vi.fn().mockResolvedValue(undefined),
   deleteBranch: vi.fn().mockResolvedValue(undefined),
@@ -113,5 +124,66 @@ describe('ScheduleService.listClasses()', () => {
     service = new ScheduleService(github);
 
     await expect(service.listClasses(1, 20)).rejects.toMatchObject({ statusCode: 400 });
+  });
+});
+
+describe('ScheduleService.getRoster()', () => {
+  let github: IGitHubService;
+  let service: ScheduleService;
+
+  beforeEach(() => {
+    github = makeGitHub(scheduleJsonWithRoster());
+    service = new ScheduleService(github);
+  });
+
+  it('reads schedule.json from the main branch', async () => {
+    await service.getRoster();
+
+    expect(github.readFile).toHaveBeenCalledWith('main', 'schedule.json');
+  });
+
+  it('returns every master-data array populated with real names', async () => {
+    const roster = await service.getRoster();
+
+    expect(roster.professors).toEqual([{ id: 'PRF_SMITH', name: 'Dr. Jane Smith', department: 'Biology' }]);
+    expect(roster.courses).toEqual([{ id: 'CRS_BIO101', code: 'BIO101', name: 'Intro to Biology', department: 'Biology' }]);
+    expect(roster.rooms).toEqual([{ id: 'RM_101', name: 'Room 101', capacity: 40, building: 'Main' }]);
+    expect(roster.studentGroups).toEqual([{ id: 'GRP_BIO_Y1', name: 'Bio Year 1', size: 30 }]);
+    expect(roster.timeSlots).toHaveLength(1);
+    expect(roster.metadata).toEqual({ name: 'Fall 2026' });
+  });
+
+  it('never includes classes in the response', async () => {
+    const roster = await service.getRoster();
+
+    expect('classes' in roster).toBe(false);
+  });
+
+  it('defaults missing arrays to [] rather than undefined', async () => {
+    github = makeGitHub(JSON.stringify({ metadata: {} }));
+    service = new ScheduleService(github);
+
+    const roster = await service.getRoster();
+
+    expect(roster.rooms).toEqual([]);
+    expect(roster.professors).toEqual([]);
+    expect(roster.studentGroups).toEqual([]);
+    expect(roster.courses).toEqual([]);
+    expect(roster.timeSlots).toEqual([]);
+  });
+
+  it('never creates or deletes a branch — this is a pure read', async () => {
+    await service.getRoster();
+
+    expect(github.createBranch).not.toHaveBeenCalled();
+    expect(github.deleteBranch).not.toHaveBeenCalled();
+  });
+
+  it('propagates a typed 400 when schedule.json is malformed', async () => {
+    github = makeGitHub();
+    (github.readFile as ReturnType<typeof vi.fn>).mockResolvedValue('not json');
+    service = new ScheduleService(github);
+
+    await expect(service.getRoster()).rejects.toMatchObject({ statusCode: 400 });
   });
 });

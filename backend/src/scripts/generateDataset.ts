@@ -14,6 +14,7 @@ import type {
   RawCourse,
   RawClass,
 } from '../types/scheduleJson.js';
+import { FIRST_NAMES, LAST_NAMES, COURSE_TEMPLATES } from './nameCatalog.js';
 
 export interface GenerateDatasetOptions {
   /** Number of classes to generate — the primary scale knob. */
@@ -76,12 +77,19 @@ const buildRooms = (count: number, rng: () => number): readonly RawRoom[] =>
     building: pick(rng, BUILDINGS),
   }));
 
+// name is derived from the index, never rng() — consuming an extra PRNG
+// draw here would shift every subsequent pick()/randInt() call and silently
+// change the dataset a given (scale, seed) pair produces.
 const buildProfessors = (count: number, rng: () => number): readonly RawProfessor[] =>
-  Array.from({ length: count }, (_, i) => ({
-    id: padded('PRF_', i + 1, 5),
-    name: `Professor ${i + 1}`,
-    department: pick(rng, DEPARTMENTS),
-  }));
+  Array.from({ length: count }, (_, i) => {
+    const firstName = FIRST_NAMES[i % FIRST_NAMES.length]!;
+    const lastName = LAST_NAMES[Math.floor(i / FIRST_NAMES.length) % LAST_NAMES.length]!;
+    return {
+      id: padded('PRF_', i + 1, 5),
+      name: `Dr. ${firstName} ${lastName}`,
+      department: pick(rng, DEPARTMENTS),
+    };
+  });
 
 const buildStudentGroups = (count: number, rng: () => number): readonly RawStudentGroup[] =>
   Array.from({ length: count }, (_, i) => ({
@@ -91,12 +99,16 @@ const buildStudentGroups = (count: number, rng: () => number): readonly RawStude
   }));
 
 const buildCourses = (count: number, rng: () => number): readonly RawCourse[] =>
-  Array.from({ length: count }, (_, i) => ({
-    id: padded('CRS_', i + 1, 4),
-    code: `C${String(i + 1).padStart(4, '0')}`,
-    name: `Course ${i + 1}`,
-    department: pick(rng, DEPARTMENTS),
-  }));
+  Array.from({ length: count }, (_, i) => {
+    const template = COURSE_TEMPLATES[i % COURSE_TEMPLATES.length]!;
+    const department = pick(rng, DEPARTMENTS);
+    return {
+      id: padded('CRS_', i + 1, 4),
+      code: `C${String(i + 1).padStart(4, '0')}`,
+      name: `${template} ${department}`,
+      department,
+    };
+  });
 
 const buildClasses = (
   scale: number,

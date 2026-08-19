@@ -5,13 +5,14 @@ import { configureStore } from '@reduxjs/toolkit';
 import ConflictPopover from './ConflictPopover';
 import uiReducer from '@/store/reducers/uiSlice';
 import classReducer from '@/store/reducers/classSlice';
+import scheduleReducer from '@/store/reducers/scheduleSlice';
 import type { Conflict } from '@/types';
 
 const makeStore = (classes = [
   { id: 'CLS_001', courseId: 'CRS_BIO101', title: 'Bio Lec', professorId: 'PRF_SMITH', studentGroupId: 'GRP_BIO_Y1', roomId: 'RM_101', timeSlotIds: [] },
 ]) =>
   configureStore({
-    reducer: { ui: uiReducer, class: classReducer },
+    reducer: { ui: uiReducer, class: classReducer, schedule: scheduleReducer },
     preloadedState: {
       class: { classes, total: 1, currentPage: 1, hasMore: false, loading: false, error: null },
     },

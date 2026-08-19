@@ -15,4 +15,13 @@ export class ScheduleController {
       next(err);
     }
   }
+
+  async getRoster(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const roster = await this.service.getRoster();
+      res.status(200).json(roster);
+    } catch (err) {
+      next(err);
+    }
+  }
 }

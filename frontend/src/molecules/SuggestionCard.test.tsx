@@ -1,6 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { Provider } from 'react-redux';
+import { configureStore } from '@reduxjs/toolkit';
 import SuggestionCard from './SuggestionCard';
+import scheduleReducer from '@/store/reducers/scheduleSlice';
 import type { ScheduleClass, Suggestion } from '@/types';
 
 const currentClass: ScheduleClass = {
@@ -19,17 +22,21 @@ const suggestion: Suggestion = {
   conflictFree: true,
 };
 
-const renderCard = (overrides: Partial<React.ComponentProps<typeof SuggestionCard>> = {}) =>
-  render(
-    <SuggestionCard
-      suggestion={suggestion}
-      currentClass={currentClass}
-      onApply={vi.fn()}
-      applying={false}
-      loadingDelta={false}
-      {...overrides}
-    />,
+const renderCard = (overrides: Partial<React.ComponentProps<typeof SuggestionCard>> = {}) => {
+  const store = configureStore({ reducer: { schedule: scheduleReducer } });
+  return render(
+    <Provider store={store}>
+      <SuggestionCard
+        suggestion={suggestion}
+        currentClass={currentClass}
+        onApply={vi.fn()}
+        applying={false}
+        loadingDelta={false}
+        {...overrides}
+      />
+    </Provider>,
   );
+};
 
 describe('SuggestionCard', () => {
   it('shows the current room and time so the change reads as a move, not a slot in isolation', () => {

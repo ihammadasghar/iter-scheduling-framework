@@ -26,6 +26,7 @@ export type {
   RawCourse,
   RawClass,
   ScheduleMetadata,
+  ScheduleRoster,
   ScheduleJson,
 } from './schedule';
 

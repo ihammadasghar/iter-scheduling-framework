@@ -34,4 +34,17 @@ describe('scheduleService', () => {
     expect(result.data).toHaveLength(1);
     expect(result.total).toBe(1);
   });
+
+  it('getPublishedRoster calls GET /schedule/roster with no params', async () => {
+    const roster = {
+      metadata: { semesterId: 'sem-1', semesterName: 'Fall 2026', academicYear: '2026-2027' },
+      timeSlots: [], rooms: [], professors: [], studentGroups: [], courses: [],
+    };
+    getSpy.mockReturnValue(axiosOk(roster));
+
+    const result = await scheduleService.getPublishedRoster();
+
+    expect(getSpy).toHaveBeenCalledWith('/schedule/roster');
+    expect(result).toEqual(roster);
+  });
 });

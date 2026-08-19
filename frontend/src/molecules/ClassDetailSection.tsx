@@ -1,5 +1,6 @@
 import { Divider, List, ListItem, Typography, Box } from '@mui/material';
-import { formatProfessorLabel, formatRoomLabel, formatTimeSlotFull } from '@/utils/scheduleFormatters';
+import { formatTimeSlotFull } from '@/utils/scheduleFormatters';
+import { useScheduleNames } from '@/hooks/useScheduleNames';
 import type { ScheduleClass } from '@/types';
 
 interface ClassDetailSectionProps {
@@ -29,6 +30,7 @@ const DetailRow = ({ label, value }: DetailRowProps): React.ReactElement => (
 export default function ClassDetailSection({
   classItem,
 }: ClassDetailSectionProps): React.ReactElement {
+  const { professorName, roomName } = useScheduleNames();
   const timeSlotLabels = [...classItem.timeSlotIds]
     .map(formatTimeSlotFull)
     .join(', ');
@@ -44,8 +46,8 @@ export default function ClassDetailSection({
       </Typography>
       <Divider />
       <List disablePadding sx={{ px: 2 }}>
-        <DetailRow label="Professor" value={formatProfessorLabel(classItem.professorId)} />
-        <DetailRow label="Room" value={formatRoomLabel(classItem.roomId)} />
+        <DetailRow label="Professor" value={professorName(classItem.professorId)} />
+        <DetailRow label="Room" value={roomName(classItem.roomId)} />
         <DetailRow label="Time" value={timeSlotLabels || '—'} />
       </List>
     </Box>

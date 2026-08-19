@@ -52,12 +52,18 @@ export interface ScheduleMetadata {
   readonly academicYear: string;
 }
 
-export interface ScheduleJson {
+// Everything in schedule.json except the classes themselves — the master
+// data that lets an ID be resolved to a human-readable name. Returned on
+// its own by GET /schedule/roster for the published (read-only) view.
+export interface ScheduleRoster {
   readonly metadata: ScheduleMetadata;
   readonly timeSlots: readonly RawTimeSlot[];
   readonly rooms: readonly RawRoom[];
   readonly professors: readonly RawProfessor[];
   readonly studentGroups: readonly RawStudentGroup[];
   readonly courses: readonly RawCourse[];
+}
+
+export interface ScheduleJson extends ScheduleRoster {
   readonly classes: readonly RawClass[];
 }

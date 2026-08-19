@@ -42,6 +42,8 @@ const makeStore = (
       schedule: {
         rooms: [],
         studentGroups: [],
+        courses: [],
+        professors: [],
         loading: false,
         error: null,
       },
@@ -57,7 +59,7 @@ const makeStoreWithRooms = (
     preloadedState: {
       class: { classes, total: classes.length, currentPage: 1, hasMore: false, loading: false, error: null },
       ui: { role: 'user' as const, selectedClassId: null, inspectorOpen: false, viewBy: 'room' as const },
-      schedule: { rooms, studentGroups: [], loading: false, error: null },
+      schedule: { rooms, studentGroups: [], courses: [], professors: [], loading: false, error: null },
       conflict: { conflicts: [], loading: false, lastFetchedAt: null, error: null },
     },
   });
@@ -103,6 +105,33 @@ describe('TimetableGrid', () => {
   it('renders row label from professorId when viewBy=professor', () => {
     render_([sampleClass], 'professor');
     expect(screen.getByText(/smith/i)).toBeInTheDocument();
+  });
+
+  it('renders the professor\'s real roster name, not a number, for an opaque generated ID (the reported bug)', () => {
+    // PRF_00001 has no readable fragment embedded in it — formatProfessorLabel
+    // alone would render "00001". The fetched roster is what fixes this.
+    const opaqueClass: ScheduleClass = { ...sampleClass, professorId: 'PRF_00001' };
+    const store = configureStore({
+      reducer: { class: classReducer, ui: uiReducer, schedule: scheduleReducer, conflict: conflictReducer },
+      preloadedState: {
+        class: { classes: [opaqueClass], total: 1, currentPage: 1, hasMore: false, loading: false, error: null },
+        ui: { role: 'user' as const, selectedClassId: null, inspectorOpen: false, viewBy: 'professor' as const },
+        schedule: {
+          rooms: [], studentGroups: [], courses: [],
+          professors: [{ id: 'PRF_00001', name: 'Dr. Jane Smith', department: 'Biology' }],
+          loading: false, error: null,
+        },
+      },
+    });
+    render(
+      <Provider store={store}>
+        <MemoryRouter>
+          <TimetableGrid />
+        </MemoryRouter>
+      </Provider>,
+    );
+    expect(screen.getByText('Dr. Jane Smith')).toBeInTheDocument();
+    expect(screen.queryByText('00001')).not.toBeInTheDocument();
   });
 
   it('renders row label from studentGroupId when viewBy=studentGroup', () => {
@@ -169,7 +198,7 @@ describe('TimetableGrid', () => {
       preloadedState: {
         class: { classes: [], total: 0, currentPage: 0, hasMore: true, loading: true, error: null },
         ui: { role: 'user' as const, selectedClassId: null, inspectorOpen: false, viewBy: 'room' as const },
-        schedule: { rooms: [], studentGroups: [], loading: false, error: null },
+        schedule: { rooms: [], studentGroups: [], courses: [], professors: [], loading: false, error: null },
         conflict: { conflicts: [], loading: false, lastFetchedAt: null, error: null },
       },
     });

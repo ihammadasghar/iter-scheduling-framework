@@ -2,11 +2,8 @@ import { Box, Chip, Tooltip } from '@mui/material';
 import { WarningAmber } from '@mui/icons-material';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { selectClass, toggleInspector } from '@/store/reducers/uiSlice';
-import {
-  formatCourseLabel,
-  formatRoomLabel,
-  formatProfessorLabel,
-} from '@/utils/scheduleFormatters';
+import { useScheduleNames } from '@/hooks/useScheduleNames';
+import type { ScheduleNames } from '@/utils/scheduleNames';
 import type { ScheduleClass } from '@/types';
 
 type ChipVariant = 'default' | 'conflicted' | 'selected';
@@ -19,10 +16,10 @@ interface ClassChipProps {
   readonly conflictSummary?: string;
 }
 
-const buildTooltip = (cls: ScheduleClass): string => [
+const buildTooltip = (cls: ScheduleClass, names: ScheduleNames): string => [
   cls.title,
-  `Room: ${formatRoomLabel(cls.roomId)}`,
-  `Prof: ${formatProfessorLabel(cls.professorId)}`,
+  `Room: ${names.roomName(cls.roomId)}`,
+  `Prof: ${names.professorName(cls.professorId)}`,
 ].join(' · ');
 
 export default function ClassChip({
@@ -32,6 +29,7 @@ export default function ClassChip({
 }: ClassChipProps): React.ReactElement {
   const dispatch = useAppDispatch();
   const selectedId = useAppSelector((s) => s.ui.selectedClassId);
+  const names = useScheduleNames();
   const resolvedState: ChipVariant = state !== 'default' ? state : selectedId === classItem.id ? 'selected' : 'default';
 
   const handleClick = (e: React.MouseEvent): void => {
@@ -40,11 +38,13 @@ export default function ClassChip({
     dispatch(toggleInspector(true));
   };
 
-  const label = formatCourseLabel(classItem.courseId);
+  // Short code (e.g. "BIO101"), not the full course name — this chip is
+  // capped at 140px.
+  const label = names.courseCode(classItem.courseId);
 
   if (resolvedState === 'selected') {
     return (
-      <Tooltip title={buildTooltip(classItem)} enterDelay={300}>
+      <Tooltip title={buildTooltip(classItem, names)} enterDelay={300}>
         <Box
           onClick={handleClick}
           role="button"
@@ -81,7 +81,7 @@ export default function ClassChip({
   if (resolvedState === 'conflicted') {
     const conflictTooltip = conflictSummary !== undefined
       ? `${conflictSummary} — click for details`
-      : buildTooltip(classItem);
+      : buildTooltip(classItem, names);
     const conflictAriaLabel = conflictSummary !== undefined
       ? `${label} — ${conflictSummary}`
       : `${label} — has conflict`;
@@ -102,7 +102,7 @@ export default function ClassChip({
   }
 
   return (
-    <Tooltip title={buildTooltip(classItem)} enterDelay={300}>
+    <Tooltip title={buildTooltip(classItem, names)} enterDelay={300}>
       <Chip
         label={label}
         variant="filled"

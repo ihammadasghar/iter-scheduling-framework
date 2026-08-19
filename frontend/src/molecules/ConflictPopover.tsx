@@ -8,6 +8,7 @@ import {
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { selectClass, toggleInspector } from '@/store/reducers/uiSlice';
 import { getConflictMessage, resolveConflictResourceName } from '@/utils/conflictMessages';
+import { useScheduleNames } from '@/hooks/useScheduleNames';
 import type { Conflict } from '@/types';
 
 interface ConflictPopoverProps {
@@ -25,6 +26,7 @@ export default function ConflictPopover({
 }: ConflictPopoverProps): React.ReactElement {
   const dispatch = useAppDispatch();
   const classes = useAppSelector((s) => s.class.classes);
+  const names = useScheduleNames();
 
   const handleRowClick = (conflict: Conflict): void => {
     const primaryId = conflict.classIds[0];
@@ -49,7 +51,7 @@ export default function ConflictPopover({
       </Typography>
       <List dense disablePadding>
         {conflicts.map((conflict) => {
-          const resourceName = resolveConflictResourceName(conflict, classes);
+          const resourceName = resolveConflictResourceName(conflict, classes, names);
           const message = getConflictMessage(conflict.type, resourceName);
           return (
             <ListItemButton

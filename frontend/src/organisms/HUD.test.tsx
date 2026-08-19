@@ -9,6 +9,7 @@ import scoreReducer from '@/store/reducers/scoreSlice';
 import sessionReducer from '@/store/reducers/sessionSlice';
 import classReducer from '@/store/reducers/classSlice';
 import uiReducer from '@/store/reducers/uiSlice';
+import scheduleReducer from '@/store/reducers/scheduleSlice';
 import { simulationService } from '@/services/simulationService';
 import type { Conflict, MetricResult } from '@/types';
 
@@ -29,6 +30,7 @@ const makeStore = () =>
       session: sessionReducer,
       class: classReducer,
       ui: uiReducer,
+      schedule: scheduleReducer,
     },
   });
 

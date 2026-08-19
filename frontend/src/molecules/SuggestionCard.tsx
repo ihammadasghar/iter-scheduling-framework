@@ -1,6 +1,7 @@
 import { Box, Button, Chip, CircularProgress, Stack, Typography } from '@mui/material';
 import { CheckCircle, WarningAmber, ArrowDownward } from '@mui/icons-material';
-import { formatRoomLabel, formatTimeSlotFull } from '@/utils/scheduleFormatters';
+import { formatTimeSlotFull } from '@/utils/scheduleFormatters';
+import { useScheduleNames } from '@/hooks/useScheduleNames';
 import type { ScoreDelta } from '@/hooks/useApplySuggestion';
 import type { Suggestion, MetricDelta, ScheduleClass } from '@/types';
 
@@ -56,9 +57,10 @@ export default function SuggestionCard({
   scoreDelta,
   loadingDelta,
 }: SuggestionCardProps): React.ReactElement {
-  const roomLabel = formatRoomLabel(suggestion.roomId);
+  const { roomName } = useScheduleNames();
+  const roomLabel = roomName(suggestion.roomId);
   const timeLabels = [...suggestion.timeSlotIds].map(formatTimeSlotFull).join(', ');
-  const currentRoomLabel = formatRoomLabel(currentClass.roomId);
+  const currentRoomLabel = roomName(currentClass.roomId);
   const currentTimeLabels = [...currentClass.timeSlotIds].map(formatTimeSlotFull).join(', ') || 'no time set';
 
   return (

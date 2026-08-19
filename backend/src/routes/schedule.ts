@@ -8,5 +8,9 @@ export function createScheduleRouter(controller: ScheduleController): IRouter {
   // GET /schedule/classes — paginated read of the currently published (main) schedule
   router.get('/classes', (req, res, next) => controller.listClasses(req, res, next));
 
+  // GET /schedule/roster — master data (rooms/professors/courses/groups/slots)
+  // for the published schedule, so the UI can resolve IDs to real names
+  router.get('/roster', (req, res, next) => controller.getRoster(req, res, next));
+
   return router;
 }

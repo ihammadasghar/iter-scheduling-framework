@@ -3,7 +3,7 @@ import { WarningAmber } from '@mui/icons-material';
 import { useAppDispatch } from '@/store/hooks';
 import { selectClass, toggleInspector } from '@/store/reducers/uiSlice';
 import { getConflictMessage, resolveConflictResourceName } from '@/utils/conflictMessages';
-import { formatCourseLabel } from '@/utils/scheduleFormatters';
+import { useScheduleNames } from '@/hooks/useScheduleNames';
 import type { Conflict, ScheduleClass } from '@/types';
 
 interface ConflictDetailSectionProps {
@@ -24,6 +24,7 @@ export default function ConflictDetailSection({
   classes,
 }: ConflictDetailSectionProps): React.ReactElement | null {
   const dispatch = useAppDispatch();
+  const names = useScheduleNames();
   const relevant = conflicts.filter((c) => c.classIds.includes(classItem.id));
 
   if (relevant.length === 0) return null;
@@ -49,14 +50,14 @@ export default function ConflictDetailSection({
       </Alert>
       <List dense sx={{ px: 1 }}>
         {relevant.map((conflict) => {
-          const resourceName = resolveConflictResourceName(conflict, classes);
+          const resourceName = resolveConflictResourceName(conflict, classes, names);
           const message = getConflictMessage(conflict.type, resourceName);
           const otherClassId = conflict.classIds.find((id) => id !== classItem.id);
           const otherClass = otherClassId !== undefined
             ? classes.find((c) => c.id === otherClassId)
             : undefined;
           const otherLabel = otherClass !== undefined
-            ? `${formatCourseLabel(otherClass.courseId)} — ${otherClass.title}`
+            ? `${names.courseCode(otherClass.courseId)} — ${otherClass.title}`
             : undefined;
 
           return (

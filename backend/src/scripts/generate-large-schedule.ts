@@ -10,6 +10,7 @@ import type {
   RawClass,
 } from '../types/scheduleJson.js';
 import type { RulesJson } from '../types/rulesJson.js';
+import { FIRST_NAMES, LAST_NAMES, COURSE_TEMPLATES } from './nameCatalog.js';
 
 // ── Scale constants ──────────────────────────────────────────────────────────
 // Capacity math: 25 time slots require rooms >= 60 and studentGroups >= 60 to
@@ -45,15 +46,6 @@ const COURSES_PER_DEPT = 8;
 const NUM_ROOMS = 80;
 const TARGET_CLASSES = 1500;
 
-const FIRST_NAMES = [
-  'Jane', 'Alan', 'Bob', 'Maria', 'Wei', 'Fatima', 'John', 'Priya', 'Carlos', 'Aisha',
-  'David', 'Elena', 'Kenji', 'Sofia', 'Omar', 'Grace', 'Liam', 'Noor', 'Ivan', 'Mei',
-];
-const LAST_NAMES = ['Smith', 'Jones', 'Chen', 'Garcia', 'Khan', 'Muller', 'Kim', 'Patel', 'Silva', 'Nguyen'];
-const COURSE_TEMPLATES = [
-  'Introduction to', 'Advanced', 'Foundations of', 'Topics in',
-  'Principles of', 'Seminar in', 'Applied', 'History of',
-];
 const ROOM_BUILDINGS = ['Science Hall', 'Arts Block', 'Main Hall', 'Engineering Building', 'Library Annex'];
 const ROOM_CAPACITIES = [30, 40, 50, 60, 80, 100];
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
