@@ -7,6 +7,11 @@ export interface TranslatedMetric {
 }
 
 // ── Cypher templates (all return a single row with a numeric `value` column) ─
+//
+// Rounding to 2 decimal places is written as `round(x * 100) / 100` rather
+// than Neo4j's two-argument `round(x, 2)` — Memgraph's `round()` only
+// accepts the single-argument (nearest-integer) form and errors on the
+// second precision argument ("'round' requires exactly 1 argument").
 
 const CLASS_COUNT_CYPHER = `
   MATCH (c:Class {branchId: $branchId})
@@ -17,7 +22,7 @@ const PROFESSOR_AVG_CLASSES_PER_DAY_CYPHER = `
   MATCH (c:Class {branchId: $branchId})-[:TAUGHT_BY]->(p:Professor {branchId: $branchId})
   MATCH (c)-[:SCHEDULED_AT]->(t:TimeSlot {branchId: $branchId})
   WITH p, t.day AS day, count(DISTINCT c) AS classCount
-  RETURN round(avg(toFloat(classCount)), 2) AS value
+  RETURN round(avg(toFloat(classCount)) * 100) / 100 AS value
 `.trim();
 
 const PROFESSOR_MAX_CLASSES_PER_DAY_CYPHER = `
@@ -27,17 +32,23 @@ const PROFESSOR_MAX_CLASSES_PER_DAY_CYPHER = `
   RETURN max(classCount) AS value
 `.trim();
 
-// Utilization = occupied room-slot pairs / total possible room-slot pairs × 100
+// Utilization = occupied room-slot pairs / total possible room-slot pairs × 100.
+// Both HELD_IN and SCHEDULED_AT are required for a Class to count as
+// "occupying" a room-slot pair, so they're joined as one comma-separated
+// pattern under a single OPTIONAL MATCH (rather than OPTIONAL MATCH followed
+// by a plain MATCH, which Memgraph's parser rejects — "MATCH can't be put
+// after OPTIONAL MATCH", unlike Neo4j which allows it) — c only binds when
+// both relationships are present, same net effect as the two-clause form.
 const ROOM_UTILIZATION_CYPHER = `
   MATCH (r:Room {branchId: $branchId})
   WITH count(r) AS roomCount
   MATCH (t:TimeSlot {branchId: $branchId})
   WITH roomCount * count(t) AS capacity
-  OPTIONAL MATCH (c:Class {branchId: $branchId})-[:HELD_IN]->(:Room {branchId: $branchId})
-  MATCH (c)-[:SCHEDULED_AT]->(:TimeSlot {branchId: $branchId})
+  OPTIONAL MATCH (c:Class {branchId: $branchId})-[:HELD_IN]->(:Room {branchId: $branchId}),
+                 (c)-[:SCHEDULED_AT]->(:TimeSlot {branchId: $branchId})
   WITH capacity, count(c) AS occupied
   RETURN CASE WHEN capacity = 0 THEN 0.0
-              ELSE round(100.0 * toFloat(occupied) / toFloat(capacity), 2)
+              ELSE round(100.0 * toFloat(occupied) / toFloat(capacity) * 100) / 100
          END AS value
 `.trim();
 
@@ -51,7 +62,7 @@ const PROFESSOR_BACK_TO_BACK_RATIO_CYPHER = `
   MATCH (c:Class {branchId: $branchId})-[:TAUGHT_BY]->(:Professor {branchId: $branchId})
   WITH backToBack, count(DISTINCT c) AS totalClasses
   RETURN CASE WHEN totalClasses = 0 THEN 0.0
-              ELSE round(100.0 * toFloat(backToBack) / toFloat(totalClasses), 2)
+              ELSE round(100.0 * toFloat(backToBack) / toFloat(totalClasses) * 100) / 100
          END AS value
 `.trim();
 
@@ -70,7 +81,7 @@ const PROFESSOR_ROOM_CONSISTENCY_CYPHER = `
   WITH p, r, count(c) AS classesInRoom
   WITH p, max(classesInRoom) AS topRoomCount, sum(classesInRoom) AS totalClasses
   WITH 100.0 * toFloat(topRoomCount) / toFloat(totalClasses) AS pct
-  RETURN round(avg(pct), 2) AS value
+  RETURN round(avg(pct) * 100) / 100 AS value
 `.trim();
 
 // Compressed-schedule preference: what share of student groups have at least
@@ -89,7 +100,7 @@ const STUDENT_GROUP_FREE_DAY_RATIO_CYPHER = `
   OPTIONAL MATCH (g)<-[:ATTENDED_BY]-(c:Class {branchId: $branchId})-[:SCHEDULED_AT]->(t:TimeSlot {branchId: $branchId})
   WITH g, dayCount, count(DISTINCT t.day) AS usedDays
   WITH dayCount, count(g) AS totalGroups, sum(CASE WHEN usedDays < dayCount THEN 1 ELSE 0 END) AS withFreeDay
-  RETURN round(100.0 * toFloat(withFreeDay) / toFloat(totalGroups), 2) AS value
+  RETURN round(100.0 * toFloat(withFreeDay) / toFloat(totalGroups) * 100) / 100 AS value
 `.trim();
 
 // Gap-based metric: how many idle time slots (on average) separate a
@@ -111,7 +122,7 @@ const PROFESSOR_AVG_GAP_LENGTH_CYPHER = `
   WHERE c1 <> c2
   WITH c1, p, min(length(path)) AS hops
   WITH p, avg(hops - 1) AS avgGapPerProf
-  RETURN CASE WHEN avgGapPerProf IS NULL THEN 0.0 ELSE round(avg(avgGapPerProf), 2) END AS value
+  RETURN CASE WHEN avgGapPerProf IS NULL THEN 0.0 ELSE round(avg(avgGapPerProf) * 100) / 100 END AS value
 `.trim();
 
 // ── Lookup map ────────────────────────────────────────────────────────────────
