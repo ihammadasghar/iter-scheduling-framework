@@ -121,19 +121,19 @@ describe('simulationService', () => {
     expect(postSpy).toHaveBeenCalledWith('/simulations/sim-1/heartbeat');
   });
 
-  it('deleteSimulation silently ignores 404 (Gap 4)', async () => {
-    const gap4Error: ApiError = { statusCode: 404, code: 'NOT_FOUND', message: 'Not found' };
-    deleteSpy.mockRejectedValue(gap4Error);
+  it('deleteSimulation calls DELETE /simulations/:id and resolves void', async () => {
+    deleteSpy.mockReturnValue(axiosOk(null));
+    await expect(simulationService.deleteSimulation('sim-1')).resolves.toBeUndefined();
+    expect(deleteSpy).toHaveBeenCalledWith('/simulations/sim-1');
+  });
+
+  it('deleteSimulation treats an already-gone (404) simulation as success', async () => {
+    const notFoundError: ApiError = { statusCode: 404, code: 'NOT_FOUND', message: 'Not found' };
+    deleteSpy.mockRejectedValue(notFoundError);
     await expect(simulationService.deleteSimulation('sim-1')).resolves.toBeUndefined();
   });
 
-  it('deleteSimulation silently ignores 405 (Gap 4)', async () => {
-    const gap4Error: ApiError = { statusCode: 405, code: 'METHOD_NOT_ALLOWED', message: 'Not allowed' };
-    deleteSpy.mockRejectedValue(gap4Error);
-    await expect(simulationService.deleteSimulation('sim-1')).resolves.toBeUndefined();
-  });
-
-  it('deleteSimulation rethrows non-gap errors', async () => {
+  it('deleteSimulation rethrows non-404 errors', async () => {
     const serverError: ApiError = { statusCode: 500, code: 'INTERNAL_SERVER_ERROR', message: 'Boom' };
     deleteSpy.mockRejectedValue(serverError);
     await expect(simulationService.deleteSimulation('sim-1')).rejects.toMatchObject({ statusCode: 500 });

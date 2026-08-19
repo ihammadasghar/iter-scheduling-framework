@@ -16,6 +16,7 @@ const makeGitHub = (): IGitHubService => ({
   writeFile: vi.fn().mockResolvedValue(undefined),
   createPullRequest: vi.fn().mockResolvedValue('pr-1'),
   mergePullRequest: vi.fn().mockResolvedValue(undefined),
+  closePullRequest: vi.fn().mockResolvedValue(undefined),
   getPullRequestDiff: vi.fn().mockResolvedValue(''),
   listOpenPullRequests: vi.fn().mockResolvedValue([]),
   addPullRequestComment: vi.fn().mockResolvedValue(undefined),
@@ -153,6 +154,58 @@ describe('SimulationService.heartbeat()', () => {
       statusCode: 404,
       message: 'Simulation not found or expired',
     });
+  });
+});
+
+describe('SimulationService.delete()', () => {
+  let github: IGitHubService;
+  let graph: IGraphService;
+  let registry: ISessionRegistry;
+  let service: SimulationService;
+
+  beforeEach(() => {
+    github = makeGitHub();
+    graph = makeGraph();
+    registry = makeRegistry(true);
+    service = new SimulationService(github, graph, registry);
+  });
+
+  it('throws 404 when the session is not found (GCd or never created)', async () => {
+    const registryNotFound = makeRegistry(false);
+    const svc = new SimulationService(github, graph, registryNotFound);
+
+    await expect(svc.delete('sim-gone')).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Simulation not found or expired',
+    });
+
+    expect(graph.flush).not.toHaveBeenCalled();
+    expect(github.deleteBranch).not.toHaveBeenCalled();
+  });
+
+  it('flushes the graph session, deletes the branch, and removes it from the registry', async () => {
+    await service.delete('sim-alice-abc123');
+
+    expect(graph.flush).toHaveBeenCalledWith('sim-alice-abc123');
+    expect(github.deleteBranch).toHaveBeenCalledWith('sim-alice-abc123');
+    expect(registry.remove).toHaveBeenCalledWith('sim-alice-abc123');
+  });
+
+  it('flushes, deletes, and removes in that order', async () => {
+    const calls: string[] = [];
+    (graph.flush as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+      calls.push('flush');
+    });
+    (github.deleteBranch as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+      calls.push('deleteBranch');
+    });
+    (registry.remove as ReturnType<typeof vi.fn>).mockImplementation(() => {
+      calls.push('remove');
+    });
+
+    await service.delete('sim-alice-abc123');
+
+    expect(calls).toEqual(['flush', 'deleteBranch', 'remove']);
   });
 });
 

@@ -97,14 +97,13 @@ export const simulationService = {
       .then(() => undefined);
   },
 
-  // Gap 4 — DELETE /simulations/:id not yet implemented.
-  // Returns silently on 404/405; rethrows all other errors.
+  // Deleting an already-gone simulation is treated as success (idempotent).
   deleteSimulation(simId: string): Promise<void> {
     return apiClient
       .delete<void>(`/simulations/${simId}`)
       .then(() => undefined)
       .catch((err: ApiError) => {
-        if (isNotFound(err) || err.statusCode === 405) return;
+        if (isNotFound(err)) return;
         throw err;
       });
   },

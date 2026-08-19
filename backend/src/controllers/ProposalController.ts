@@ -13,9 +13,9 @@ export class ProposalController {
     }
   }
 
-  async list(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  async list(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const proposals = await this.service.list();
+      const proposals = await this.service.list(req.query['status'] as string | undefined);
       res.status(200).json(proposals);
     } catch (err) {
       next(err);
@@ -34,6 +34,15 @@ export class ProposalController {
   async merge(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const proposal = await this.service.merge(req.params['id'] as string);
+      res.status(200).json(proposal);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async reject(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const proposal = await this.service.reject(req.params['id'] as string);
       res.status(200).json(proposal);
     } catch (err) {
       next(err);

@@ -15,7 +15,7 @@ export default function ProposalsDashboardPage(): React.ReactElement {
 
   const fetchAll = (): void => {
     dispatch(fetchProposalsThunk());
-    dispatch(fetchBlockedProposalsThunk()); // Gap 2 — silently ignored on failure
+    dispatch(fetchBlockedProposalsThunk()); // Supplementary section — silently ignored on failure
   };
 
   useEffect(() => { fetchAll(); }, []);

@@ -44,7 +44,7 @@ describe('proposalService', () => {
     expect(result).toHaveLength(1);
   });
 
-  it('listBlockedProposals returns empty array on any error (Gap 2)', async () => {
+  it('listBlockedProposals returns empty array on any error', async () => {
     getSpy.mockRejectedValue({ statusCode: 400, code: 'BAD_REQUEST', message: 'Bad' });
     const result = await proposalService.listBlockedProposals();
     expect(result).toEqual([]);
@@ -65,21 +65,15 @@ describe('proposalService', () => {
     expect(result.status).toBe('MERGED');
   });
 
-  it('rejectProposal silently ignores 404 (Gap 3)', async () => {
-    const gap3Error: ApiError = { statusCode: 404, code: 'NOT_FOUND', message: 'Not found' };
-    postSpy.mockRejectedValue(gap3Error);
+  it('rejectProposal calls POST /proposals/:id/reject', async () => {
+    postSpy.mockReturnValue(axiosOk(undefined));
     await expect(proposalService.rejectProposal('42')).resolves.toBeUndefined();
+    expect(postSpy).toHaveBeenCalledWith('/proposals/42/reject');
   });
 
-  it('rejectProposal silently ignores 501 (Gap 3)', async () => {
-    const gap3Error: ApiError = { statusCode: 501, code: 'NOT_IMPLEMENTED', message: 'Not impl' };
-    postSpy.mockRejectedValue(gap3Error);
-    await expect(proposalService.rejectProposal('42')).resolves.toBeUndefined();
-  });
-
-  it('rejectProposal rethrows non-gap errors', async () => {
-    const serverError: ApiError = { statusCode: 500, code: 'INTERNAL_SERVER_ERROR', message: 'Boom' };
+  it('rejectProposal rethrows errors', async () => {
+    const serverError: ApiError = { statusCode: 404, code: 'NOT_FOUND', message: 'Not found' };
     postSpy.mockRejectedValue(serverError);
-    await expect(proposalService.rejectProposal('42')).rejects.toMatchObject({ statusCode: 500 });
+    await expect(proposalService.rejectProposal('42')).rejects.toMatchObject({ statusCode: 404 });
   });
 });

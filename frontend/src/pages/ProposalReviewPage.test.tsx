@@ -181,7 +181,7 @@ describe('ProposalReviewPage', () => {
     );
   });
 
-  it('shows gap-3 inline error when reject is not available', async () => {
+  it('shows inline error when reject fails', async () => {
     vi.mocked(proposalService.proposalService.rejectProposal).mockRejectedValueOnce({ statusCode: 404 });
     renderPage();
     await waitFor(() => screen.getByRole('button', { name: /close this proposal/i }));
@@ -189,7 +189,19 @@ describe('ProposalReviewPage', () => {
     await waitFor(() => screen.getByRole('heading', { name: /close this proposal\?/i }));
     fireEvent.click(screen.getByRole('button', { name: /yes, close/i }));
     await waitFor(() =>
-      expect(screen.getByText(/this feature is not available yet/i)).toBeInTheDocument(),
+      expect(screen.getByText(/could not close proposal/i)).toBeInTheDocument(),
+    );
+  });
+
+  it('shows close success snackbar after reject', async () => {
+    vi.mocked(proposalService.proposalService.rejectProposal).mockResolvedValueOnce(undefined);
+    renderPage();
+    await waitFor(() => screen.getByRole('button', { name: /close this proposal/i }));
+    fireEvent.click(screen.getByRole('button', { name: /close this proposal/i }));
+    await waitFor(() => screen.getByRole('heading', { name: /close this proposal\?/i }));
+    fireEvent.click(screen.getByRole('button', { name: /yes, close/i }));
+    await waitFor(() =>
+      expect(screen.getByText(/proposal closed/i)).toBeInTheDocument(),
     );
   });
 });

@@ -8,6 +8,9 @@ export function createSimulationsRouter(controller: SimulationController): IRout
   // POST /simulations — create a simulation branch
   router.post('/', (req, res, next) => controller.create(req, res, next));
 
+  // DELETE /simulations/:id — flush the graph session and delete the simulation branch
+  router.delete('/:id', (req, res, next) => controller.delete(req, res, next));
+
   // POST /simulations/:id/heartbeat — keep graph session alive
   router.post('/:id/heartbeat', (req, res, next) => controller.heartbeat(req, res, next));
 

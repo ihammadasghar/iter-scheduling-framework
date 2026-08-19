@@ -10,6 +10,9 @@ const CI_LABEL_READY = 'ci:ready';
 const CI_LABEL_BLOCKED = 'ci:blocked';
 const SCHEDULE_JSON_PATH = 'schedule.json';
 
+type ProposalListStatus = 'ready' | 'blocked' | 'all';
+const VALID_LIST_STATUSES: readonly ProposalListStatus[] = ['ready', 'blocked', 'all'];
+
 export class ProposalService implements IProposalService {
   constructor(
     private readonly github: IGitHubService,
@@ -50,13 +53,21 @@ export class ProposalService implements IProposalService {
     };
   }
 
-  async list(): Promise<readonly Proposal[]> {
+  async list(status?: string): Promise<readonly Proposal[]> {
+    const filter = validateListStatus(status);
+
     const prIds = await this.github.listOpenPullRequests();
     const prs = await Promise.all(prIds.map((id) => this.github.getPullRequest(id)));
 
+    const withLabelMatch = ({ pr }: { pr: { labels: readonly string[] } }): boolean => {
+      if (filter === 'all') return true;
+      const label = filter === 'ready' ? CI_LABEL_READY : CI_LABEL_BLOCKED;
+      return pr.labels.includes(label);
+    };
+
     return prIds
       .map((id, i) => ({ id, pr: prs[i]! }))
-      .filter(({ pr }) => pr.labels.includes(CI_LABEL_READY))
+      .filter(withLabelMatch)
       .map(({ id, pr }) => toProposal(id, pr.head, pr.labels, pr.createdAt));
   }
 
@@ -92,6 +103,19 @@ export class ProposalService implements IProposalService {
     };
   }
 
+  async reject(proposalId: string): Promise<Proposal> {
+    const pr = await this.github.getPullRequest(proposalId);
+
+    await this.github.closePullRequest(proposalId);
+
+    return {
+      id: proposalId,
+      simulationId: pr.head,
+      status: 'REJECTED',
+      createdAt: pr.createdAt,
+    };
+  }
+
   // Computed live against the institution's *current* rules.json (not what was
   // true at submit time) — reflects the criteria the institution values now.
   private async computeScore(proposalId: string, headBranch: string): Promise<WeightedScoreResult> {
@@ -120,6 +144,16 @@ function toProposal(
     status: labelsToStatus(labels),
     createdAt,
   };
+}
+
+function validateListStatus(status: string | undefined): ProposalListStatus {
+  if (status === undefined) return 'ready';
+  if ((VALID_LIST_STATUSES as readonly string[]).includes(status)) {
+    return status as ProposalListStatus;
+  }
+  throw ApiError.badRequest(
+    `Invalid status "${status}" — must be one of: ${VALID_LIST_STATUSES.join(', ')}`,
+  );
 }
 
 function labelsToStatus(labels: readonly string[]): Proposal['status'] {

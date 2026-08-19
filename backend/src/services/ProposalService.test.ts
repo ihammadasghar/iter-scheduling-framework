@@ -23,6 +23,7 @@ const makeGitHub = (): IGitHubService => ({
   writeFile: vi.fn().mockResolvedValue(undefined),
   createPullRequest: vi.fn().mockResolvedValue('42'),
   mergePullRequest: vi.fn().mockResolvedValue(undefined),
+  closePullRequest: vi.fn().mockResolvedValue(undefined),
   getPullRequestDiff: vi.fn().mockResolvedValue('diff --git a/schedule.json'),
   listOpenPullRequests: vi.fn().mockResolvedValue([]),
   addPullRequestComment: vi.fn().mockResolvedValue(undefined),
@@ -261,6 +262,47 @@ describe('ProposalService.list()', () => {
 
     expect(proposals[0]?.simulationId).toBe('sim-bob-xyz');
   });
+
+  it('defaults to only ci:ready PRs when status is omitted', async () => {
+    (github.listOpenPullRequests as ReturnType<typeof vi.fn>).mockResolvedValue(['1', '2']);
+    (github.getPullRequest as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ title: 'P1', head: 'sim-1', labels: ['ci:ready'], createdAt: '2026-01-01T00:00:00.000Z' })
+      .mockResolvedValueOnce({ title: 'P2', head: 'sim-2', labels: ['ci:blocked'], createdAt: '2026-01-02T00:00:00.000Z' });
+
+    const proposals = await service.list();
+
+    expect(proposals).toHaveLength(1);
+    expect(proposals[0]?.status).toBe('READY');
+  });
+
+  it('returns only ci:blocked PRs when status=blocked', async () => {
+    (github.listOpenPullRequests as ReturnType<typeof vi.fn>).mockResolvedValue(['1', '2']);
+    (github.getPullRequest as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ title: 'P1', head: 'sim-1', labels: ['ci:ready'], createdAt: '2026-01-01T00:00:00.000Z' })
+      .mockResolvedValueOnce({ title: 'P2', head: 'sim-2', labels: ['ci:blocked'], createdAt: '2026-01-02T00:00:00.000Z' });
+
+    const proposals = await service.list('blocked');
+
+    expect(proposals).toHaveLength(1);
+    expect(proposals[0]?.id).toBe('2');
+    expect(proposals[0]?.status).toBe('BLOCKED');
+  });
+
+  it('returns all open PRs unfiltered when status=all', async () => {
+    (github.listOpenPullRequests as ReturnType<typeof vi.fn>).mockResolvedValue(['1', '2', '3']);
+    (github.getPullRequest as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ title: 'P1', head: 'sim-1', labels: ['ci:ready'], createdAt: '2026-01-01T00:00:00.000Z' })
+      .mockResolvedValueOnce({ title: 'P2', head: 'sim-2', labels: ['ci:blocked'], createdAt: '2026-01-02T00:00:00.000Z' })
+      .mockResolvedValueOnce({ title: 'P3', head: 'sim-3', labels: [], createdAt: '2026-01-03T00:00:00.000Z' });
+
+    const proposals = await service.list('all');
+
+    expect(proposals).toHaveLength(3);
+  });
+
+  it('throws 400 for an unrecognized status value', async () => {
+    await expect(service.list('bogus')).rejects.toMatchObject({ statusCode: 400 });
+  });
 });
 
 describe('ProposalService.get()', () => {
@@ -408,5 +450,38 @@ describe('ProposalService.merge()', () => {
     const proposal = await service.merge('42');
 
     expect(proposal.createdAt).toBe('2026-06-11T10:00:00.000Z');
+  });
+});
+
+describe('ProposalService.reject()', () => {
+  let github: IGitHubService;
+  let service: ProposalService;
+
+  beforeEach(() => {
+    github = makeGitHub();
+    service = new ProposalService(github, makeGraph(), makeCi(), makeRules());
+  });
+
+  it('closes the PR', async () => {
+    await service.reject('42');
+
+    expect(github.closePullRequest).toHaveBeenCalledWith('42');
+  });
+
+  it('returns a Proposal with status REJECTED, the PR id, and its head/createdAt', async () => {
+    const proposal = await service.reject('42');
+
+    expect(proposal).toEqual({
+      id: '42',
+      simulationId: 'sim-alice-abc123',
+      status: 'REJECTED',
+      createdAt: '2026-06-11T10:00:00.000Z',
+    });
+  });
+
+  it('does not merge the PR', async () => {
+    await service.reject('42');
+
+    expect(github.mergePullRequest).not.toHaveBeenCalled();
   });
 });

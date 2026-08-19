@@ -16,6 +16,7 @@ const makeGitHub = (
   writeFile: vi.fn().mockResolvedValue(undefined),
   createPullRequest: vi.fn().mockResolvedValue('pr-1'),
   mergePullRequest: vi.fn().mockResolvedValue(undefined),
+  closePullRequest: vi.fn().mockResolvedValue(undefined),
   getPullRequestDiff: vi.fn().mockResolvedValue(''),
   listOpenPullRequests: vi.fn().mockResolvedValue([]),
   addPullRequestComment: vi.fn().mockResolvedValue(undefined),

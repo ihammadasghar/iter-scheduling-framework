@@ -23,6 +23,8 @@ export interface IGitHubService {
   ): Promise<void>;
   createPullRequest(head: string, base: string, title: string, body: string): Promise<string>;
   mergePullRequest(pullRequestId: string): Promise<void>;
+  // Soft-reject: closes the PR without merging. The simulation branch is left intact.
+  closePullRequest(pullRequestId: string): Promise<void>;
   getPullRequestDiff(pullRequestId: string): Promise<string>;
   listOpenPullRequests(): Promise<readonly string[]>;
   addPullRequestComment(pullRequestId: string, body: string): Promise<void>;
