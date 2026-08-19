@@ -10,7 +10,9 @@ import { formatCourseLabel } from '@/utils/scheduleFormatters';
 const INSPECTOR_WIDTH = 380;
 
 interface InspectorProps {
-  readonly simId: string;
+  // Omit for a read-only view (e.g. the published schedule) — suggestions
+  // only make sense against a live, editable simulation session.
+  readonly simId?: string;
 }
 
 export default function Inspector({ simId }: InspectorProps): React.ReactElement {
@@ -96,8 +98,12 @@ export default function Inspector({ simId }: InspectorProps): React.ReactElement
         {selectedClass !== undefined && (
           <>
             <ClassDetailSection classItem={selectedClass} />
-            <Divider sx={{ my: 1 }} />
-            <SuggestionsList simId={simId} classId={selectedClass.id} />
+            {simId !== undefined && (
+              <>
+                <Divider sx={{ my: 1 }} />
+                <SuggestionsList simId={simId} classId={selectedClass.id} />
+              </>
+            )}
           </>
         )}
       </Box>

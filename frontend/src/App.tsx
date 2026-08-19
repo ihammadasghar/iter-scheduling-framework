@@ -9,6 +9,7 @@ import AppShell from '@/templates/AppShell';
 import AdminGuard from '@/organisms/AdminGuard';
 import SimulationDashboardPage from '@/pages/SimulationDashboardPage';
 import TimetablePage from '@/pages/TimetablePage';
+import PublishedSchedulePage from '@/pages/PublishedSchedulePage';
 import ProposalsDashboardPage from '@/pages/ProposalsDashboardPage';
 import ProposalReviewPage from '@/pages/ProposalReviewPage';
 import RulesPage from '@/pages/RulesPage';
@@ -32,6 +33,7 @@ export default function App(): React.ReactElement {
               {/* User routes */}
               <Route path="/" element={<SimulationDashboardPage />} />
               <Route path="/simulations/:id" element={<TimetablePage />} />
+              <Route path="/schedule" element={<PublishedSchedulePage />} />
 
               {/* Admin routes — guarded by role check */}
               <Route

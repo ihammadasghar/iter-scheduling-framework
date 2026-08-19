@@ -8,11 +8,13 @@ import { SimulationService } from './services/SimulationService.js';
 import { ProposalService } from './services/ProposalService.js';
 import { CiPipelineService } from './services/CiPipelineService.js';
 import { RulesService } from './services/RulesService.js';
+import { ScheduleService } from './services/ScheduleService.js';
 import { SessionRegistry } from './sessions/SessionRegistry.js';
 import { SessionGarbageCollector } from './sessions/SessionGarbageCollector.js';
 import { SimulationController } from './controllers/SimulationController.js';
 import { ProposalController } from './controllers/ProposalController.js';
 import { RulesController } from './controllers/RulesController.js';
+import { ScheduleController } from './controllers/ScheduleController.js';
 
 const DEFAULT_SESSION_TTL_MS = 300_000;  // 5 minutes
 const DEFAULT_GC_INTERVAL_MS = 60_000;   // 1 minute
@@ -21,6 +23,7 @@ export interface Container {
   readonly simulationController: SimulationController;
   readonly proposalController: ProposalController;
   readonly rulesController: RulesController;
+  readonly scheduleController: ScheduleController;
 }
 
 export function buildContainer(): Container {
@@ -63,10 +66,12 @@ export function buildContainer(): Container {
   const rulesService = new RulesService(githubService);
   const ciPipelineService = new CiPipelineService(githubService, graphService, rulesService);
   const proposalService = new ProposalService(githubService, graphService, ciPipelineService, rulesService);
+  const scheduleService = new ScheduleService(githubService);
 
   return {
     simulationController: new SimulationController(simulationService),
     proposalController: new ProposalController(proposalService),
     rulesController: new RulesController(rulesService),
+    scheduleController: new ScheduleController(scheduleService),
   };
 }
