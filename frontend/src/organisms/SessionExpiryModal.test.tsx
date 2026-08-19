@@ -77,6 +77,20 @@ describe('SessionExpiryModal', () => {
     expect(store.getState().session.expired).toBe(false);
   });
 
+  it('"Go Back to My Simulations" deletes the now-stale draft so it stops appearing on the dashboard', async () => {
+    const { simulationService } = await import('@/services/simulationService');
+    renderModal(true);
+    fireEvent.click(screen.getByRole('button', { name: /go back to my simulations/i }));
+    expect(simulationService.deleteSimulation).toHaveBeenCalledWith('sim-1');
+  });
+
+  it('"Start a New Draft" also deletes the now-stale draft', async () => {
+    const { simulationService } = await import('@/services/simulationService');
+    renderModal(true);
+    fireEvent.click(screen.getByRole('button', { name: /start a new draft/i }));
+    expect(simulationService.deleteSimulation).toHaveBeenCalledWith('sim-1');
+  });
+
   it('"Start a New Draft" opens the CreateSimulationDialog', () => {
     renderModal(true);
     fireEvent.click(screen.getByRole('button', { name: /start a new draft/i }));

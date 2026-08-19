@@ -1,10 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import TimetablePage from './TimetablePage';
+import { simulationService } from '@/services/simulationService';
 import classReducer from '@/store/reducers/classSlice';
 import conflictReducer from '@/store/reducers/conflictSlice';
 import metricReducer from '@/store/reducers/metricSlice';
@@ -130,5 +131,23 @@ describe('TimetablePage — workspace tabs', () => {
     expect(store.getState().ui.inspectorOpen).toBe(true);
     expect(screen.getByText(/Grid View Content/)).toBeInTheDocument();
     expect(screen.queryByText(/Overview Content/)).not.toBeInTheDocument();
+  });
+
+  it('marks the session expired immediately when the initial classes fetch 404s (no waiting for the next heartbeat)', async () => {
+    const notFound = { statusCode: 404, code: 'NOT_FOUND', message: 'Simulation not found or expired' };
+    (simulationService.getSimulationClasses as ReturnType<typeof vi.fn>).mockRejectedValueOnce(notFound);
+
+    const { store } = renderPage();
+
+    await waitFor(() => expect(store.getState().session.expired).toBe(true));
+  });
+
+  it('marks the session expired immediately when the initial schedule fetch 404s', async () => {
+    const notFound = { statusCode: 404, code: 'NOT_FOUND', message: 'Simulation not found or expired' };
+    (simulationService.getSchedule as ReturnType<typeof vi.fn>).mockRejectedValueOnce(notFound);
+
+    const { store } = renderPage();
+
+    await waitFor(() => expect(store.getState().session.expired).toBe(true));
   });
 });
