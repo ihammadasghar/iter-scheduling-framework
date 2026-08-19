@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "University Scheduling System — Express API",
   "main": "dist/server.js",
+  "type": "module",
   "scripts": {
     "dev": "nodemon",
     "build": "tsc",
@@ -11,10 +12,13 @@
     "test:coverage": "vitest run --coverage",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "lint": "tsc --noEmit",
-    "benchmark": "ts-node --esm src/scripts/benchmark.ts"
+    "benchmark": "tsx src/scripts/benchmark.ts"
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
   },
   "dependencies": {
     "@octokit/rest": "^22.0.1",
@@ -33,7 +37,7 @@
     "@vitest/coverage-v8": "^4.1.8",
     "allure-vitest": "^3.2.2",
     "nodemon": "^3.1.14",
-    "ts-node": "^10.9.2",
+    "tsx": "^4.23.12",
     "typescript": "^6.0.3",
     "vitest": "^4.1.8"
   }

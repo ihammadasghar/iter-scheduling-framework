@@ -1,3 +1,4 @@
+import neo4j from 'neo4j-driver';
 import { ApiError } from '../types/ApiError.js';
 import { parseScheduleJson, buildHydrationBatches } from '../utils/ScheduleHydrator.js';
 import { translateRule } from '../utils/MetricRuleTranslator.js';
@@ -130,7 +131,11 @@ export class GraphService implements IGraphService {
       ORDER BY class.id
     `.trim();
 
-    const params = { branchId: simulationId, skip, limit };
+    // SKIP/LIMIT must be sent as Bolt integers, not floats — the neo4j-driver
+    // sends a plain JS `number` as a Float by default, which Memgraph (unlike
+    // Neo4j) rejects outright for these clauses ("Limit on number of returned
+    // elements must be an integer").
+    const params = { branchId: simulationId, skip: neo4j.int(skip), limit: neo4j.int(limit) };
 
     const rows = await this.client.run<{ class: Record<string, unknown> }>(cypher, params);
 
