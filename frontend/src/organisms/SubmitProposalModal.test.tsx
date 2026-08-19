@@ -165,10 +165,29 @@ describe('SubmitProposalModal', () => {
       );
     });
 
-    it('shows error snackbar on API failure', async () => {
-      vi.mocked(proposalService.createProposal).mockRejectedValue(
-        new Error('Network error'),
+    it('shows the backend\'s actual reason on API failure, not a generic message', async () => {
+      // apiClient's interceptor always normalises rejections to this shape —
+      // see services/apiClient.ts's normalizeApiError.
+      vi.mocked(proposalService.createProposal).mockRejectedValue({
+        statusCode: 409,
+        code: 'CONFLICT',
+        message: 'A proposal for this draft is already open — check My Proposals before submitting again.',
+      });
+
+      render_({ hasUnsavedChanges: false });
+      fireEvent.change(screen.getByLabelText(/explain your changes/i), {
+        target: { value: 'Some changes' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /submit.*review/i }));
+
+      await waitFor(() =>
+        expect(screen.getByText(/proposal for this draft is already open/i)).toBeInTheDocument(),
       );
+      expect(screen.queryByText(/could not submit proposal/i)).not.toBeInTheDocument();
+    });
+
+    it('falls back to a generic message when the rejection has no message at all', async () => {
+      vi.mocked(proposalService.createProposal).mockRejectedValue({});
 
       render_({ hasUnsavedChanges: false });
       fireEvent.change(screen.getByLabelText(/explain your changes/i), {

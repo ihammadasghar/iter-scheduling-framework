@@ -217,6 +217,63 @@ describe('GitHubService', () => {
     );
   });
 
+  it('createPullRequest rethrows "already exists" as a clear ApiError.conflict', async () => {
+    mock.rest.pulls.create.mockRejectedValue({
+      status: 422,
+      response: {
+        data: {
+          message: 'Validation Failed',
+          errors: [{ resource: 'PullRequest', code: 'custom', message: 'A pull request already exists for ihammadasghar:sim-1.' }],
+        },
+      },
+    });
+
+    await expect(
+      service.createPullRequest('sim-1', 'main', 'My PR', 'description'),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      code: 'CONFLICT',
+      message: 'A proposal for this draft is already open — check My Proposals before submitting again.',
+    });
+  });
+
+  it('createPullRequest rethrows "no commits between" as a clear ApiError.badRequest', async () => {
+    mock.rest.pulls.create.mockRejectedValue({
+      status: 422,
+      response: {
+        data: { message: 'No commits between main and sim-1' },
+      },
+    });
+
+    await expect(
+      service.createPullRequest('sim-1', 'main', 'My PR', 'description'),
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      code: 'BAD_REQUEST',
+      message: 'This draft has no changes yet — make an edit before submitting.',
+    });
+  });
+
+  it('createPullRequest falls back to GitHub\'s own message for other 422s', async () => {
+    mock.rest.pulls.create.mockRejectedValue({
+      status: 422,
+      response: { data: { message: 'head and base branches are the same' } },
+    });
+
+    await expect(
+      service.createPullRequest('sim-1', 'main', 'My PR', 'description'),
+    ).rejects.toMatchObject({ statusCode: 400, message: 'head and base branches are the same' });
+  });
+
+  it('createPullRequest rethrows non-422 errors unchanged', async () => {
+    const boom = { status: 500, message: 'GitHub is down' };
+    mock.rest.pulls.create.mockRejectedValue(boom);
+
+    await expect(
+      service.createPullRequest('sim-1', 'main', 'My PR', 'description'),
+    ).rejects.toBe(boom);
+  });
+
   // ── mergePullRequest ────────────────────────────────────────────────────────
 
   it('mergePullRequest calls pulls.merge with the numeric PR number', async () => {

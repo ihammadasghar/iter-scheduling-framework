@@ -15,8 +15,14 @@ interface SubmitProposalModalProps {
   readonly onClose: () => void;
 }
 
+const FALLBACK_ERROR_MESSAGE = 'Could not submit proposal. Please try again.';
+
+// errorMessage is only read for the 'error' case — the backend's actual
+// reason (e.g. "A proposal for this draft is already open") instead of a
+// generic message that doesn't tell you retrying won't help.
 const snackConfig = (
   status: SnackStatus,
+  errorMessage: string | undefined,
 ): { message: string; severity: 'info' | 'success' | 'warning' | 'error' } => {
   switch (status) {
     case 'PENDING':
@@ -42,7 +48,7 @@ const snackConfig = (
       };
     case 'error':
       return {
-        message: 'Could not submit proposal. Please try again.',
+        message: errorMessage ?? FALLBACK_ERROR_MESSAGE,
         severity: 'error',
       };
     default:
@@ -60,6 +66,7 @@ export default function SubmitProposalModal({
 
   const [stage, setStage] = useState<Stage>('proposal-form');
   const [snackStatus, setSnackStatus] = useState<SnackStatus>(null);
+  const [snackErrorMessage, setSnackErrorMessage] = useState<string | undefined>(undefined);
   const [snackOpen, setSnackOpen] = useState(false);
 
   // Determine starting stage whenever the modal opens
@@ -80,13 +87,15 @@ export default function SubmitProposalModal({
 
     if (createProposalThunk.fulfilled.match(result)) {
       setSnackStatus(result.payload.status);
+      setSnackErrorMessage(undefined);
     } else {
       setSnackStatus('error');
+      setSnackErrorMessage(result.payload?.message);
     }
     setSnackOpen(true);
   };
 
-  const { message, severity } = snackConfig(snackStatus);
+  const { message, severity } = snackConfig(snackStatus, snackErrorMessage);
 
   return (
     <>
