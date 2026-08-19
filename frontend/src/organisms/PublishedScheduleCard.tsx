@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 
 /**
  * Static card representing the official published schedule on main.
- * "View Schedule" is a soft stub until the read-only simulation view is implemented.
+ * "View Schedule" opens a read-only view of the currently published timetable.
  */
 export default function PublishedScheduleCard(): React.ReactElement {
   const navigate = useNavigate();
@@ -36,7 +36,7 @@ export default function PublishedScheduleCard(): React.ReactElement {
           <Tooltip title="Opens a read-only view of the current published timetable">
             <Button
               variant="outlined"
-              onClick={() => navigate('/simulations/main')}
+              onClick={() => navigate('/schedule')}
               aria-label="View the official published schedule"
             >
               View Schedule

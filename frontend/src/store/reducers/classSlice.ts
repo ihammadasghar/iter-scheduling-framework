@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { simulationService } from '@/services/simulationService';
+import { scheduleService } from '@/services/scheduleService';
 import type { ScheduleClass, UpdateClassRequest, ApiError } from '@/types';
 
 interface ClassState {
@@ -29,6 +30,21 @@ export const fetchClassesPage = createAsyncThunk<
 >('class/fetchPage', async ({ simId, page }, { rejectWithValue }) => {
   try {
     const result = await simulationService.getSimulationClasses(simId, page, PAGE_SIZE);
+    return { classes: [...result.data], total: result.total, page: result.page };
+  } catch (err) {
+    return rejectWithValue(err as ApiError);
+  }
+});
+
+// Read-only counterpart to fetchClassesPage — pages through the currently
+// published (main) schedule instead of an editable simulation branch.
+export const fetchPublishedClassesPage = createAsyncThunk<
+  { classes: ScheduleClass[]; total: number; page: number },
+  { page: number },
+  { rejectValue: ApiError }
+>('class/fetchPublishedPage', async ({ page }, { rejectWithValue }) => {
+  try {
+    const result = await scheduleService.getPublishedClasses(page, PAGE_SIZE);
     return { classes: [...result.data], total: result.total, page: result.page };
   } catch (err) {
     return rejectWithValue(err as ApiError);
@@ -94,6 +110,28 @@ const classSlice = createSlice({
       .addCase(fetchClassesPage.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload?.message ?? 'Failed to load classes';
+      })
+      // Published schedule — same merge/dedupe-by-id shape as fetchClassesPage
+      .addCase(fetchPublishedClassesPage.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchPublishedClassesPage.fulfilled, (state, action) => {
+        const newIds = new Set(state.classes.map((c) => c.id));
+        const fresh = action.payload.classes.filter((c) => !newIds.has(c.id));
+        const merged = [...state.classes, ...fresh];
+        return {
+          ...state,
+          loading: false,
+          classes: merged,
+          total: action.payload.total,
+          currentPage: action.payload.page,
+          hasMore: merged.length < action.payload.total,
+        };
+      })
+      .addCase(fetchPublishedClassesPage.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload?.message ?? 'Failed to load schedule';
       })
       .addCase(updateClassThunk.pending, (state) => {
         state.error = null;

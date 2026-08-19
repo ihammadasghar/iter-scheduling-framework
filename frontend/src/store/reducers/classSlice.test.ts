@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import classReducer, {
   fetchClassesPage,
+  fetchPublishedClassesPage,
   updateClassThunk,
   commitSimulationThunk,
   resetClasses,
@@ -59,6 +60,45 @@ describe('classSlice', () => {
     const page = { classes: [makeClass('CLS_001')], total: 1, page: 1 };
     store.dispatch(fetchClassesPage.fulfilled(page, 'r1', { simId: 'sim-1', page: 1 }));
     expect(store.getState().class.hasMore).toBe(false);
+  });
+
+  it('fetchPublishedClassesPage.pending sets loading true', () => {
+    const store = makeStore();
+    store.dispatch(fetchPublishedClassesPage.pending('r', { page: 1 }));
+    expect(store.getState().class.loading).toBe(true);
+  });
+
+  it('fetchPublishedClassesPage.fulfilled appends classes without duplicates', () => {
+    const store = makeStore();
+    const page1 = { classes: [makeClass('CLS_001'), makeClass('CLS_002')], total: 3, page: 1 };
+    store.dispatch(fetchPublishedClassesPage.fulfilled(page1, 'r1', { page: 1 }));
+    expect(store.getState().class.classes).toHaveLength(2);
+
+    const page2 = { classes: [makeClass('CLS_003')], total: 3, page: 2 };
+    store.dispatch(fetchPublishedClassesPage.fulfilled(page2, 'r2', { page: 2 }));
+    expect(store.getState().class.classes).toHaveLength(3);
+    expect(store.getState().class.hasMore).toBe(false);
+  });
+
+  it('fetchPublishedClassesPage.rejected sets a schedule-specific fallback error', () => {
+    const store = makeStore();
+    store.dispatch(fetchPublishedClassesPage.rejected(null, 'r', { page: 1 }));
+    expect(store.getState().class.error).toBe('Failed to load schedule');
+  });
+
+  it('fetchPublishedClassesPage async dispatches and populates the store', async () => {
+    const { scheduleService } = await import('@/services/scheduleService');
+    vi.spyOn(scheduleService, 'getPublishedClasses').mockResolvedValue({
+      data: [makeClass('CLS_001')],
+      total: 1,
+      page: 1,
+      limit: 50,
+    });
+
+    const store = makeStore();
+    await store.dispatch(fetchPublishedClassesPage({ page: 1 }));
+    expect(store.getState().class.classes).toHaveLength(1);
+    expect(scheduleService.getPublishedClasses).toHaveBeenCalledWith(1, 50);
   });
 
   it('updateClassThunk.fulfilled replaces the updated class in state', () => {

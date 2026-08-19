@@ -67,12 +67,16 @@ const makeStore = (overrides: {
     },
   });
 
-const render_ = (overrides = {}) => {
+// simId defaults to a normal editable-session value; pass `null` explicitly
+// to render Inspector with no simId at all (read-only mode) — a plain
+// `undefined` default parameter can't distinguish "omitted" from "explicitly
+// undefined" the way `null` can here.
+const render_ = (overrides = {}, simId: string | null = 'sim-test-123') => {
   const store = makeStore(overrides);
   render(
     <Provider store={store}>
       <MemoryRouter>
-        <Inspector simId="sim-test-123" />
+        <Inspector simId={simId ?? undefined} />
       </MemoryRouter>
     </Provider>,
   );
@@ -136,6 +140,17 @@ describe('Inspector', () => {
       classes: [sampleClass],
     });
     expect(screen.getByText(/monday period 1/i)).toBeInTheDocument();
+  });
+
+  it('does not fetch or render suggestions when simId is omitted (read-only mode)', async () => {
+    const { simulationService } = await import('@/services/simulationService');
+    render_(
+      { inspectorOpen: true, selectedClassId: 'CLS_001', classes: [sampleClass] },
+      null,
+    );
+    expect(simulationService.getClassSuggestions).not.toHaveBeenCalled();
+    // Class details still render — only the suggestions section is skipped
+    expect(screen.getByText('Biology 101 — Section A')).toBeInTheDocument();
   });
 
   it('closes inspector and deselects class on × click', () => {
