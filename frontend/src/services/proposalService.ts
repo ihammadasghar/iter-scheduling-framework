@@ -1,8 +1,5 @@
 import apiClient from './apiClient';
-import type { Proposal, ProposalDetail, CreateProposalRequest, ApiError } from '@/types';
-
-const isGap = (err: ApiError): boolean =>
-  err.statusCode === 404 || err.statusCode === 405 || err.statusCode === 501;
+import type { Proposal, ProposalDetail, CreateProposalRequest } from '@/types';
 
 export const proposalService = {
   createProposal(params: CreateProposalRequest): Promise<Proposal> {
@@ -18,8 +15,8 @@ export const proposalService = {
       .then((r) => r.data);
   },
 
-  // Gap 2 — GET /proposals?status=blocked not yet implemented.
-  // Returns empty array on any error rather than surfacing it to users.
+  // BLOCKED section is supplementary — swallow failures so it doesn't take
+  // down the rest of the dashboard.
   listBlockedProposals(): Promise<Proposal[]> {
     return apiClient
       .get<Proposal[]>('/proposals', { params: { status: 'blocked' } })
@@ -39,15 +36,10 @@ export const proposalService = {
       .then((r) => r.data);
   },
 
-  // Gap 3 — POST /proposals/:id/reject not yet implemented.
-  // Returns silently on 404/405; rethrows all other errors.
+  // Soft reject: closes the PR, keeps the simulation branch.
   rejectProposal(id: string): Promise<void> {
     return apiClient
       .post<void>(`/proposals/${id}/reject`)
-      .then(() => undefined)
-      .catch((err: ApiError) => {
-        if (isGap(err)) return;
-        throw err;
-      });
+      .then(() => undefined);
   },
 };

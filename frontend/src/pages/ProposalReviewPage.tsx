@@ -95,8 +95,7 @@ export default function ProposalReviewPage(): React.ReactElement {
       setSnackbar({ open: true, message: 'Proposal closed.', severity: 'info' });
       setTimeout(() => navigate('/admin/proposals'), 1500);
     } else {
-      // Gap 3: reject not implemented — show graceful message
-      setInlineError('This feature is not available yet.');
+      setInlineError('Could not close proposal. Please try again.');
     }
   };
 

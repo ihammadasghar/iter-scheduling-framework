@@ -18,6 +18,8 @@ export interface PreviewClassUpdateResult {
 
 export interface ISimulationService {
   create(params: CreateSimulationParams): Promise<Simulation>;
+  // Flushes the graph session, deletes the simulation branch, and removes it from the registry.
+  delete(simulationId: string): Promise<void>;
   heartbeat(simulationId: string): Promise<void>;
   commit(simulationId: string): Promise<void>;
   listClasses(params: ListClassesParams): Promise<ListClassesResult>;

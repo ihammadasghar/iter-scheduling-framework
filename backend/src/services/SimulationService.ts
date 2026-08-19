@@ -57,6 +57,17 @@ export class SimulationService implements ISimulationService {
     return { id: simulationId, branchId: simulationId, createdAt };
   }
 
+  async delete(simulationId: string): Promise<void> {
+    const touched = this.registry.touch(simulationId);
+    if (!touched) {
+      throw ApiError.notFound('Simulation not found or expired');
+    }
+
+    await this.graph.flush(simulationId);
+    await this.github.deleteBranch(simulationId);
+    this.registry.remove(simulationId);
+  }
+
   async heartbeat(simulationId: string): Promise<void> {
     const found = this.registry.touch(simulationId);
     if (!found) {

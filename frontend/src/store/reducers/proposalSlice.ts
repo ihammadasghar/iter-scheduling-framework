@@ -117,7 +117,7 @@ const proposalSlice = createSlice({
         state.loading = false;
         state.error = action.payload?.message ?? 'Failed to load proposals';
       })
-      // Blocked proposals — failure is silent (Gap 2)
+      // Blocked proposals — failure is silent (supplementary section)
       .addCase(fetchBlockedProposalsThunk.fulfilled, (state, action) => {
         state.blocked = action.payload;
       })

@@ -87,8 +87,8 @@ describe('DeleteSimulationDialog', () => {
     });
   });
 
-  it('shows inline error when delete fails (Gap 4)', async () => {
-    vi.mocked(simulationService.simulationService.deleteSimulation).mockRejectedValueOnce({ statusCode: 404 });
+  it('shows inline error when delete fails', async () => {
+    vi.mocked(simulationService.simulationService.deleteSimulation).mockRejectedValueOnce({ statusCode: 500 });
     renderDialog();
 
     fireEvent.click(screen.getByRole('button', { name: /yes, delete draft/i }));

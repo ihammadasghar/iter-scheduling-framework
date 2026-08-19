@@ -41,7 +41,6 @@ export default function DeleteSimulationDialog({
     if (deleteSimulationThunk.fulfilled.match(result)) {
       handleClose();
     } else {
-      // Gap 4: delete endpoint not yet implemented — show inline error rather than crashing
       setError('Could not delete — please try again later.');
     }
   };

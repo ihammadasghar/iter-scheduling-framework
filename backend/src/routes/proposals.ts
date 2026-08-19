@@ -17,6 +17,9 @@ export function createProposalsRouter(controller: ProposalController): IRouter {
   // POST /proposals/:id/merge — approve and merge PR into main
   router.post('/:id/merge', (req, res, next) => controller.merge(req, res, next));
 
+  // POST /proposals/:id/reject — soft-reject: close the PR, keep the simulation branch
+  router.post('/:id/reject', (req, res, next) => controller.reject(req, res, next));
+
   return router;
 }
 
