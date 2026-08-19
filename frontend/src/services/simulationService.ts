@@ -9,6 +9,7 @@ import type {
   UpdateClassRequest,
   WeightedScoreResult,
   ApiError,
+  ScheduleJson,
 } from '@/types';
 
 export interface PreviewClassUpdateResponse {
@@ -82,6 +83,12 @@ export const simulationService = {
   ): Promise<PreviewClassUpdateResponse> {
     return apiClient
       .post<PreviewClassUpdateResponse>(`/simulations/${simId}/classes/${classId}/preview`, params)
+      .then((r) => r.data);
+  },
+
+  getSchedule(simId: string): Promise<ScheduleJson> {
+    return apiClient
+      .get<ScheduleJson>(`/simulations/${simId}/schedule`)
       .then((r) => r.data);
   },
 

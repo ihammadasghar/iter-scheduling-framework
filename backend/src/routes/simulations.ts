@@ -42,6 +42,9 @@ export function createSimulationsRouter(controller: SimulationController): IRout
     controller.previewClassUpdate(req, res, next),
   );
 
+  // GET /simulations/:id/schedule — the in-progress schedule for this simulation (Overview tab)
+  router.get('/:id/schedule', (req, res, next) => controller.getSchedule(req, res, next));
+
   return router;
 }
 

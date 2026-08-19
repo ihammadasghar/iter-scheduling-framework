@@ -10,6 +10,7 @@ import type {
   MetricResult,
   WeightedScoreResult,
 } from '../types/domain.js';
+import type { ScheduleJson } from '../types/scheduleJson.js';
 
 export interface PreviewClassUpdateResult {
   readonly metrics: readonly MetricResult[];
@@ -33,4 +34,5 @@ export interface ISimulationService {
     classId: string,
     patch: UpdateClassParams,
   ): Promise<PreviewClassUpdateResult>;
+  getSchedule(simulationId: string): Promise<ScheduleJson>;
 }

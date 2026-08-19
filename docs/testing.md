@@ -55,3 +55,21 @@ container (mirroring `docker-compose.yml`'s service definition) and runs
 `pnpm test:coverage` step. It runs on every push/PR, unlike the perf
 benchmark, because these are fast and deterministic — nothing about them is
 noisier on a shared CI runner the way a timing measurement would be.
+
+## End-to-end tests (mock GitHub + real Memgraph)
+
+`backend/src/e2e/simulationFlow.e2e.test.ts` drives the full HTTP surface
+(`createAppWithContainer`) through create simulation → resolve a seeded
+conflict → commit → submit a proposal → merge, with `GITHUB_PROVIDER=mock`
+(`LocalGitHubService`, no PAT/repo needed) against a real Memgraph. Kept in
+its own `vitest.e2e.config.ts` for the same reason as the integration suite —
+excluded from the default `pnpm test` run.
+
+```bash
+docker-compose up -d memgraph
+cd backend
+GITHUB_PROVIDER=mock pnpm run test:e2e
+```
+
+Runs in CI as its own step in the same `backend-ci` job, right after
+`test:integration`, against the same Memgraph service container.

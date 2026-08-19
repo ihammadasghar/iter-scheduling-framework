@@ -6,6 +6,7 @@ import metricReducer from './reducers/metricSlice';
 import scoreReducer from './reducers/scoreSlice';
 import proposalReducer from './reducers/proposalSlice';
 import rulesReducer from './reducers/rulesSlice';
+import scheduleReducer from './reducers/scheduleSlice';
 import sessionReducer from './reducers/sessionSlice';
 import uiReducer from './reducers/uiSlice';
 
@@ -18,6 +19,7 @@ export const store = configureStore({
     score: scoreReducer,
     proposal: proposalReducer,
     rules: rulesReducer,
+    schedule: scheduleReducer,
     session: sessionReducer,
     ui: uiReducer,
   },

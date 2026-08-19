@@ -1,0 +1,9 @@
+{
+  "metrics": [
+    { "id": "metric-room-utilization", "name": "Room Utilization", "target": "Room", "condition": "utilization", "threshold": 80, "weight": 1 },
+    { "id": "metric-avg-classes-per-professor", "name": "Average Classes per Professor per Day", "target": "Professor", "condition": "avg_classes_per_day", "threshold": 4, "weight": 1 }
+  ],
+  "constraints": [
+    { "id": "constraint-no-room-double-booking", "name": "No Room Double Booking", "target": "Room", "violationCondition": "double_booking" }
+  ]
+}

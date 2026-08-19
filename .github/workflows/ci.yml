@@ -75,6 +75,14 @@ jobs:
         env:
           MEMGRAPH_URI: bolt://localhost:7687
 
+      # Full simulation -> proposal -> merge flow against a mock GitHub
+      # provider (no PAT/repo needed) + the real Memgraph service above.
+      - name: Run e2e tests (mock GitHub, real Memgraph)
+        run: pnpm run test:e2e
+        env:
+          MEMGRAPH_URI: bolt://localhost:7687
+          GITHUB_PROVIDER: mock
+
       - name: Upload Allure results
         if: always()
         uses: actions/upload-artifact@v4

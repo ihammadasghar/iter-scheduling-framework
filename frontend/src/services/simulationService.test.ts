@@ -3,7 +3,7 @@ import type { MockInstance } from 'vitest';
 import type { AxiosResponse } from 'axios';
 import apiClient from './apiClient';
 import { simulationService } from './simulationService';
-import type { Simulation, ScheduleClass, Conflict, MetricResult, Suggestion, WeightedScoreResult, ApiError } from '@/types';
+import type { Simulation, ScheduleClass, Conflict, MetricResult, Suggestion, WeightedScoreResult, ApiError, ScheduleJson } from '@/types';
 
 // Helper to build a minimal Axios response wrapper
 const axiosOk = <T>(data: T): Promise<AxiosResponse<T>> =>
@@ -137,5 +137,38 @@ describe('simulationService', () => {
     const serverError: ApiError = { statusCode: 500, code: 'INTERNAL_SERVER_ERROR', message: 'Boom' };
     deleteSpy.mockRejectedValue(serverError);
     await expect(simulationService.deleteSimulation('sim-1')).rejects.toMatchObject({ statusCode: 500 });
+  });
+
+  it('getSchedule returns a ScheduleJson object', async () => {
+    const schedule: ScheduleJson = {
+      metadata: {
+        semesterId: 'SEM_2026_SP',
+        semesterName: 'Spring 2026',
+        academicYear: '2025-2026',
+      },
+      timeSlots: [
+        { id: 'TS_MON_P1', day: 'Monday', name: 'Period 1', startTime: '08:00', endTime: '09:30' },
+      ],
+      rooms: [
+        { id: 'RM_101', name: 'Room 101', capacity: 30, building: 'Main' },
+      ],
+      professors: [
+        { id: 'PRF_SMITH', name: 'Dr. Smith', department: 'Biology' },
+      ],
+      studentGroups: [
+        { id: 'GRP_BIO_Y1', name: 'Biology Year 1', size: 25 },
+      ],
+      courses: [
+        { id: 'CRS_BIO101', code: 'BIO101', name: 'Intro to Biology', department: 'Biology' },
+      ],
+      classes: [
+        { id: 'CLS_00001', courseId: 'CRS_BIO101', title: 'Intro to Biology', professorId: 'PRF_SMITH', studentGroupId: 'GRP_BIO_Y1', roomId: 'RM_101', timeSlotIds: ['TS_MON_P1'] },
+      ],
+    };
+    getSpy.mockReturnValue(axiosOk(schedule));
+    const result = await simulationService.getSchedule('sim-1');
+    expect(getSpy).toHaveBeenCalledWith('/simulations/sim-1/schedule');
+    expect(result.metadata.semesterId).toBe('SEM_2026_SP');
+    expect(result.rooms).toHaveLength(1);
   });
 });

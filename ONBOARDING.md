@@ -86,6 +86,14 @@ The system is split into three distinct layers:
 - Proposals are GitHub Pull Requests, managed via `octokit`.
 - Admin-defined rules (metrics, constraints) live in `rules.json` on `main` only — kept separate from the schedule data so simulation branches don't diverge in configuration.
 
+#### Local mock mode (`LocalGitHubService`)
+
+For local development and tests, `GITHUB_PROVIDER=mock` (the `.env.example` default) swaps the real Octokit-backed `GitHubService` for `backend/src/services/LocalGitHubService.ts` — an in-memory fake that implements the same `IGitHubService` interface. It models branches as in-memory file maps and pull requests as a simple numbered record, seeded on startup from `backend/src/fixtures/mock-schedule.json` and `mock-rules.json`.
+
+What it fakes: branch create/delete, file read/write, PR create/get/list/label/merge, and unified diff generation between branches — everything the simulation → proposal → merge flow needs.
+
+What it does **not** do: nothing is ever pushed to real GitHub, there's no commit history, and state resets every time the backend process restarts (it's reseeded from the fixture files each time). Switch to `GITHUB_PROVIDER=github` (see README "Using a real GitHub repo") for the real workflow.
+
 ### Layer B: Compute (Memgraph)
 
 - **Ephemeral calculation engine, not a persistent database.**
@@ -124,7 +132,7 @@ The system is split into three distinct layers:
 | pnpm | any recent | `npm i -g pnpm` |
 | Docker | any | Used to run Memgraph |
 | make | any | Pre-installed on macOS/Linux |
-| GitHub PAT | — | Needs `repo` scope on the schedule repository |
+| GitHub PAT | Only if using real GitHub | Needs `repo` scope on the schedule repository — not needed for the default mock mode, see "Local mock mode" above |
 
 ### Setup
 
@@ -136,7 +144,9 @@ make install
 
 # 2. Configure the backend environment
 cp backend/.env.example backend/.env
-# Edit backend/.env — fill in GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO
+# Default: GITHUB_PROVIDER=mock — no GitHub account needed, runs against
+# bundled fixtures. For real GitHub, set GITHUB_PROVIDER=github and fill
+# in GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO (see "Local mock mode" above).
 
 # 3. Start everything
 make dev
@@ -953,9 +963,10 @@ Copy `.env.example` to `.env` and fill in the required values before running the
 |---|---|---|---|
 | `PORT` | No | `3000` | HTTP port the server listens on |
 | `NODE_ENV` | No | `development` | Affects Morgan log format (`dev` vs `combined`) |
-| `GITHUB_TOKEN` | **Yes** | — | GitHub Personal Access Token with `repo` scope |
-| `GITHUB_OWNER` | **Yes** | — | GitHub username or organisation that owns the schedule repo |
-| `GITHUB_REPO` | **Yes** | — | Name of the repository containing `schedule.json` |
+| `GITHUB_PROVIDER` | No | `mock` | `mock` \| `github` — selects `LocalGitHubService` (in-memory fixtures, no GitHub account) or the real Octokit-backed `GitHubService` |
+| `GITHUB_TOKEN` | Only if `GITHUB_PROVIDER=github` | — | GitHub Personal Access Token with `repo` scope |
+| `GITHUB_OWNER` | Only if `GITHUB_PROVIDER=github` | — | GitHub username or organisation that owns the schedule repo |
+| `GITHUB_REPO` | Only if `GITHUB_PROVIDER=github` | — | Name of the repository containing `schedule.json` |
 | `MEMGRAPH_URI` | No | `bolt://localhost:7687` | Bolt URI for Memgraph |
 | `MEMGRAPH_USERNAME` | No | `""` | Memgraph username (empty = no auth) |
 | `MEMGRAPH_PASSWORD` | No | `""` | Memgraph password (empty = no auth) |

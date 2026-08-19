@@ -19,6 +19,7 @@ import type {
   WeightedScoreResult,
 } from '../types/domain.js';
 import { parseRulesJson } from '../types/rulesJson.js';
+import type { ScheduleJson } from '../types/scheduleJson.js';
 
 const SOURCE_BRANCH = 'main';
 const SCHEDULE_JSON_PATH = 'schedule.json';
@@ -221,6 +222,16 @@ export class SimulationService implements ISimulationService {
     } finally {
       await this.graph.flush(previewBranchId);
     }
+  }
+
+  async getSchedule(simulationId: string): Promise<ScheduleJson> {
+    const touched = this.registry.touch(simulationId);
+    if (!touched) {
+      throw ApiError.notFound('Simulation not found or expired');
+    }
+
+    const exportedJson = await this.graph.exportScheduleJson(simulationId);
+    return JSON.parse(exportedJson) as ScheduleJson;
   }
 
   private async readMetricRules(): Promise<readonly MetricRule[]> {

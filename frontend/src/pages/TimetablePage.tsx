@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Box, Typography } from '@mui/material';
 import AppShell from '@/templates/AppShell';
 import TimetableGrid from '@/organisms/TimetableGrid';
+import SimulationOverview from '@/organisms/SimulationOverview';
 import Inspector from '@/organisms/Inspector';
 import HUD from '@/organisms/HUD';
 import SessionExpiryModal from '@/organisms/SessionExpiryModal';
@@ -10,11 +11,15 @@ import SubmitProposalModal from '@/organisms/SubmitProposalModal';
 import ViewBySelector from '@/molecules/ViewBySelector';
 import SaveChangesButton from '@/molecules/SaveChangesButton';
 import InactivityBanner from '@/molecules/InactivityBanner';
-import { useAppDispatch } from '@/store/hooks';
+import WorkspaceTabs, { type WorkspaceTabValue } from '@/molecules/WorkspaceTabs';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setSession } from '@/store/reducers/sessionSlice';
 import { fetchClassesPage, resetClasses } from '@/store/reducers/classSlice';
+import { fetchScheduleThunk } from '@/store/reducers/scheduleSlice';
+import { selectClass, toggleInspector } from '@/store/reducers/uiSlice';
 import { useHeartbeat } from '@/hooks/useHeartbeat';
 import { useInactivityWarning } from '@/hooks/useInactivityWarning';
+import type { ConflictType } from '@/types';
 
 const PAGE_SIZE = 50; // must match PAGE_SIZE in classSlice
 
@@ -22,16 +27,24 @@ export default function TimetablePage(): React.ReactElement {
   const { id: simId } = useParams<{ id: string }>();
   const dispatch = useAppDispatch();
   const [submitOpen, setSubmitOpen] = useState(false);
+  const [tab, setTab] = useState<WorkspaceTabValue>('grid');
+
+  const conflicts = useAppSelector((s) => s.conflict.conflicts);
+  const conflictedClassIds = useMemo(
+    () => new Set(conflicts.flatMap((c) => c.classIds)),
+    [conflicts],
+  );
 
   // Session lifecycle hooks
   useHeartbeat(simId ?? null);
   const { showWarning, dismiss } = useInactivityWarning(simId ?? '');
 
-  // On mount: set session context and eagerly load all class pages
+  // On mount: set session context and eagerly load all class pages + schedule master data
   useEffect(() => {
     if (!simId) return;
     dispatch(resetClasses());
     dispatch(setSession(simId));
+    void dispatch(fetchScheduleThunk(simId));
 
     const loadAll = async (): Promise<void> => {
       let page = 1;
@@ -50,6 +63,15 @@ export default function TimetablePage(): React.ReactElement {
     void loadAll();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [simId]);
+
+  const handleSelectConflictType = (type: ConflictType): void => {
+    const match = conflicts.find((c) => c.type === type);
+    if (match !== undefined) {
+      dispatch(selectClass(match.classIds[0]));
+      dispatch(toggleInspector(true));
+    }
+    setTab('grid');
+  };
 
   if (!simId) {
     return (
@@ -87,10 +109,26 @@ export default function TimetablePage(): React.ReactElement {
           <SaveChangesButton simId={simId} />
         </Box>
 
-        {/* Main area: grid + inspector overlay */}
+        {/* Workspace tabs */}
+        <Box sx={{ px: 3, borderBottom: '1px solid', borderColor: 'divider', flexShrink: 0 }}>
+          <WorkspaceTabs value={tab} onChange={setTab} />
+        </Box>
+
+        {/* Main area: grid + inspector overlay, or overview */}
         <Box sx={{ flex: 1, overflow: 'hidden', position: 'relative', display: 'flex' }}>
-          <TimetableGrid />
-          <Inspector simId={simId} />
+          {tab === 'grid' ? (
+            <>
+              <TimetableGrid conflictedClassIds={conflictedClassIds} />
+              <Inspector simId={simId} />
+            </>
+          ) : (
+            <Box sx={{ flex: 1, overflow: 'auto' }}>
+              <SimulationOverview
+                onGoToGridView={() => setTab('grid')}
+                onSelectConflictType={handleSelectConflictType}
+              />
+            </Box>
+          )}
         </Box>
 
         {/* HUD — bottom bar with live conflicts + metrics */}

@@ -8,6 +8,8 @@ dist/
 .env
 .env.local
 .env.*.local
+.env.bak
+*.env.bak
 
 # Logs
 logs/
@@ -31,6 +33,9 @@ coverage/
 
 # Benchmark run output (see docs/benchmark.md) — reproducible from source, not archived by default
 backend/benchmark-results/
+
+# Test run artifacts
+backend/allure-results/
 
 # pnpm
 .pnpm-store/
