@@ -18,7 +18,7 @@ interface SuggestionCardProps {
   readonly loadingDelta: boolean;
 }
 
-const DeltaChip = ({ delta }: { delta: MetricDelta }): React.ReactElement => {
+export const DeltaChip = ({ delta }: { delta: MetricDelta }): React.ReactElement => {
   const diff = delta.after - delta.before;
   const improved = diff > 0;
   const label = `${improved ? '+' : ''}${diff.toFixed(1)}${delta.unit} ${delta.name}`;
@@ -33,7 +33,7 @@ const DeltaChip = ({ delta }: { delta: MetricDelta }): React.ReactElement => {
   );
 };
 
-const ScoreDeltaChip = ({ delta }: { delta: ScoreDelta }): React.ReactElement => {
+export const ScoreDeltaChip = ({ delta }: { delta: ScoreDelta }): React.ReactElement => {
   const diff = delta.after - delta.before;
   const improved = diff > 0;
   const label = `${improved ? '+' : ''}${diff.toFixed(1)} score`;
