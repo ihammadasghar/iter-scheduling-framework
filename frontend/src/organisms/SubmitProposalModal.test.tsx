@@ -124,7 +124,16 @@ describe('SubmitProposalModal', () => {
       expect(screen.queryByText(/scheduling conflict/i)).not.toBeInTheDocument();
     });
 
-    it('closes dialog and shows READY snackbar on successful submission', async () => {
+    // Success/error feedback is no longer rendered by this modal — it's
+    // shown by the always-mounted GlobalProposalStatusSnackbar /
+    // GlobalErrorSnackbar (see App.tsx), driven by proposalSlice state, so
+    // it survives navigating away from this page before or as the
+    // submission resolves. Coverage for the actual toast content lives in
+    // useGlobalProposalStatusSnackbar.test.tsx / GlobalProposalStatusSnackbar.test.tsx
+    // and proposalSlice.test.ts. What this modal owns is: closing itself and
+    // dispatching the submission with the right arguments.
+
+    it('closes the dialog and dispatches the submission on successful submit', async () => {
       const proposal: Proposal = {
         id: 'prop-1',
         simulationId: 'sim-test',
@@ -133,7 +142,7 @@ describe('SubmitProposalModal', () => {
       };
       vi.mocked(proposalService.createProposal).mockResolvedValue(proposal);
 
-      const { onClose } = render_({ hasUnsavedChanges: false });
+      const { store, onClose } = render_({ hasUnsavedChanges: false });
       fireEvent.change(screen.getByLabelText(/explain your changes/i), {
         target: { value: 'Fixed room double booking' },
       });
@@ -141,11 +150,15 @@ describe('SubmitProposalModal', () => {
 
       await waitFor(() => expect(onClose).toHaveBeenCalled());
       await waitFor(() =>
-        expect(screen.getByText(/ready for review/i)).toBeInTheDocument(),
+        expect(store.getState().proposal.lastSubmission).toEqual({ status: 'READY' }),
       );
+      expect(proposalService.createProposal).toHaveBeenCalledWith({
+        simulationId: 'sim-test',
+        description: 'Fixed room double booking',
+      });
     });
 
-    it('shows BLOCKED snackbar when proposal is blocked', async () => {
+    it('records a BLOCKED outcome in the store when the proposal is blocked', async () => {
       const proposal: Proposal = {
         id: 'prop-2',
         simulationId: 'sim-test',
@@ -154,18 +167,18 @@ describe('SubmitProposalModal', () => {
       };
       vi.mocked(proposalService.createProposal).mockResolvedValue(proposal);
 
-      render_({ hasUnsavedChanges: false });
+      const { store } = render_({ hasUnsavedChanges: false });
       fireEvent.change(screen.getByLabelText(/explain your changes/i), {
         target: { value: 'Some changes' },
       });
       fireEvent.click(screen.getByRole('button', { name: /submit.*review/i }));
 
       await waitFor(() =>
-        expect(screen.getByText(/scheduling conflicts.*scheduling office/i)).toBeInTheDocument(),
+        expect(store.getState().proposal.lastSubmission).toEqual({ status: 'BLOCKED' }),
       );
     });
 
-    it('shows the backend\'s actual reason on API failure, not a generic message', async () => {
+    it('records the backend\'s rejection reason in the store on API failure', async () => {
       // apiClient's interceptor always normalises rejections to this shape —
       // see services/apiClient.ts's normalizeApiError.
       vi.mocked(proposalService.createProposal).mockRejectedValue({
@@ -174,29 +187,16 @@ describe('SubmitProposalModal', () => {
         message: 'A proposal for this draft is already open — check My Proposals before submitting again.',
       });
 
-      render_({ hasUnsavedChanges: false });
+      const { store } = render_({ hasUnsavedChanges: false });
       fireEvent.change(screen.getByLabelText(/explain your changes/i), {
         target: { value: 'Some changes' },
       });
       fireEvent.click(screen.getByRole('button', { name: /submit.*review/i }));
 
       await waitFor(() =>
-        expect(screen.getByText(/proposal for this draft is already open/i)).toBeInTheDocument(),
-      );
-      expect(screen.queryByText(/could not submit proposal/i)).not.toBeInTheDocument();
-    });
-
-    it('falls back to a generic message when the rejection has no message at all', async () => {
-      vi.mocked(proposalService.createProposal).mockRejectedValue({});
-
-      render_({ hasUnsavedChanges: false });
-      fireEvent.change(screen.getByLabelText(/explain your changes/i), {
-        target: { value: 'Some changes' },
-      });
-      fireEvent.click(screen.getByRole('button', { name: /submit.*review/i }));
-
-      await waitFor(() =>
-        expect(screen.getByText(/could not submit proposal/i)).toBeInTheDocument(),
+        expect(store.getState().proposal.error).toBe(
+          'A proposal for this draft is already open — check My Proposals before submitting again.',
+        ),
       );
     });
   });

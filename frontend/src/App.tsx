@@ -5,6 +5,7 @@ import { store } from '@/store/store';
 import theme from '@/styles/theme';
 import GlobalStyles from '@/styles/GlobalStyles';
 import GlobalErrorSnackbar from '@/atoms/GlobalErrorSnackbar';
+import GlobalProposalStatusSnackbar from '@/atoms/GlobalProposalStatusSnackbar';
 import AdminGuard from '@/organisms/AdminGuard';
 import SimulationDashboardPage from '@/pages/SimulationDashboardPage';
 import TimetablePage from '@/pages/TimetablePage';
@@ -27,6 +28,9 @@ export default function App(): React.ReactElement {
         <BrowserRouter>
           {/* Global error Snackbar — listens to all Redux error fields */}
           <GlobalErrorSnackbar />
+          {/* Global proposal-submission-result Snackbar — survives navigating
+              away from the submitting page before/as the result arrives */}
+          <GlobalProposalStatusSnackbar />
           {/* Each page wraps itself in AppShell (see templates/AppShell.tsx) — don't
               also wrap Routes here, or the top app bar renders twice, stacked. */}
           <Routes>

@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { ApiError } from '../types/ApiError.js';
-import { parseScheduleJson } from '../utils/ScheduleHydrator.js';
+import { parseScheduleJson, stringifyScheduleJson } from '../utils/ScheduleHydrator.js';
 import type { IGitHubService } from '../interfaces/IGitHubService.js';
 import type { IGraphService } from '../interfaces/IGraphService.js';
 import type { ISimulationService, PreviewClassUpdateResult } from '../interfaces/ISimulationService.js';
@@ -86,9 +86,15 @@ export class SimulationService implements ISimulationService {
     const existing = parseScheduleJson(existingJson);
 
     const exportedJson = await this.graph.exportScheduleJson(simulationId);
-    const exported = JSON.parse(exportedJson) as Record<string, unknown>;
+    const exported = parseScheduleJson(exportedJson);
 
-    const merged = JSON.stringify({ ...exported, metadata: existing.metadata }, null, 2);
+    // Re-serialize via stringifyScheduleJson, not a plain JSON.stringify —
+    // exportScheduleJson already produces the seed-fixture-compatible
+    // compact-per-array-element format (see its own docstring for why that
+    // matters for the admin proposal diff); round-tripping through a plain
+    // `JSON.stringify(merged, null, 2)` here would silently spread every
+    // field back onto its own line and reintroduce that bug.
+    const merged = stringifyScheduleJson({ ...exported, metadata: existing.metadata });
 
     await this.github.writeFile(
       simulationId,

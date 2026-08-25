@@ -1,6 +1,14 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { proposalService } from '@/services/proposalService';
-import type { Proposal, ProposalDetail, CreateProposalRequest, ApiError } from '@/types';
+import type { Proposal, ProposalDetail, ProposalStatus, CreateProposalRequest, ApiError } from '@/types';
+
+// The outcome of the most recent submission, kept in Redux (not local
+// component state) so a confirmation toast survives navigating away from
+// the submitting page before it fires — e.g. switching straight to admin
+// view to check the proposal. Mirrors how `error` already works below.
+interface LastSubmission {
+  readonly status: ProposalStatus;
+}
 
 interface ProposalState {
   readonly proposals: Proposal[];       // ci:ready
@@ -8,6 +16,7 @@ interface ProposalState {
   readonly current: ProposalDetail | null;
   readonly loading: boolean;
   readonly error: string | null;
+  readonly lastSubmission: LastSubmission | null;
 }
 
 const initialState: ProposalState = {
@@ -16,6 +25,7 @@ const initialState: ProposalState = {
   current: null,
   loading: false,
   error: null,
+  lastSubmission: null,
 };
 
 export const fetchProposalsThunk = createAsyncThunk<
@@ -101,6 +111,9 @@ const proposalSlice = createSlice({
     clearProposalError(state) {
       state.error = null;
     },
+    clearLastSubmission(state) {
+      state.lastSubmission = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -142,6 +155,7 @@ const proposalSlice = createSlice({
       .addCase(createProposalThunk.fulfilled, (state, action) => {
         state.loading = false;
         state.proposals = [...state.proposals, action.payload];
+        state.lastSubmission = { status: action.payload.status };
       })
       .addCase(createProposalThunk.rejected, (state, action) => {
         state.loading = false;
@@ -171,5 +185,5 @@ const proposalSlice = createSlice({
   },
 });
 
-export const { clearCurrentProposal, clearProposalError } = proposalSlice.actions;
+export const { clearCurrentProposal, clearProposalError, clearLastSubmission } = proposalSlice.actions;
 export default proposalSlice.reducer;

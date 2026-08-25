@@ -1,6 +1,6 @@
 import { Box, Card, CardContent, Divider, Typography } from '@mui/material';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import type { ClassChange } from '@/utils/diffParser';
+import type { ClassChange } from '@/types';
 
 interface ChangeCardProps {
   readonly change: ClassChange;

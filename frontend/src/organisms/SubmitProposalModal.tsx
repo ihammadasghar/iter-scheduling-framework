@@ -1,13 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Alert, Snackbar } from '@mui/material';
 import CommitGate from '@/molecules/CommitGate';
 import ProposalForm from '@/molecules/ProposalForm';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { createProposalThunk } from '@/store/reducers/proposalSlice';
-import type { ProposalStatus } from '@/types';
 
 type Stage = 'commit-gate' | 'proposal-form';
-type SnackStatus = ProposalStatus | 'error' | null;
 
 interface SubmitProposalModalProps {
   readonly open: boolean;
@@ -15,47 +12,13 @@ interface SubmitProposalModalProps {
   readonly onClose: () => void;
 }
 
-const FALLBACK_ERROR_MESSAGE = 'Could not submit proposal. Please try again.';
-
-// errorMessage is only read for the 'error' case — the backend's actual
-// reason (e.g. "A proposal for this draft is already open") instead of a
-// generic message that doesn't tell you retrying won't help.
-const snackConfig = (
-  status: SnackStatus,
-  errorMessage: string | undefined,
-): { message: string; severity: 'info' | 'success' | 'warning' | 'error' } => {
-  switch (status) {
-    case 'PENDING':
-      return {
-        message: 'Your proposal has been submitted and is being checked for conflicts…',
-        severity: 'info',
-      };
-    case 'READY':
-      return {
-        message: 'Your proposal is ready for review by the scheduling office ✓',
-        severity: 'success',
-      };
-    case 'BLOCKED':
-      return {
-        message:
-          'Your proposal has scheduling conflicts — the scheduling office has been notified and will contact you',
-        severity: 'warning',
-      };
-    case 'MERGED':
-      return {
-        message: 'Your proposal has been merged into the published schedule ✓',
-        severity: 'success',
-      };
-    case 'error':
-      return {
-        message: errorMessage ?? FALLBACK_ERROR_MESSAGE,
-        severity: 'error',
-      };
-    default:
-      return { message: '', severity: 'info' };
-  }
-};
-
+// Success/error feedback for the submission itself is NOT rendered here —
+// it lives in Redux (proposalSlice.lastSubmission / .error) and is shown by
+// the always-mounted GlobalProposalStatusSnackbar / GlobalErrorSnackbar
+// (see App.tsx). A Snackbar owned by this modal's local state would vanish
+// the moment the user navigates away (e.g. straight to admin view to check
+// the proposal) before or as the submission resolves — which is exactly the
+// "no clear feedback" bug this was rewritten to fix.
 export default function SubmitProposalModal({
   open,
   simId,
@@ -65,9 +28,6 @@ export default function SubmitProposalModal({
   const hasUnsavedChanges = useAppSelector((s) => s.session.hasUnsavedChanges);
 
   const [stage, setStage] = useState<Stage>('proposal-form');
-  const [snackStatus, setSnackStatus] = useState<SnackStatus>(null);
-  const [snackErrorMessage, setSnackErrorMessage] = useState<string | undefined>(undefined);
-  const [snackOpen, setSnackOpen] = useState(false);
 
   // Determine starting stage whenever the modal opens
   useEffect(() => {
@@ -80,22 +40,8 @@ export default function SubmitProposalModal({
 
   const handleSubmit = async (description: string): Promise<void> => {
     onClose();
-
-    const result = await dispatch(
-      createProposalThunk({ simulationId: simId, description }),
-    );
-
-    if (createProposalThunk.fulfilled.match(result)) {
-      setSnackStatus(result.payload.status);
-      setSnackErrorMessage(undefined);
-    } else {
-      setSnackStatus('error');
-      setSnackErrorMessage(result.payload?.message);
-    }
-    setSnackOpen(true);
+    await dispatch(createProposalThunk({ simulationId: simId, description }));
   };
-
-  const { message, severity } = snackConfig(snackStatus, snackErrorMessage);
 
   return (
     <>
@@ -112,22 +58,6 @@ export default function SubmitProposalModal({
       {stage === 'proposal-form' && (
         <ProposalForm open={open} onSubmit={handleSubmit} onClose={onClose} />
       )}
-
-      <Snackbar
-        open={snackOpen}
-        onClose={() => setSnackOpen(false)}
-        autoHideDuration={8000}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={() => setSnackOpen(false)}
-          severity={severity}
-          variant="filled"
-          sx={{ width: '100%' }}
-        >
-          {message}
-        </Alert>
-      </Snackbar>
     </>
   );
 }

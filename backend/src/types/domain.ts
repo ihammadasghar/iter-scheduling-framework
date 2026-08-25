@@ -1,6 +1,8 @@
 // Shared domain types used across interfaces, services, and controllers.
 // All properties are readonly to enforce immutability throughout the codebase.
 
+import type { RawClass } from './scheduleJson.js';
+
 export interface Simulation {
   readonly id: string;
   readonly branchId: string;
@@ -126,7 +128,52 @@ export interface CiResult {
   readonly score: WeightedScoreResult;
 }
 
+// A single field that differs between the same class on `main` vs. a
+// proposal's candidate branch. `field` is any RawClass field except `id`
+// (which is how the two sides were matched in the first place).
+export interface ClassFieldDiff {
+  readonly field: 'courseId' | 'title' | 'professorId' | 'studentGroupId' | 'roomId' | 'timeSlotIds';
+  readonly before: unknown;
+  readonly after: unknown;
+}
+
+export interface ChangedClass {
+  readonly classId: string;
+  readonly before: RawClass;
+  readonly after: RawClass;
+  readonly fieldChanges: readonly ClassFieldDiff[];
+}
+
+// The full set of class-level changes between two schedules, computed by
+// comparing their `classes` arrays by id (see utils/ScheduleDiffer.ts).
+// Roster (rooms/professors/courses/groups/timeSlots) is not diffed here.
+export interface ScheduleDiff {
+  readonly added: readonly RawClass[];
+  readonly removed: readonly RawClass[];
+  readonly changed: readonly ChangedClass[];
+}
+
+// Which conflicts are new vs. resolved between two schedules, matched by
+// each Conflict's deterministic id.
+export interface ConflictDelta {
+  readonly added: readonly Conflict[];
+  readonly resolved: readonly Conflict[];
+}
+
+// A full comparison of a proposal's candidate branch against the published
+// (`main`) schedule: scores and conflicts on both sides, the conflict delta,
+// and the complete class-level change list.
+export interface ScheduleComparison {
+  readonly baselineScore: WeightedScoreResult;
+  readonly candidateScore: WeightedScoreResult;
+  readonly baselineConflicts: readonly Conflict[];
+  readonly candidateConflicts: readonly Conflict[];
+  readonly conflictDelta: ConflictDelta;
+  readonly classDiff: ScheduleDiff;
+}
+
 export interface ProposalDetail extends Proposal {
   readonly diff: string;
   readonly score: WeightedScoreResult;
+  readonly comparison: ScheduleComparison;
 }

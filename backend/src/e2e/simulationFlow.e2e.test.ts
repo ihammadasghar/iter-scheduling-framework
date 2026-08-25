@@ -68,6 +68,25 @@ describe('simulation flow (e2e, mock GitHub + real Memgraph)', () => {
     expect(proposalRes.body.status).toBe('READY');
     const proposalId = proposalRes.body.id as string;
 
+    // 7b. Regression guard for the "Changes in this Proposal" bug: the diff
+    // must contain the edited class (CLS_00004) as a single, complete JSON
+    // line with its new room — both a `SimulationService.commit()` bug
+    // (re-flattening the merged JSON via a plain `JSON.stringify(x, null, 2)`
+    // after exportScheduleJson) and a `GraphService.exportScheduleJson` bug
+    // (one-field-per-line output) have independently broken this in the
+    // past, and neither is visible from conflict/score assertions alone —
+    // only inspecting the actual diff text catches it.
+    const detailRes = await request(app).get(`/api/v1/proposals/${proposalId}`).expect(200);
+    const addedClassLine = (detailRes.body.diff as string)
+      .split('\n')
+      .find((line) => line.startsWith('+') && line.includes('CLS_00004'));
+    expect(addedClassLine).toBeDefined();
+    const parsedClass = JSON.parse(addedClassLine!.replace(/^\+\s*/, '').trim().replace(/,$/, '')) as {
+      id: string;
+      roomId: string;
+    };
+    expect(parsedClass).toMatchObject({ id: 'CLS_00004', roomId: 'RM_104' });
+
     // 8. Merge the ready proposal
     const mergeRes = await request(app)
       .post(`/api/v1/proposals/${proposalId}/merge`)

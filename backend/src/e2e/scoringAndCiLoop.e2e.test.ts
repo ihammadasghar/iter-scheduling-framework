@@ -1,0 +1,279 @@
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import request from 'supertest';
+import type { Express } from 'express';
+import { createAppWithContainer } from '../app.js';
+import type { Container } from '../container.js';
+
+// This suite complements simulationFlow.e2e.test.ts (the baseline happy-path
+// smoke test) by proving two things that test doesn't touch:
+//
+//  1. The RQ2/G2 institution-defined weighted score (GraphService.scoreTimetable,
+//     driven by backend/src/fixtures/mock-rules.json) is computed consistently
+//     across all three places it's exposed over HTTP — the live simulation
+//     session, a BLOCKED proposal, and a READY proposal — and is unaffected by
+//     an edit that only resolves a hard conflict (informational, not gating).
+//  2. The CI-blocked branch of the pipeline: submitting a proposal while a
+//     conflict is still present yields status BLOCKED, merging a BLOCKED
+//     proposal is rejected with 409, and fixing + resubmitting reaches READY
+//     and merges successfully.
+//  3. ProposalService's submission gate (conflicts must reduce vs. `main`,
+//     or — with conflicts unchanged — the weighted score must change): the
+//     BLOCKED submission above only clears the gate because step 3b changes
+//     the score while deliberately leaving the seeded conflict untouched;
+//     leaving both conflicts *and* score identical to `main` would be
+//     rejected with 409 before a PR is even opened.
+//  4. GET /proposals/:id's `comparison` field (ProposalService.
+//     computeScheduleComparison): baseline (main) vs. candidate score and
+//     conflicts, the conflict delta, and the class-level diff, computed
+//     against the real seeded fixture rather than mocks.
+//
+// Note on "resubmit": there is no endpoint to re-run CI on an existing PR
+// (routes/proposals.ts only has POST /, GET /, GET /:id, POST /:id/merge,
+// POST /:id/reject), so "fix and resubmit" here opens a second, independent
+// PR for the same simulation branch — the first (BLOCKED) PR is left open.
+// This mirrors the real API today, not docs/sequence-diagram.md's "same PR"
+// re-run framing.
+//
+// Out of scope here (already-known, lower-priority gaps): other conflict
+// types (PROFESSOR_OVERLAP, GROUP_OVERLAP, capacity) and the proposal-reject
+// flow — neither is part of this pass.
+
+describe('scoring + CI-blocked/fixed proposal loop (e2e, mock GitHub + real Memgraph)', () => {
+  let app: Express;
+  let container: Container;
+
+  beforeAll(() => {
+    process.env['GITHUB_PROVIDER'] = 'mock';
+    ({ app, container } = createAppWithContainer());
+  });
+
+  afterAll(async () => {
+    await container.shutdown();
+  });
+
+  it('exposes a consistent RQ2 weighted score across the session, a BLOCKED proposal, and a READY proposal, and enforces the blocked -> fix -> ready -> merge loop', async () => {
+    // 1. Create a simulation — hydrates the mock schedule.json into Memgraph
+    const createRes = await request(app)
+      .post('/api/v1/simulations')
+      .send({ userId: 'e2e-scoring' })
+      .expect(201);
+    const simulationId = createRes.body.id as string;
+    expect(simulationId).toMatch(/^sim-e2e-scoring-/);
+
+    // 2. RQ2 score for the seeded fixture, computed from mock-rules.json against
+    //    mock-schedule.json: Room Utilization = 10 occupied / (4 rooms * 5 slots)
+    //    = 50% (threshold 80 -> normalizedScore 62.5); Average Classes per
+    //    Professor per Day = 10 classes / 7 distinct (professor, day) pairs =
+    //    1.43 (threshold 4 -> normalizedScore 35.75); weighted average (both
+    //    weight 1) = (62.5 + 35.75) / 2 = 49.125 -> rounded to 49.13.
+    const scoreBeforeRes = await request(app)
+      .get(`/api/v1/simulations/${simulationId}/score`)
+      .expect(200);
+    expect(scoreBeforeRes.body.score).toBe(49.13);
+    expect(scoreBeforeRes.body.breakdown).toEqual([
+      {
+        name: 'Room Utilization',
+        value: 50,
+        unit: '%',
+        weight: 1,
+        threshold: 80,
+        normalizedScore: 62.5,
+      },
+      {
+        name: 'Average Classes per Professor per Day',
+        value: 1.43,
+        unit: 'classes/day',
+        weight: 1,
+        threshold: 4,
+        normalizedScore: 35.75,
+      },
+    ]);
+
+    // 3. Confirm the deliberate seeded conflict is present — but do NOT fix it
+    //    yet, so the next proposal submission exercises the BLOCKED branch.
+    const conflictsBeforeRes = await request(app)
+      .get(`/api/v1/simulations/${simulationId}/conflicts`)
+      .expect(200);
+    expect(conflictsBeforeRes.body).toHaveLength(1);
+    expect(conflictsBeforeRes.body[0]).toMatchObject({
+      type: 'ROOM_DOUBLE_BOOK',
+      classIds: ['CLS_00001', 'CLS_00004'],
+    });
+
+    // 3b. Submission is now gated (see ProposalService.assertImprovesOnPublished):
+    //     a proposal is only accepted if it reduces conflicts vs. `main`, or
+    //     — with conflicts unchanged — moves the weighted metric score. Leaving
+    //     the seeded conflict untouched wouldn't satisfy either branch, so
+    //     move CLS_00009 to PRF_SMITH: it doesn't touch CLS_00001/CLS_00004 (the
+    //     conflicting pair stays exactly as-is) or create any new conflict
+    //     (SMITH has no class at MON_P2), but it does change the professor/day
+    //     grouping — CHEN loses their only Monday class, SMITH already teaches
+    //     Monday, so distinct (professor, day) pairs drops from 7 to 6 and the
+    //     "Average Classes per Professor per Day" metric moves from 1.43 to
+    //     1.67 — satisfying the gate's "conflicts unchanged, score changed"
+    //     branch without touching the conflict this step is meant to exercise.
+    await request(app)
+      .patch(`/api/v1/simulations/${simulationId}/classes/CLS_00009`)
+      .send({ professorId: 'PRF_SMITH' })
+      .expect(200);
+
+    const conflictsStillPresentRes = await request(app)
+      .get(`/api/v1/simulations/${simulationId}/conflicts`)
+      .expect(200);
+    expect(conflictsStillPresentRes.body).toHaveLength(1);
+    expect(conflictsStillPresentRes.body[0]).toMatchObject({
+      type: 'ROOM_DOUBLE_BOOK',
+      classIds: ['CLS_00001', 'CLS_00004'],
+    });
+
+    const scoreAfterReassignRes = await request(app)
+      .get(`/api/v1/simulations/${simulationId}/score`)
+      .expect(200);
+    expect(scoreAfterReassignRes.body).not.toEqual(scoreBeforeRes.body);
+    expect(scoreAfterReassignRes.body).toEqual({
+      score: 52.13,
+      breakdown: [
+        {
+          name: 'Room Utilization',
+          value: 50,
+          unit: '%',
+          weight: 1,
+          threshold: 80,
+          normalizedScore: 62.5,
+        },
+        {
+          name: 'Average Classes per Professor per Day',
+          value: 1.67,
+          unit: 'classes/day',
+          weight: 1,
+          threshold: 4,
+          normalizedScore: 41.75,
+        },
+      ],
+    });
+
+    // 4. Commit the still-conflicted (but now score-changed) schedule to the
+    //    simulation's mock branch
+    await request(app).post(`/api/v1/simulations/${simulationId}/commit`).expect(200);
+
+    // 5. Submit as a proposal while the conflict is still present — CI must
+    //    block it. The submission itself is allowed by the gate because the
+    //    metric score above changed even though conflicts didn't.
+    const blockedProposalRes = await request(app)
+      .post('/api/v1/proposals')
+      .send({ simulationId, description: 'Still has the Room 101 double-booking' })
+      .expect(201);
+    expect(blockedProposalRes.body.status).toBe('BLOCKED');
+    const blockedProposalId = blockedProposalRes.body.id as string;
+
+    // 6. The score is still computed and surfaced on a BLOCKED proposal — it's
+    //    informational and doesn't depend on conflict status. It reflects the
+    //    professor reassignment from step 3b, not the original baseline score.
+    const blockedDetailRes = await request(app)
+      .get(`/api/v1/proposals/${blockedProposalId}`)
+      .expect(200);
+    expect(blockedDetailRes.body.status).toBe('BLOCKED');
+    expect(blockedDetailRes.body.score).toEqual(scoreAfterReassignRes.body);
+
+    // 6b. `comparison` compares this candidate against `main`, which hasn't
+    //     been touched by anything yet (no proposal has merged). Baseline
+    //     score/conflicts equal the very first values read in step 2/3;
+    //     candidate score/conflicts equal the reassigned-but-still-conflicted
+    //     values from step 3b — the seeded conflict is present on both sides,
+    //     so it shows up in neither `added` nor `resolved`.
+    expect(blockedDetailRes.body.comparison.baselineScore).toEqual(scoreBeforeRes.body);
+    expect(blockedDetailRes.body.comparison.candidateScore).toEqual(scoreAfterReassignRes.body);
+    expect(blockedDetailRes.body.comparison.baselineConflicts).toHaveLength(1);
+    expect(blockedDetailRes.body.comparison.candidateConflicts).toHaveLength(1);
+    expect(blockedDetailRes.body.comparison.conflictDelta).toEqual({ added: [], resolved: [] });
+
+    // 6c. The class-level diff surfaces the step 3b reassignment — including
+    //     the professorId field change that diffParser.ts's old 3-field
+    //     whitelist already covered, now computed from parsed JSON rather
+    //     than git-text diffing.
+    const cls9Change = blockedDetailRes.body.comparison.classDiff.changed.find(
+      (c: { classId: string }) => c.classId === 'CLS_00009',
+    );
+    expect(cls9Change).toBeDefined();
+    expect(cls9Change.fieldChanges).toContainEqual({
+      field: 'professorId', before: 'PRF_CHEN', after: 'PRF_SMITH',
+    });
+    expect(blockedDetailRes.body.comparison.classDiff.added).toEqual([]);
+    expect(blockedDetailRes.body.comparison.classDiff.removed).toEqual([]);
+
+    // 7. Merging a BLOCKED proposal must be rejected
+    const rejectedMergeRes = await request(app)
+      .post(`/api/v1/proposals/${blockedProposalId}/merge`)
+      .expect(409);
+    expect(rejectedMergeRes.body.error.code).toBe('CONFLICT');
+    expect(rejectedMergeRes.body.error.message).toMatch(/not READY to merge/);
+
+    // 8. Fix the conflict — move CLS_00004 to a free room
+    await request(app)
+      .patch(`/api/v1/simulations/${simulationId}/classes/CLS_00004`)
+      .send({ roomId: 'RM_104' })
+      .expect(200);
+
+    // 9. Confirm the conflict is gone
+    const conflictsAfterRes = await request(app)
+      .get(`/api/v1/simulations/${simulationId}/conflicts`)
+      .expect(200);
+    expect(conflictsAfterRes.body).toHaveLength(0);
+
+    // 10. The score is unchanged by this step — a room-only edit doesn't
+    //     affect utilization (still 10 occupied slots) or professor/day
+    //     counts. It stays at the value from the step 3b reassignment, not
+    //     the original pre-reassignment baseline.
+    const scoreAfterRes = await request(app)
+      .get(`/api/v1/simulations/${simulationId}/score`)
+      .expect(200);
+    expect(scoreAfterRes.body).toEqual(scoreAfterReassignRes.body);
+
+    // 11. Commit the fix
+    await request(app).post(`/api/v1/simulations/${simulationId}/commit`).expect(200);
+
+    // 12. Resubmit — opens a second, independent PR for the same simulation
+    //     branch (see top-of-file note); this one should be READY
+    const readyProposalRes = await request(app)
+      .post('/api/v1/proposals')
+      .send({ simulationId, description: 'Resolved the Room 101 double-booking' })
+      .expect(201);
+    expect(readyProposalRes.body.status).toBe('READY');
+    const readyProposalId = readyProposalRes.body.id as string;
+
+    // 13. Score is consistent across the session, the BLOCKED proposal, and
+    //     this READY proposal — three independently-computed call sites
+    //     converging on the same number.
+    const readyDetailRes = await request(app)
+      .get(`/api/v1/proposals/${readyProposalId}`)
+      .expect(200);
+    expect(readyDetailRes.body.status).toBe('READY');
+    expect(readyDetailRes.body.score).toEqual(scoreAfterReassignRes.body);
+
+    // 13b. `main` is still untouched (no proposal has merged yet), so the
+    //      baseline side of the comparison still carries the original seeded
+    //      conflict — while the candidate side has fixed it. This is the
+    //      "resolved" half of the conflict delta.
+    expect(readyDetailRes.body.comparison.baselineConflicts).toHaveLength(1);
+    expect(readyDetailRes.body.comparison.candidateConflicts).toEqual([]);
+    expect(readyDetailRes.body.comparison.conflictDelta.added).toEqual([]);
+    expect(readyDetailRes.body.comparison.conflictDelta.resolved).toHaveLength(1);
+    expect(readyDetailRes.body.comparison.conflictDelta.resolved[0]).toMatchObject({
+      type: 'ROOM_DOUBLE_BOOK',
+      classIds: ['CLS_00001', 'CLS_00004'],
+    });
+
+    // 14. Merge the ready proposal
+    const mergeRes = await request(app)
+      .post(`/api/v1/proposals/${readyProposalId}/merge`)
+      .expect(200);
+    expect(mergeRes.body.status).toBe('MERGED');
+
+    // 15. The first (BLOCKED) proposal was never silently mutated by the
+    //     second submission
+    const blockedStillRes = await request(app)
+      .get(`/api/v1/proposals/${blockedProposalId}`)
+      .expect(200);
+    expect(blockedStillRes.body.status).toBe('BLOCKED');
+  });
+});

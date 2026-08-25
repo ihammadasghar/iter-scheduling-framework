@@ -41,9 +41,20 @@ export default function ViewBySelector(): React.ReactElement {
         inputProps={{ 'aria-label': 'View timetable by' }}
       >
         {VIEW_OPTIONS.map(({ value, label, tooltip }) => (
-          <Tooltip key={value} title={tooltip} placement="right" enterDelay={300}>
-            <MenuItem value={value}>{label}</MenuItem>
-          </Tooltip>
+          // Tooltip must wrap MenuItem's content, not MenuItem itself — Select
+          // reads `child.props.value` off its *immediate* children, and a
+          // Tooltip child has no `value` prop, which silently breaks
+          // selection (see ViewBySelector.test.tsx for the regression this
+          // guards against).
+          <MenuItem key={value} value={value}>
+            {/* describeChild keeps the span's own text ("View by Room") as its
+                accessible name (via aria-describedby) — without it, Tooltip
+                defaults to overwriting the name with an aria-label set to the
+                tooltip text itself, hiding the real label from screen readers. */}
+            <Tooltip title={tooltip} placement="right" enterDelay={300} describeChild>
+              <span>{label}</span>
+            </Tooltip>
+          </MenuItem>
         ))}
       </Select>
     </FormControl>

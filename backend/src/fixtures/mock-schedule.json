@@ -26,7 +26,7 @@
   "rooms": [
     { "id": "RM_101", "name": "Room 101", "capacity": 50, "building": "Science Hall" },
     { "id": "RM_102", "name": "Room 102", "capacity": 30, "building": "Arts Block" },
-    { "id": "RM_103", "name": "Room 103", "capacity": 40, "building": "Science Hall" },
+    { "id": "RM_103", "name": "Room 103", "capacity": 50, "building": "Science Hall" },
     { "id": "RM_104", "name": "Room 104", "capacity": 60, "building": "Main Hall" }
   ],
   "professors": [

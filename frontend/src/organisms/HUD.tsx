@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Box, Button, Paper, Tooltip, Typography } from '@mui/material';
+import { Box, Button, Chip, CircularProgress, Paper, Tooltip, Typography } from '@mui/material';
 import { Send } from '@mui/icons-material';
 import ConflictChip from '@/molecules/ConflictChip';
 import MetricChip from '@/molecules/MetricChip';
+import WeightedScoreChip from '@/molecules/WeightedScoreChip';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchConflictsThunk } from '@/store/reducers/conflictSlice';
 import { fetchMetricsThunk } from '@/store/reducers/metricSlice';
@@ -22,6 +23,8 @@ export default function HUD({ simId, onSubmitProposal }: HUDProps): React.ReactE
   const conflictLoading = useAppSelector((s) => s.conflict.loading);
   const metrics = useAppSelector((s) => s.metric.metrics);
   const metricLoading = useAppSelector((s) => s.metric.loading);
+  const score = useAppSelector((s) => s.score.current);
+  const scoreLoading = useAppSelector((s) => s.score.loading);
   const lastPatchAt = useAppSelector((s) => s.session.lastPatchAt);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -69,8 +72,18 @@ export default function HUD({ simId, onSubmitProposal }: HUDProps): React.ReactE
       }}
       aria-label="Metrics and conflicts HUD"
     >
-      {/* Zone 1 — Conflicts */}
+      {/* Zone 1 — Conflicts and institution-defined score */}
       <ConflictChip conflicts={conflicts} loading={conflictLoading} />
+
+      {scoreLoading && score === null && (
+        <Chip
+          icon={<CircularProgress size={16} aria-label="Loading score…" />}
+          label="Loading score…"
+          variant="outlined"
+          sx={{ minHeight: 32 }}
+        />
+      )}
+      {score !== null && <WeightedScoreChip score={score} />}
 
       <Box sx={{ width: '1px', height: 28, bgcolor: 'divider', mx: 0.5 }} aria-hidden />
 

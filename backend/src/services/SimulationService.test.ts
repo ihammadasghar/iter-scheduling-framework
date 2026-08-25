@@ -358,6 +358,25 @@ describe('SimulationService.commit()', () => {
   it('resolves void on success', async () => {
     await expect(service.commit(SIM_ID)).resolves.toBeUndefined();
   });
+
+  // Regression guard: exportScheduleJson already returns the compact
+  // one-array-element-per-line format the admin proposal diff depends on
+  // (see GraphService.exportScheduleJson / stringifyScheduleJson) — commit()
+  // must preserve that when merging in the preserved metadata, not silently
+  // re-flatten it via a plain `JSON.stringify(merged, null, 2)`, which
+  // spreads every field onto its own line and breaks the diff parser's
+  // "one line = one complete JSON object" assumption for every edited class.
+  it('preserves compact one-array-element-per-line formatting when merging in the preserved metadata', async () => {
+    await service.commit(SIM_ID);
+
+    const [, , content] = (github.writeFile as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string, string];
+    const timeSlotLine = content.split('\n').find((line) => line.includes('TS_MON_P1'));
+
+    expect(timeSlotLine).toBeDefined();
+    expect(JSON.parse(timeSlotLine!.replace(/,$/, '').trim())).toEqual({
+      id: 'TS_MON_P1', day: 'Monday', name: 'P1', startTime: '08:30', endTime: '10:15',
+    });
+  });
 });
 
 describe('SimulationService.getConflicts()', () => {
