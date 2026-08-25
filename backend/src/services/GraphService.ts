@@ -1,6 +1,6 @@
 import neo4j from 'neo4j-driver';
 import { ApiError } from '../types/ApiError.js';
-import { parseScheduleJson, buildHydrationBatches } from '../utils/ScheduleHydrator.js';
+import { parseScheduleJson, buildHydrationBatches, stringifyScheduleJson } from '../utils/ScheduleHydrator.js';
 import { translateRule } from '../utils/MetricRuleTranslator.js';
 import type { IMemgraphClient } from '../clients/IMemgraphClient.js';
 import type { IGraphService } from '../interfaces/IGraphService.js';
@@ -97,7 +97,7 @@ export class GraphService implements IGraphService {
       classes: classes.map((r) => r['class'] as unknown as RawClass),
     };
 
-    return JSON.stringify(schedule, null, 2);
+    return stringifyScheduleJson(schedule);
   }
 
   async listClasses(

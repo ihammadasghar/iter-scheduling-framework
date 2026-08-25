@@ -8,6 +8,7 @@ import proposalReducer, {
   mergeProposalThunk,
   rejectProposalThunk,
   clearCurrentProposal,
+  clearLastSubmission,
 } from './proposalSlice';
 import * as proposalService from '@/services/proposalService';
 
@@ -31,7 +32,20 @@ const fakeProposal = {
   createdAt: new Date().toISOString(),
 };
 
-const fakeDetail = { ...fakeProposal, diff: '', userId: 'alice', score: { score: 0, breakdown: [] } };
+const fakeDetail = {
+  ...fakeProposal,
+  diff: '',
+  userId: 'alice',
+  score: { score: 0, breakdown: [] },
+  comparison: {
+    baselineScore: { score: 0, breakdown: [] },
+    candidateScore: { score: 0, breakdown: [] },
+    baselineConflicts: [],
+    candidateConflicts: [],
+    conflictDelta: { added: [], resolved: [] },
+    classDiff: { added: [], removed: [], changed: [] },
+  },
+};
 
 describe('proposalSlice', () => {
   it('initialises with empty state', () => {
@@ -41,6 +55,7 @@ describe('proposalSlice', () => {
     expect(state.current).toBeNull();
     expect(state.loading).toBe(false);
     expect(state.error).toBeNull();
+    expect(state.lastSubmission).toBeNull();
   });
 
   it('fetchProposalsThunk.pending sets loading=true', () => {
@@ -91,6 +106,40 @@ describe('proposalSlice', () => {
     const store = makeStore();
     store.dispatch(createProposalThunk.fulfilled(fakeProposal, '', { simulationId: 'sim-1', description: 'test' }));
     expect(store.getState().proposal.proposals).toHaveLength(1);
+  });
+
+  // Kept in Redux (not local component state) so a confirmation toast
+  // survives navigating away from the submitting page — see
+  // GlobalProposalStatusSnackbar / useGlobalProposalStatusSnackbar.
+  it('createProposalThunk.fulfilled records the outcome as lastSubmission', () => {
+    const store = makeStore();
+    store.dispatch(createProposalThunk.fulfilled(fakeProposal, '', { simulationId: 'sim-1', description: 'test' }));
+    expect(store.getState().proposal.lastSubmission).toEqual({ status: 'READY' });
+  });
+
+  it('clearLastSubmission nulls out lastSubmission', () => {
+    const store = makeStore();
+    store.dispatch(createProposalThunk.fulfilled(fakeProposal, '', { simulationId: 'sim-1', description: 'test' }));
+    store.dispatch(clearLastSubmission());
+    expect(store.getState().proposal.lastSubmission).toBeNull();
+  });
+
+  // The backend's actual reason (e.g. "A proposal for this draft is already
+  // open") needs to reach state.proposal.error verbatim, since that's what
+  // GlobalErrorSnackbar displays — SubmitProposalModal no longer has its own
+  // error-rendering logic to fall back on.
+  it('createProposalThunk.rejected sets error to the backend\'s actual message', () => {
+    const store = makeStore();
+    store.dispatch(
+      createProposalThunk.rejected(null, '', { simulationId: 'sim-1', description: 'test' }, {
+        statusCode: 409,
+        code: 'CONFLICT',
+        message: 'A proposal for this draft is already open — check My Proposals before submitting again.',
+      }),
+    );
+    expect(store.getState().proposal.error).toBe(
+      'A proposal for this draft is already open — check My Proposals before submitting again.',
+    );
   });
 
   it('mergeProposalThunk.fulfilled removes proposal from list', () => {

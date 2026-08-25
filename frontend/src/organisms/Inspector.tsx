@@ -3,9 +3,10 @@ import { Close } from '@mui/icons-material';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { deselectClass, toggleInspector } from '@/store/reducers/uiSlice';
 import ClassDetailSection from '@/molecules/ClassDetailSection';
+import ConflictDetailSection from '@/molecules/ConflictDetailSection';
 import SuggestionsList from '@/organisms/SuggestionsList';
 import InspectorSkeleton from '@/organisms/InspectorSkeleton';
-import { formatCourseLabel } from '@/utils/scheduleFormatters';
+import { useScheduleNames } from '@/hooks/useScheduleNames';
 
 const INSPECTOR_WIDTH = 380;
 
@@ -20,6 +21,8 @@ export default function Inspector({ simId }: InspectorProps): React.ReactElement
   const inspectorOpen = useAppSelector((s) => s.ui.inspectorOpen);
   const selectedClassId = useAppSelector((s) => s.ui.selectedClassId);
   const classes = useAppSelector((s) => s.class.classes);
+  const conflicts = useAppSelector((s) => s.conflict.conflicts);
+  const { courseName } = useScheduleNames();
 
   const selectedClass = selectedClassId !== null
     ? classes.find((c) => c.id === selectedClassId)
@@ -67,7 +70,7 @@ export default function Inspector({ simId }: InspectorProps): React.ReactElement
           {selectedClass !== undefined ? (
             <>
               <Typography variant="h4" component="h2" noWrap>
-                {formatCourseLabel(selectedClass.courseId)}
+                {courseName(selectedClass.courseId)}
               </Typography>
               <Typography variant="body2" color="text.secondary" noWrap>
                 {selectedClass.title}
@@ -98,10 +101,15 @@ export default function Inspector({ simId }: InspectorProps): React.ReactElement
         {selectedClass !== undefined && (
           <>
             <ClassDetailSection classItem={selectedClass} />
+            <ConflictDetailSection
+              classItem={selectedClass}
+              conflicts={conflicts}
+              classes={classes}
+            />
             {simId !== undefined && (
               <>
                 <Divider sx={{ my: 1 }} />
-                <SuggestionsList simId={simId} classId={selectedClass.id} />
+                <SuggestionsList simId={simId} classId={selectedClass.id} currentClass={selectedClass} />
               </>
             )}
           </>

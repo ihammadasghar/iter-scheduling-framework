@@ -18,25 +18,15 @@ import {
 import AppShell from '@/templates/AppShell';
 import BackButton from '@/atoms/BackButton';
 import CIStatusBadge from '@/molecules/CIStatusBadge';
-import WeightedScoreChip from '@/molecules/WeightedScoreChip';
-import ChangeCard from '@/molecules/ChangeCard';
+import ClassDiffPanel from '@/organisms/ClassDiffPanel';
+import MetricsComparisonPanel from '@/organisms/MetricsComparisonPanel';
+import ConflictsComparisonPanel from '@/organisms/ConflictsComparisonPanel';
 import TechnicalDiffAccordion from '@/organisms/TechnicalDiffAccordion';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchProposalDetailThunk, mergeProposalThunk, rejectProposalThunk } from '@/store/reducers/proposalSlice';
-import { parseDiff } from '@/utils/diffParser';
-import type { ScheduleJson } from '@/types/schedule';
+import { fetchPublishedScheduleThunk } from '@/store/reducers/scheduleSlice';
+import { buildScheduleNames } from '@/utils/scheduleNames';
 import type { ProposalStatus } from '@/types';
-
-// Minimal empty schedule for safe fallback when master data is unavailable
-const EMPTY_SCHEDULE: ScheduleJson = {
-  metadata: { semesterId: '', semesterName: '', academicYear: '' },
-  timeSlots: [],
-  rooms: [],
-  professors: [],
-  studentGroups: [],
-  courses: [],
-  classes: [],
-};
 
 type ConfirmDialog = 'approve' | 'close' | null;
 
@@ -49,6 +39,7 @@ export default function ProposalReviewPage(): React.ReactElement {
   const dispatch = useAppDispatch();
 
   const { current: proposal, loading, error } = useAppSelector((s) => s.proposal);
+  const { rooms, professors, courses, studentGroups } = useAppSelector((s) => s.schedule);
 
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -59,10 +50,10 @@ export default function ProposalReviewPage(): React.ReactElement {
 
   useEffect(() => {
     if (id) dispatch(fetchProposalDetailThunk(id));
+    dispatch(fetchPublishedScheduleThunk());
   }, [dispatch, id]);
 
-  const schedule = EMPTY_SCHEDULE; // schedule master data would come from a dedicated slice in a future task
-  const changes = proposal?.diff ? parseDiff(proposal.diff, schedule) : [];
+  const names = buildScheduleNames(rooms, professors, courses, studentGroups);
 
   const handleApprove = async (): Promise<void> => {
     if (!id) return;
@@ -135,27 +126,44 @@ export default function ProposalReviewPage(): React.ReactElement {
                 <Typography variant="overline" color="text.secondary">
                   Automated Check
                 </Typography>
-                <Box sx={{ mt: 0.5, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                <Box sx={{ mt: 0.5 }}>
                   <CIStatusBadge status={proposal.status} />
-                  <WeightedScoreChip score={proposal.score} />
                 </Box>
               </Box>
             )}
 
             <Divider sx={{ mb: 3 }} />
 
+            {/* Metrics comparison */}
+            <Typography variant="h6" gutterBottom>
+              Metrics: Published vs. This Proposal
+            </Typography>
+            <Box sx={{ mb: 4 }}>
+              <MetricsComparisonPanel
+                baselineScore={proposal.comparison.baselineScore}
+                candidateScore={proposal.comparison.candidateScore}
+              />
+            </Box>
+
+            {/* Conflicts comparison */}
+            <Typography variant="h6" gutterBottom>
+              Constraint Violations: Published vs. This Proposal
+            </Typography>
+            <Box sx={{ mb: 4 }}>
+              <ConflictsComparisonPanel
+                baselineConflicts={proposal.comparison.baselineConflicts}
+                candidateConflicts={proposal.comparison.candidateConflicts}
+                conflictDelta={proposal.comparison.conflictDelta}
+              />
+            </Box>
+
             {/* Changes */}
             <Typography variant="h6" gutterBottom>
               Changes in this Proposal
             </Typography>
-
-            {changes.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
-                No class assignment changes detected in this proposal.
-              </Typography>
-            ) : (
-              changes.map((change, idx) => <ChangeCard key={idx} change={change} />)
-            )}
+            <Box sx={{ mb: 3 }}>
+              <ClassDiffPanel classDiff={proposal.comparison.classDiff} names={names} />
+            </Box>
 
             <TechnicalDiffAccordion rawDiff={proposal.diff} />
 

@@ -94,16 +94,32 @@ export class GitHubService implements IGitHubService {
     title: string,
     body: string,
   ): Promise<string> {
-    const { data } = await this.octokit.rest.pulls.create({
-      owner: this.owner,
-      repo: this.repo,
-      head,
-      base,
-      title,
-      body,
-    });
+    try {
+      const { data } = await this.octokit.rest.pulls.create({
+        owner: this.owner,
+        repo: this.repo,
+        head,
+        base,
+        title,
+        body,
+      });
 
-    return String(data.number);
+      return String(data.number);
+    } catch (err: unknown) {
+      if (isUnprocessableError(err)) {
+        const detail = extractGitHubErrorMessage(err);
+        if (detail?.includes('already exists')) {
+          throw ApiError.conflict(
+            'A proposal for this draft is already open — check My Proposals before submitting again.',
+          );
+        }
+        if (detail?.includes('No commits between')) {
+          throw ApiError.badRequest('This draft has no changes yet — make an edit before submitting.');
+        }
+        throw ApiError.badRequest(detail ?? 'GitHub rejected this proposal. Please try again.');
+      }
+      throw err;
+    }
   }
 
   async mergePullRequest(pullRequestId: string): Promise<void> {
@@ -213,6 +229,14 @@ function isConflictError(err: unknown): boolean {
   return hasStatus(err, 409);
 }
 
+// GitHub's Pulls API returns 422 for a range of validation failures on
+// pulls.create — most commonly "a PR already exists for this head" (this
+// simulation was already submitted) or "no commits between" (the branch
+// hasn't diverged from base yet) — see extractGitHubErrorMessage below.
+function isUnprocessableError(err: unknown): boolean {
+  return hasStatus(err, 422);
+}
+
 function hasStatus(err: unknown, status: number): boolean {
   return (
     typeof err === 'object' &&
@@ -220,4 +244,24 @@ function hasStatus(err: unknown, status: number): boolean {
     'status' in err &&
     (err as { status: unknown }).status === status
   );
+}
+
+// Octokit's RequestError puts GitHub's actual validation detail in
+// response.data.errors[].message (field-level) or response.data.message
+// (top-level) — err.message itself is just "Validation Failed".
+function extractGitHubErrorMessage(err: unknown): string | undefined {
+  if (typeof err !== 'object' || err === null) return undefined;
+  const data = (err as { response?: { data?: unknown } }).response?.data;
+  if (typeof data !== 'object' || data === null) return undefined;
+
+  const errors = (data as { errors?: unknown }).errors;
+  if (Array.isArray(errors)) {
+    const messages = errors
+      .map((e) => (typeof e === 'object' && e !== null ? (e as { message?: unknown }).message : undefined))
+      .filter((m): m is string => typeof m === 'string');
+    if (messages.length > 0) return messages.join(' ');
+  }
+
+  const message = (data as { message?: unknown }).message;
+  return typeof message === 'string' ? message : undefined;
 }

@@ -9,8 +9,9 @@ import scoreReducer from '@/store/reducers/scoreSlice';
 import sessionReducer from '@/store/reducers/sessionSlice';
 import classReducer from '@/store/reducers/classSlice';
 import uiReducer from '@/store/reducers/uiSlice';
+import scheduleReducer from '@/store/reducers/scheduleSlice';
 import { simulationService } from '@/services/simulationService';
-import type { Conflict, MetricResult } from '@/types';
+import type { Conflict, MetricResult, WeightedScoreResult } from '@/types';
 
 vi.mock('@/services/simulationService', () => ({
   simulationService: {
@@ -29,6 +30,7 @@ const makeStore = () =>
       session: sessionReducer,
       class: classReducer,
       ui: uiReducer,
+      schedule: scheduleReducer,
     },
   });
 
@@ -36,9 +38,11 @@ const render_ = async (
   conflicts: Conflict[] = [],
   metrics: MetricResult[] = [],
   onSubmit = vi.fn(),
+  score: WeightedScoreResult = { score: 0, breakdown: [] },
 ) => {
   vi.mocked(simulationService.getConflicts).mockResolvedValue(conflicts);
   vi.mocked(simulationService.getMetrics).mockResolvedValue(metrics);
+  vi.mocked(simulationService.getScore).mockResolvedValue(score);
   render(
     <Provider store={makeStore()}>
       <HUD simId="sim-test" onSubmitProposal={onSubmit} />
@@ -111,6 +115,21 @@ describe('HUD', () => {
     await render_([], [], onSubmit);
     screen.getByRole('button', { name: /submit proposal/i }).click();
     expect(onSubmit).toHaveBeenCalledOnce();
+  });
+
+  it('renders the institution-defined score chip when metrics are configured', async () => {
+    await render_([], [], vi.fn(), {
+      score: 82,
+      breakdown: [
+        { name: 'Room Utilisation', value: 82, unit: '%', weight: 1, threshold: 90, normalizedScore: 82 },
+      ],
+    });
+    expect(screen.getByText(/score: 82\/100/i)).toBeInTheDocument();
+  });
+
+  it('shows "no metrics defined" score label when no institution metrics are configured', async () => {
+    await render_([], [], vi.fn(), { score: 0, breakdown: [] });
+    expect(screen.getByText(/score: no metrics defined/i)).toBeInTheDocument();
   });
 
   it('never displays raw conflict type codes', async () => {

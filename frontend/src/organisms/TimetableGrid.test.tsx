@@ -8,16 +8,23 @@ import TimetableGrid from './TimetableGrid';
 import classReducer from '@/store/reducers/classSlice';
 import uiReducer from '@/store/reducers/uiSlice';
 import scheduleReducer from '@/store/reducers/scheduleSlice';
-import type { ScheduleClass } from '@/types';
+import conflictReducer from '@/store/reducers/conflictSlice';
+import type { Conflict, ScheduleClass } from '@/types';
 
-const makeStore = (classes: ScheduleClass[] = [], viewBy: 'room' | 'professor' | 'studentGroup' = 'room') =>
+const makeStore = (
+  classes: ScheduleClass[] = [],
+  viewBy: 'room' | 'professor' | 'studentGroup' = 'room',
+  conflicts: Conflict[] = [],
+) =>
   configureStore({
     reducer: {
       class: classReducer,
       ui: uiReducer,
       schedule: scheduleReducer,
+      conflict: conflictReducer,
     },
     preloadedState: {
+      conflict: { conflicts, loading: false, lastFetchedAt: null, error: null },
       class: {
         classes,
         total: classes.length,
@@ -35,6 +42,8 @@ const makeStore = (classes: ScheduleClass[] = [], viewBy: 'room' | 'professor' |
       schedule: {
         rooms: [],
         studentGroups: [],
+        courses: [],
+        professors: [],
         loading: false,
         error: null,
       },
@@ -46,11 +55,12 @@ const makeStoreWithRooms = (
   rooms: Array<{ id: string; name: string; capacity: number; building: string }>,
 ) =>
   configureStore({
-    reducer: { class: classReducer, ui: uiReducer, schedule: scheduleReducer },
+    reducer: { class: classReducer, ui: uiReducer, schedule: scheduleReducer, conflict: conflictReducer },
     preloadedState: {
       class: { classes, total: classes.length, currentPage: 1, hasMore: false, loading: false, error: null },
       ui: { role: 'user' as const, selectedClassId: null, inspectorOpen: false, viewBy: 'room' as const },
-      schedule: { rooms, studentGroups: [], loading: false, error: null },
+      schedule: { rooms, studentGroups: [], courses: [], professors: [], loading: false, error: null },
+      conflict: { conflicts: [], loading: false, lastFetchedAt: null, error: null },
     },
   });
 
@@ -97,6 +107,33 @@ describe('TimetableGrid', () => {
     expect(screen.getByText(/smith/i)).toBeInTheDocument();
   });
 
+  it('renders the professor\'s real roster name, not a number, for an opaque generated ID (the reported bug)', () => {
+    // PRF_00001 has no readable fragment embedded in it — formatProfessorLabel
+    // alone would render "00001". The fetched roster is what fixes this.
+    const opaqueClass: ScheduleClass = { ...sampleClass, professorId: 'PRF_00001' };
+    const store = configureStore({
+      reducer: { class: classReducer, ui: uiReducer, schedule: scheduleReducer, conflict: conflictReducer },
+      preloadedState: {
+        class: { classes: [opaqueClass], total: 1, currentPage: 1, hasMore: false, loading: false, error: null },
+        ui: { role: 'user' as const, selectedClassId: null, inspectorOpen: false, viewBy: 'professor' as const },
+        schedule: {
+          rooms: [], studentGroups: [], courses: [],
+          professors: [{ id: 'PRF_00001', name: 'Dr. Jane Smith', department: 'Biology' }],
+          loading: false, error: null,
+        },
+      },
+    });
+    render(
+      <Provider store={store}>
+        <MemoryRouter>
+          <TimetableGrid />
+        </MemoryRouter>
+      </Provider>,
+    );
+    expect(screen.getByText('Dr. Jane Smith')).toBeInTheDocument();
+    expect(screen.queryByText('00001')).not.toBeInTheDocument();
+  });
+
   it('renders row label from studentGroupId when viewBy=studentGroup', () => {
     render_([sampleClass], 'studentGroup');
     expect(screen.getByText(/bio y1/i)).toBeInTheDocument();
@@ -119,6 +156,29 @@ describe('TimetableGrid', () => {
     expect(screen.getByText('BIO101')).toBeInTheDocument();
   });
 
+  it('explains the actual conflict on the chip, not just "has conflict"', () => {
+    // Different room so it lands in its own grid row rather than colliding
+    // with sampleClass's room+timeslot cell — the conflict message itself is
+    // resolved from CLS_001 (classIds[0]), so this doesn't affect the assertion.
+    const otherClass: ScheduleClass = { ...sampleClass, id: 'CLS_002', courseId: 'CRS_CHEM101', roomId: 'RM_102' };
+    const conflict: Conflict = {
+      id: 'c1',
+      type: 'ROOM_DOUBLE_BOOK',
+      classIds: ['CLS_001', 'CLS_002'],
+      message: '',
+    };
+    render(
+      <Provider store={makeStore([sampleClass, otherClass], 'room', [conflict])}>
+        <MemoryRouter>
+          <TimetableGrid conflictedClassIds={new Set(['CLS_001'])} />
+        </MemoryRouter>
+      </Provider>,
+    );
+    expect(
+      screen.getByLabelText(/BIO101 — Room 101 is booked for two classes at the same time/i),
+    ).toBeInTheDocument();
+  });
+
   it('dispatches deselectClass when clicking the grid background', () => {
     const store = makeStore([sampleClass]);
     render(
@@ -134,11 +194,12 @@ describe('TimetableGrid', () => {
 
   it('renders GridSkeleton when loading with no classes', () => {
     const store = configureStore({
-      reducer: { class: classReducer, ui: uiReducer, schedule: scheduleReducer },
+      reducer: { class: classReducer, ui: uiReducer, schedule: scheduleReducer, conflict: conflictReducer },
       preloadedState: {
         class: { classes: [], total: 0, currentPage: 0, hasMore: true, loading: true, error: null },
         ui: { role: 'user' as const, selectedClassId: null, inspectorOpen: false, viewBy: 'room' as const },
-        schedule: { rooms: [], studentGroups: [], loading: false, error: null },
+        schedule: { rooms: [], studentGroups: [], courses: [], professors: [], loading: false, error: null },
+        conflict: { conflicts: [], loading: false, lastFetchedAt: null, error: null },
       },
     });
     render(

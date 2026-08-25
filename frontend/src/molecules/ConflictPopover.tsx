@@ -7,12 +7,8 @@ import {
 } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { selectClass, toggleInspector } from '@/store/reducers/uiSlice';
-import { getConflictMessage } from '@/utils/conflictMessages';
-import {
-  formatRoomLabel,
-  formatProfessorLabel,
-  formatGroupLabel,
-} from '@/utils/scheduleFormatters';
+import { getConflictMessage, resolveConflictResourceName } from '@/utils/conflictMessages';
+import { useScheduleNames } from '@/hooks/useScheduleNames';
 import type { Conflict } from '@/types';
 
 interface ConflictPopoverProps {
@@ -22,23 +18,6 @@ interface ConflictPopoverProps {
   readonly onClose: () => void;
 }
 
-/** Resolve the human-readable resource name from a conflict + the class that caused it. */
-const resolveResourceName = (
-  conflict: Conflict,
-  classes: ReturnType<typeof useAppSelector<ReturnType<typeof useAppSelector>>>,
-): string => {
-  const cls = (classes as ReturnType<typeof Array.prototype.find>[])
-    .find?.((c: { id: string }) => c.id === conflict.classIds[0]);
-  if (!cls) return 'Unknown';
-  switch (conflict.type) {
-    case 'ROOM_DOUBLE_BOOK':   return formatRoomLabel(cls.roomId);
-    case 'PROFESSOR_OVERLAP':  return formatProfessorLabel(cls.professorId);
-    case 'GROUP_OVERLAP':      return formatGroupLabel(cls.studentGroupId);
-    case 'ROOM_CAPACITY_EXCEEDED':
-      return `${formatGroupLabel(cls.studentGroupId)} in ${formatRoomLabel(cls.roomId)}`;
-  }
-};
-
 export default function ConflictPopover({
   open,
   anchorEl,
@@ -47,6 +26,7 @@ export default function ConflictPopover({
 }: ConflictPopoverProps): React.ReactElement {
   const dispatch = useAppDispatch();
   const classes = useAppSelector((s) => s.class.classes);
+  const names = useScheduleNames();
 
   const handleRowClick = (conflict: Conflict): void => {
     const primaryId = conflict.classIds[0];
@@ -71,7 +51,7 @@ export default function ConflictPopover({
       </Typography>
       <List dense disablePadding>
         {conflicts.map((conflict) => {
-          const resourceName = resolveResourceName(conflict, classes as never);
+          const resourceName = resolveConflictResourceName(conflict, classes, names);
           const message = getConflictMessage(conflict.type, resourceName);
           return (
             <ListItemButton

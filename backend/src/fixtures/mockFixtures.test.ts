@@ -67,6 +67,19 @@ describe('mock fixtures', () => {
     expect([...byGroupAndSlot.values()].every((ids) => ids.length === 1)).toBe(true);
   });
 
+  it('mock-schedule.json has no accidental room-capacity conflicts (every class fits in its assigned room)', () => {
+    const roomsById = new Map(schedule.rooms.map((r) => [r.id, r]));
+    const groupsById = new Map(schedule.studentGroups.map((g) => [g.id, g]));
+
+    for (const cls of schedule.classes) {
+      const room = roomsById.get(cls.roomId);
+      const group = groupsById.get(cls.studentGroupId);
+      expect(room).toBeDefined();
+      expect(group).toBeDefined();
+      expect(group!.size).toBeLessThanOrEqual(room!.capacity);
+    }
+  });
+
   it('mock-rules.json metric rules use target/condition combinations supported by MetricRuleTranslator', () => {
     const supported = new Set([
       'Class:count',

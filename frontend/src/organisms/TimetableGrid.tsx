@@ -8,12 +8,12 @@ import GridSkeleton from '@/organisms/GridSkeleton';
 import {
   sortTimeSlotIds,
   formatTimeSlotLabel,
-  formatRoomLabel,
-  formatProfessorLabel,
-  formatGroupLabel,
   uniqueSorted,
 } from '@/utils/scheduleFormatters';
-import type { ScheduleClass, ViewByOption } from '@/types';
+import { getConflictMessage, resolveConflictResourceName } from '@/utils/conflictMessages';
+import { useScheduleNames } from '@/hooks/useScheduleNames';
+import type { ScheduleNames } from '@/utils/scheduleNames';
+import type { Conflict, ScheduleClass, ViewByOption } from '@/types';
 
 interface TimetableGridProps {
   readonly conflictedClassIds?: ReadonlySet<string>;
@@ -28,12 +28,12 @@ const resourceIdOf = (cls: ScheduleClass, viewBy: ViewByOption): string =>
       ? cls.professorId
       : cls.studentGroupId;
 
-const formatResourceLabel = (id: string, viewBy: ViewByOption): string =>
+const resourceLabelOf = (id: string, viewBy: ViewByOption, names: ScheduleNames): string =>
   viewBy === 'room'
-    ? formatRoomLabel(id)
+    ? names.roomName(id)
     : viewBy === 'professor'
-      ? formatProfessorLabel(id)
-      : formatGroupLabel(id);
+      ? names.professorName(id)
+      : names.groupName(id);
 
 /** Index classes by [resourceId][firstTimeSlotId] for O(1) lookup. */
 const buildLookup = (
@@ -59,6 +59,37 @@ const buildLookup = (
 /** Count how many consecutive sorted columns a class spans. */
 const calcSpan = (cls: ScheduleClass, sortedTsIds: readonly string[]): number =>
   cls.timeSlotIds.filter((id) => sortedTsIds.includes(id)).length;
+
+/**
+ * One-line, human-readable summary per conflicted class — shown on hover so
+ * the warning icon is self-explanatory without having to click into the
+ * Inspector first. Clicking the chip still opens the full detail there.
+ */
+const buildConflictSummaries = (
+  conflicts: readonly Conflict[],
+  classes: readonly ScheduleClass[],
+  names: ScheduleNames,
+): Map<string, string> => {
+  const byClassId = new Map<string, Conflict[]>();
+  conflicts.forEach((c) => {
+    c.classIds.forEach((id) => {
+      const list = byClassId.get(id) ?? [];
+      list.push(c);
+      byClassId.set(id, list);
+    });
+  });
+
+  const summaries = new Map<string, string>();
+  byClassId.forEach((classConflicts, classId) => {
+    const first = classConflicts[0]!;
+    const message = getConflictMessage(first.type, resolveConflictResourceName(first, classes, names));
+    summaries.set(
+      classId,
+      classConflicts.length > 1 ? `${message} (+${classConflicts.length - 1} more)` : message,
+    );
+  });
+  return summaries;
+};
 
 // --- Sticky cell style helpers ---
 const stickyHeaderSx = {
@@ -110,6 +141,13 @@ export default function TimetableGrid({
   const loading = useAppSelector((s) => s.class.loading);
   const viewBy = useAppSelector((s) => s.ui.viewBy);
   const rooms = useAppSelector((s) => s.schedule.rooms);
+  const conflicts = useAppSelector((s) => s.conflict.conflicts);
+  const names = useScheduleNames();
+
+  const conflictSummaries = useMemo(
+    () => buildConflictSummaries(conflicts, classes, names),
+    [conflicts, classes, names],
+  );
   const [collapsedBuildings, setCollapsedBuildings] = useState<ReadonlySet<string>>(new Set());
   const [density, setDensity] = useState<'compact' | 'comfortable'>('comfortable');
   const rowHeight = density === 'compact' ? 44 : 72;
@@ -177,6 +215,7 @@ export default function TimetableGrid({
             <ClassChip
               classItem={cls}
               state={isConflicted ? 'conflicted' : 'default'}
+              conflictSummary={isConflicted ? conflictSummaries.get(cls.id) : undefined}
             />
           </Box>,
         );
@@ -201,7 +240,7 @@ export default function TimetableGrid({
         <Box key={`label-${resId}`} sx={{ ...stickyLabelSx, minHeight: rowHeight }}>
           <Tooltip title={resId} enterDelay={300}>
             <Typography variant="caption" sx={{ fontWeight: 600 }} noWrap>
-              {formatResourceLabel(resId, viewBy)}
+              {resourceLabelOf(resId, viewBy, names)}
             </Typography>
           </Tooltip>
         </Box>

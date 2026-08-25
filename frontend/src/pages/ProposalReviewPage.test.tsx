@@ -12,10 +12,24 @@ import conflictReducer from '@/store/reducers/conflictSlice';
 import metricReducer from '@/store/reducers/metricSlice';
 import rulesReducer from '@/store/reducers/rulesSlice';
 import sessionReducer from '@/store/reducers/sessionSlice';
+import scheduleReducer from '@/store/reducers/scheduleSlice';
 import * as proposalService from '@/services/proposalService';
 
-// Must be defined inside vi.hoisted so the mock factory can reference it safely
-const { fakeProposal, mockProposalService } = vi.hoisted(() => {
+// Must be defined inside vi.hoisted so the mock factories can reference it safely
+const { fakeProposal, mockProposalService, mockScheduleService } = vi.hoisted(() => {
+  const emptyComparison = {
+    baselineScore: { score: 0, breakdown: [] },
+    candidateScore: {
+      score: 82,
+      breakdown: [
+        { name: 'Room Utilization', value: 78, unit: '%', weight: 2, threshold: 80, normalizedScore: 90 },
+      ],
+    },
+    baselineConflicts: [],
+    candidateConflicts: [],
+    conflictDelta: { added: [], resolved: [] },
+    classDiff: { added: [], removed: [], changed: [] },
+  };
   const fp = {
     id: 'p1',
     simulationId: 'sim-alice-abc123',
@@ -24,12 +38,8 @@ const { fakeProposal, mockProposalService } = vi.hoisted(() => {
     description: 'Moved Biology class',
     diff: '',
     userId: 'alice',
-    score: {
-      score: 82,
-      breakdown: [
-        { name: 'Room Utilization', value: 78, unit: '%', weight: 2, threshold: 80, normalizedScore: 90 },
-      ],
-    },
+    score: emptyComparison.candidateScore,
+    comparison: emptyComparison,
   };
   const svc = {
     listProposals: vi.fn().mockResolvedValue([]),
@@ -39,11 +49,22 @@ const { fakeProposal, mockProposalService } = vi.hoisted(() => {
     mergeProposal: vi.fn(),
     rejectProposal: vi.fn(),
   };
-  return { fakeProposal: fp, mockProposalService: svc };
+  const scheduleSvc = {
+    getPublishedClasses: vi.fn().mockResolvedValue({ data: [], total: 0, page: 1, limit: 20 }),
+    getPublishedRoster: vi.fn().mockResolvedValue({
+      metadata: { semesterId: '', semesterName: '', academicYear: '' },
+      timeSlots: [], rooms: [], professors: [], studentGroups: [], courses: [],
+    }),
+  };
+  return { fakeProposal: fp, mockProposalService: svc, mockScheduleService: scheduleSvc };
 });
 
 vi.mock('@/services/proposalService', () => ({
   proposalService: mockProposalService,
+}));
+
+vi.mock('@/services/scheduleService', () => ({
+  scheduleService: mockScheduleService,
 }));
 
 const makeStore = () =>
@@ -57,6 +78,7 @@ const makeStore = () =>
       metric: metricReducer,
       rules: rulesReducer,
       session: sessionReducer,
+      schedule: scheduleReducer,
     },
   });
 
@@ -148,7 +170,7 @@ describe('ProposalReviewPage', () => {
     );
   });
 
-  it('shows the weighted score chip next to the CI status badge', async () => {
+  it('shows the candidate weighted score chip in the metrics comparison panel', async () => {
     renderPage();
     await waitFor(() =>
       expect(screen.getByText(/score: 82\/100/i)).toBeInTheDocument(),
@@ -203,5 +225,67 @@ describe('ProposalReviewPage', () => {
     await waitFor(() =>
       expect(screen.getByText(/proposal closed/i)).toBeInTheDocument(),
     );
+  });
+
+  it('fetches the published schedule roster for name resolution on mount', async () => {
+    renderPage();
+    await waitFor(() =>
+      expect(mockScheduleService.getPublishedRoster).toHaveBeenCalled(),
+    );
+  });
+
+  it('shows a "no changes" message when the class diff is empty', async () => {
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByText('No changes detected in this proposal.')).toBeInTheDocument(),
+    );
+  });
+
+  it('renders both baseline and candidate score chips in the metrics panel', async () => {
+    renderPage();
+    // Baseline has no breakdown in this fixture, so its chip reads
+    // "no metrics defined" rather than a numeric score — see WeightedScoreChip.
+    await waitFor(() => expect(screen.getByText(/score: no metrics defined/i)).toBeInTheDocument());
+    expect(screen.getByText('Score: 82/100')).toBeInTheDocument();
+  });
+
+  it('renders health tiles for the conflicts comparison', async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getAllByText('No scheduling conflicts')).toHaveLength(2));
+  });
+
+  it('renders added, removed, and changed classes when the comparison has a full diff', async () => {
+    vi.mocked(proposalService.proposalService.getProposal).mockResolvedValueOnce({
+      ...fakeProposal,
+      comparison: {
+        ...fakeProposal.comparison,
+        classDiff: {
+          added: [{
+            id: 'CLS_002', courseId: 'CRS_002', title: 'New Chemistry Lab', professorId: 'PRF_CHEN',
+            studentGroupId: 'GRP_002', roomId: 'RM_102', timeSlotIds: ['TS_TUE_P1'],
+          }],
+          removed: [{
+            id: 'CLS_003', courseId: 'CRS_003', title: 'Old History Seminar', professorId: 'PRF_JONES',
+            studentGroupId: 'GRP_003', roomId: 'RM_103', timeSlotIds: ['TS_WED_P1'],
+          }],
+          changed: [{
+            classId: 'CLS_001',
+            before: {
+              id: 'CLS_001', courseId: 'CRS_001', title: 'Biology Lecture', professorId: 'PRF_SMITH',
+              studentGroupId: 'GRP_001', roomId: 'RM_101', timeSlotIds: ['TS_MON_P1'],
+            },
+            after: {
+              id: 'CLS_001', courseId: 'CRS_001', title: 'Biology Lecture', professorId: 'PRF_SMITH',
+              studentGroupId: 'GRP_001', roomId: 'RM_104', timeSlotIds: ['TS_MON_P1'],
+            },
+            fieldChanges: [{ field: 'roomId', before: 'RM_101', after: 'RM_104' }],
+          }],
+        },
+      },
+    });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('New Chemistry Lab')).toBeInTheDocument());
+    expect(screen.getByText('Old History Seminar')).toBeInTheDocument();
+    expect(screen.getByText('Biology Lecture')).toBeInTheDocument();
   });
 });

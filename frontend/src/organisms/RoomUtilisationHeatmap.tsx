@@ -4,7 +4,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableRow,
 } from '@mui/material';
 import { WarningAmber } from '@mui/icons-material';
-import { formatRoomLabel, formatTimeSlotLabel } from '@/utils/scheduleFormatters';
+import { formatTimeSlotLabel } from '@/utils/scheduleFormatters';
 import type { OccupancyCell, OccupancyLookup } from '@/utils/aggregateOccupancy';
 import type { RawRoom, ScheduleClass } from '@/types';
 
@@ -70,7 +70,7 @@ export default function RoomUtilisationHeatmap({
           <TableBody>
             {sortedRooms.map((room) => (
               <TableRow key={room.id}>
-                <TableCell>{formatRoomLabel(room.id)}</TableCell>
+                <TableCell>{room.name}</TableCell>
                 {sortedTimeSlotIds.map((tsId) => {
                   const cell = occupancy.get(room.id)?.get(tsId);
                   return (
@@ -117,15 +117,15 @@ export default function RoomUtilisationHeatmap({
                 variant="caption"
                 sx={{ fontWeight: 600, display: 'flex', alignItems: 'center' }}
               >
-                {formatRoomLabel(room.id)}
+                {room.name}
               </Typography>
               {sortedTimeSlotIds.map((tsId) => {
                 const cell = occupancy.get(room.id)?.get(tsId);
                 const bg = cell === undefined ? UNBOOKED_COLOR : seatFillToColor(cell.seatFillRatio);
                 const pct = cell === undefined ? null : Math.round(cell.seatFillRatio * 100);
                 const label = pct === null
-                  ? `${formatRoomLabel(room.id)} unbooked at ${formatTimeSlotLabel(tsId)}`
-                  : `${formatRoomLabel(room.id)} ${pct}% full at ${formatTimeSlotLabel(tsId)}`;
+                  ? `${room.name} unbooked at ${formatTimeSlotLabel(tsId)}`
+                  : `${room.name} ${pct}% full at ${formatTimeSlotLabel(tsId)}`;
                 const tooltipTitle = pct === null
                   ? 'Unbooked'
                   : `${pct}% full — ${resolveClassTitles(cell)}${cell?.hasConflict === true ? ' — conflict' : ''}`;

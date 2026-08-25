@@ -13,7 +13,7 @@ import SaveChangesButton from '@/molecules/SaveChangesButton';
 import InactivityBanner from '@/molecules/InactivityBanner';
 import WorkspaceTabs, { type WorkspaceTabValue } from '@/molecules/WorkspaceTabs';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { setSession } from '@/store/reducers/sessionSlice';
+import { setSession, markExpired } from '@/store/reducers/sessionSlice';
 import { fetchClassesPage, resetClasses } from '@/store/reducers/classSlice';
 import { fetchScheduleThunk } from '@/store/reducers/scheduleSlice';
 import { selectClass, toggleInspector } from '@/store/reducers/uiSlice';
@@ -39,12 +39,19 @@ export default function TimetablePage(): React.ReactElement {
   useHeartbeat(simId ?? null);
   const { showWarning, dismiss } = useInactivityWarning(simId ?? '');
 
-  // On mount: set session context and eagerly load all class pages + schedule master data
+  // On mount: set session context and eagerly load all class pages + schedule master data.
+  // A 404 here means the simulation's backend session is already gone (TTL expiry, server
+  // restart, etc.) — surface that immediately via the same SessionExpiryModal useHeartbeat
+  // drives, rather than leaving a blank grid until the next 60s heartbeat tick catches it.
   useEffect(() => {
     if (!simId) return;
     dispatch(resetClasses());
     dispatch(setSession(simId));
-    void dispatch(fetchScheduleThunk(simId));
+    void dispatch(fetchScheduleThunk(simId)).then((result) => {
+      if (fetchScheduleThunk.rejected.match(result) && result.payload?.statusCode === 404) {
+        dispatch(markExpired());
+      }
+    });
 
     const loadAll = async (): Promise<void> => {
       let page = 1;
@@ -55,6 +62,9 @@ export default function TimetablePage(): React.ReactElement {
           more = result.payload.classes.length === PAGE_SIZE;
           page++;
         } else {
+          if (fetchClassesPage.rejected.match(result) && result.payload?.statusCode === 404) {
+            dispatch(markExpired());
+          }
           break;
         }
       }

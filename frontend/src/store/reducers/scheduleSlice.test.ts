@@ -1,56 +1,117 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
-import scheduleReducer, { fetchScheduleThunk } from './scheduleSlice';
+import scheduleReducer, { fetchScheduleThunk, fetchPublishedScheduleThunk } from './scheduleSlice';
 import { simulationService } from '@/services/simulationService';
-import type { RawRoom, RawStudentGroup } from '@/types';
+import { scheduleService } from '@/services/scheduleService';
+import type { RawRoom, RawStudentGroup, RawCourse, RawProfessor } from '@/types';
 
 vi.mock('@/services/simulationService', () => ({
   simulationService: {
     getSchedule: vi.fn(),
   },
 }));
+vi.mock('@/services/scheduleService', () => ({
+  scheduleService: {
+    getPublishedRoster: vi.fn(),
+  },
+}));
 
 const ROOM: RawRoom = { id: 'RM_101', name: 'Room 101', capacity: 40, building: 'Building A' };
 const GROUP: RawStudentGroup = { id: 'GRP_BIO_Y1', name: 'Bio Year 1', size: 32 };
+const COURSE: RawCourse = { id: 'CRS_BIO101', code: 'BIO101', name: 'Intro to Biology', department: 'Biology' };
+const PROFESSOR: RawProfessor = { id: 'PRF_SMITH', name: 'Dr. Jane Smith', department: 'Biology' };
 
 const makeStore = () => configureStore({ reducer: { schedule: scheduleReducer } });
 
 describe('scheduleSlice', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('starts with empty rooms/studentGroups and loading=false', () => {
+  it('starts with empty rooms/studentGroups/courses/professors and loading=false', () => {
     const store = makeStore();
     expect(store.getState().schedule).toEqual({
-      rooms: [], studentGroups: [], loading: false, error: null,
+      rooms: [], studentGroups: [], courses: [], professors: [], loading: false, error: null,
     });
   });
 
-  it('sets loading=true while fetchScheduleThunk is pending', () => {
-    vi.mocked(simulationService.getSchedule).mockReturnValue(new Promise(() => {}));
-    const store = makeStore();
-    void store.dispatch(fetchScheduleThunk('sim-1'));
-    expect(store.getState().schedule.loading).toBe(true);
+  describe('fetchScheduleThunk (simulation roster)', () => {
+    it('sets loading=true while pending', () => {
+      vi.mocked(simulationService.getSchedule).mockReturnValue(new Promise(() => {}));
+      const store = makeStore();
+      void store.dispatch(fetchScheduleThunk('sim-1'));
+      expect(store.getState().schedule.loading).toBe(true);
+    });
+
+    it('stores rooms, studentGroups, courses, and professors on fulfilled', async () => {
+      vi.mocked(simulationService.getSchedule).mockResolvedValue({
+        metadata: { semesterId: 'sem-1', semesterName: 'Fall 2026', academicYear: '2026-2027' },
+        timeSlots: [], classes: [],
+        rooms: [ROOM], studentGroups: [GROUP], courses: [COURSE], professors: [PROFESSOR],
+      });
+      const store = makeStore();
+      await store.dispatch(fetchScheduleThunk('sim-1'));
+
+      expect(store.getState().schedule).toEqual({
+        rooms: [ROOM], studentGroups: [GROUP], courses: [COURSE], professors: [PROFESSOR],
+        loading: false, error: null,
+      });
+    });
+
+    // Regression guard: courses/professors were previously destructured out
+    // and discarded here, which is exactly what caused real names to never
+    // reach the UI even though the backend already returned them.
+    it('does not discard courses/professors from the response', async () => {
+      vi.mocked(simulationService.getSchedule).mockResolvedValue({
+        metadata: { semesterId: 'sem-1', semesterName: 'Fall 2026', academicYear: '2026-2027' },
+        timeSlots: [], classes: [], rooms: [], studentGroups: [],
+        courses: [COURSE], professors: [PROFESSOR],
+      });
+      const store = makeStore();
+      await store.dispatch(fetchScheduleThunk('sim-1'));
+
+      expect(store.getState().schedule.courses).toEqual([COURSE]);
+      expect(store.getState().schedule.professors).toEqual([PROFESSOR]);
+    });
+
+    it('sets an error message on rejected', async () => {
+      vi.mocked(simulationService.getSchedule).mockRejectedValue({ message: 'Failed to load schedule' });
+      const store = makeStore();
+      await store.dispatch(fetchScheduleThunk('sim-1'));
+
+      expect(store.getState().schedule.loading).toBe(false);
+      expect(store.getState().schedule.error).toBe('Failed to load schedule');
+    });
   });
 
-  it('stores rooms and studentGroups on fulfilled', async () => {
-    vi.mocked(simulationService.getSchedule).mockResolvedValue({
-      metadata: { semesterId: 'sem-1', semesterName: 'Fall 2026', academicYear: '2026-2027' }, courses: [], professors: [], timeSlots: [], classes: [],
-      rooms: [ROOM], studentGroups: [GROUP],
+  describe('fetchPublishedScheduleThunk (published/read-only roster)', () => {
+    it('sets loading=true while pending', () => {
+      vi.mocked(scheduleService.getPublishedRoster).mockReturnValue(new Promise(() => {}));
+      const store = makeStore();
+      void store.dispatch(fetchPublishedScheduleThunk());
+      expect(store.getState().schedule.loading).toBe(true);
     });
-    const store = makeStore();
-    await store.dispatch(fetchScheduleThunk('sim-1'));
 
-    expect(store.getState().schedule).toEqual({
-      rooms: [ROOM], studentGroups: [GROUP], loading: false, error: null,
+    it('stores rooms, studentGroups, courses, and professors on fulfilled', async () => {
+      vi.mocked(scheduleService.getPublishedRoster).mockResolvedValue({
+        metadata: { semesterId: 'sem-1', semesterName: 'Fall 2026', academicYear: '2026-2027' },
+        timeSlots: [],
+        rooms: [ROOM], studentGroups: [GROUP], courses: [COURSE], professors: [PROFESSOR],
+      });
+      const store = makeStore();
+      await store.dispatch(fetchPublishedScheduleThunk());
+
+      expect(store.getState().schedule).toEqual({
+        rooms: [ROOM], studentGroups: [GROUP], courses: [COURSE], professors: [PROFESSOR],
+        loading: false, error: null,
+      });
     });
-  });
 
-  it('sets an error message on rejected', async () => {
-    vi.mocked(simulationService.getSchedule).mockRejectedValue({ message: 'Failed to load schedule' });
-    const store = makeStore();
-    await store.dispatch(fetchScheduleThunk('sim-1'));
+    it('sets an error message on rejected', async () => {
+      vi.mocked(scheduleService.getPublishedRoster).mockRejectedValue({ message: 'Failed to load schedule' });
+      const store = makeStore();
+      await store.dispatch(fetchPublishedScheduleThunk());
 
-    expect(store.getState().schedule.loading).toBe(false);
-    expect(store.getState().schedule.error).toBe('Failed to load schedule');
+      expect(store.getState().schedule.loading).toBe(false);
+      expect(store.getState().schedule.error).toBe('Failed to load schedule');
+    });
   });
 });

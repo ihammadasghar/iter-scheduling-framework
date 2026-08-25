@@ -3,20 +3,32 @@ import { Button, Dialog, DialogActions, DialogContent, DialogContentText, Dialog
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { clearSession } from '@/store/reducers/sessionSlice';
+import { deleteSimulationThunk } from '@/store/reducers/simulationSlice';
 import CreateSimulationDialog from '@/molecules/CreateSimulationDialog';
 
 export default function SessionExpiryModal(): React.ReactElement {
   const expired = useAppSelector((s) => s.session.expired);
+  const simulationId = useAppSelector((s) => s.session.simulationId);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [createOpen, setCreateOpen] = useState(false);
 
+  // The backend session behind this draft is already confirmed gone (that's
+  // why this modal is open) — drop it from the dashboard's localStorage list
+  // too, so the user doesn't land back on the same dead card. Fire-and-forget:
+  // simulationService.deleteSimulation() already treats a 404 as success.
+  const forgetStaleDraft = (): void => {
+    if (simulationId) void dispatch(deleteSimulationThunk(simulationId));
+  };
+
   const handleGoHome = (): void => {
+    forgetStaleDraft();
     dispatch(clearSession());
     navigate('/');
   };
 
   const handleNewDraft = (): void => {
+    forgetStaleDraft();
     dispatch(clearSession());
     setCreateOpen(true);
   };

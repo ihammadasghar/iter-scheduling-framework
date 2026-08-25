@@ -45,12 +45,20 @@ export interface RawClass {
   readonly timeSlotIds: readonly string[];
 }
 
-export interface ScheduleJson {
+// Everything in schedule.json except the classes themselves — the master
+// data (rooms/professors/courses/groups/time slots) that lets an ID be
+// resolved to a human-readable name. Split out so the published (main)
+// schedule can expose this roster on its own, without also shipping every
+// class on every request (see ScheduleService.getRoster).
+export interface ScheduleRoster {
   readonly metadata: Record<string, unknown>;
   readonly timeSlots: readonly RawTimeSlot[];
   readonly rooms: readonly RawRoom[];
   readonly professors: readonly RawProfessor[];
   readonly studentGroups: readonly RawStudentGroup[];
   readonly courses: readonly RawCourse[];
+}
+
+export interface ScheduleJson extends ScheduleRoster {
   readonly classes: readonly RawClass[];
 }

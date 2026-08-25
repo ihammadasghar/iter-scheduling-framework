@@ -23,6 +23,49 @@ export function parseScheduleJson(raw: string): ScheduleJson {
   }
 }
 
+// Renders an object as compact single-line JSON with the spacing style the
+// schedule.json fixtures use: `{ "key": value, "key2": value2 }`.
+function stringifyCompactObject(obj: object): string {
+  const entries = Object.entries(obj).map(
+    ([key, value]) => `${JSON.stringify(key)}: ${JSON.stringify(value)}`,
+  );
+  return `{ ${entries.join(', ')} }`;
+}
+
+function indent(text: string, prefix: string): string {
+  return text.split('\n').join(`\n${prefix}`);
+}
+
+function renderArray<T extends object>(items: readonly T[]): string {
+  if (items.length === 0) return '[]';
+  const lines = items.map((item) => `    ${stringifyCompactObject(item)}`).join(',\n');
+  return `[\n${lines}\n  ]`;
+}
+
+// Serializes a ScheduleJson exactly the way the seed fixtures (e.g.
+// fixtures/mock-schedule.json) are formatted: pretty-printed at the top
+// level, but every array element compact on its own line. This isn't just
+// cosmetic — LocalGitHubService.getPullRequestDiff produces a plain textual
+// diff of this file between branches, and the frontend's diffParser.ts only
+// recognizes a changed class when a diff line is a single, complete JSON
+// object. Any mismatch here (e.g. plain `JSON.stringify(schedule, null, 2)`,
+// which spreads every field onto its own line) silently drops every
+// field-level change — not just room changes — from the admin's "Changes in
+// this Proposal" view, because a bare `"roomId": "RM_102",` diff line can't
+// be parsed as a complete class object.
+export function stringifyScheduleJson(schedule: ScheduleJson): string {
+  const parts = [
+    `  "metadata": ${indent(JSON.stringify(schedule.metadata, null, 2), '  ')}`,
+    `  "timeSlots": ${renderArray(schedule.timeSlots)}`,
+    `  "rooms": ${renderArray(schedule.rooms)}`,
+    `  "professors": ${renderArray(schedule.professors)}`,
+    `  "studentGroups": ${renderArray(schedule.studentGroups)}`,
+    `  "courses": ${renderArray(schedule.courses)}`,
+    `  "classes": ${renderArray(schedule.classes)}`,
+  ];
+  return `{\n${parts.join(',\n')}\n}\n`;
+}
+
 export function buildHydrationBatches(
   json: ScheduleJson,
   branchId: string,

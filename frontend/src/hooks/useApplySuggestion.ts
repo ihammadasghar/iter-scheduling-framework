@@ -13,7 +13,7 @@ export interface ScoreDelta {
 }
 
 interface UseApplySuggestionResult {
-  readonly apply: (classId: string, suggestion: Suggestion) => Promise<void>;
+  readonly apply: (classId: string, suggestion: Suggestion) => Promise<boolean>;
   readonly loading: boolean;
   readonly error: string | null;
   readonly lastDelta: MetricDelta | null;
@@ -66,7 +66,7 @@ export const useApplySuggestion = (simId: string): UseApplySuggestionResult => {
   const [lastDelta, setLastDelta] = useState<MetricDelta | null>(null);
   const [lastScoreDelta, setLastScoreDelta] = useState<ScoreDelta | null>(null);
 
-  const apply = async (classId: string, suggestion: Suggestion): Promise<void> => {
+  const apply = async (classId: string, suggestion: Suggestion): Promise<boolean> => {
     setLoading(true);
     setError(null);
     setLastDelta(null);
@@ -85,7 +85,7 @@ export const useApplySuggestion = (simId: string): UseApplySuggestionResult => {
       setDeltaLoading(false);
       setLoading(false);
       setError('Failed to apply suggestion. Please try again.');
-      return;
+      return false;
     }
     setDeltaLoading(false);
 
@@ -94,7 +94,7 @@ export const useApplySuggestion = (simId: string): UseApplySuggestionResult => {
 
     if (!updateClassThunk.fulfilled.match(result)) {
       setError('Failed to apply suggestion. Please try again.');
-      return;
+      return false;
     }
 
     setLastDelta(pickBiggestDelta(currentMetrics, preview.metrics));
@@ -105,6 +105,7 @@ export const useApplySuggestion = (simId: string): UseApplySuggestionResult => {
     void dispatch(fetchConflictsThunk(simId));
     void dispatch(fetchMetricsThunk(simId));
     void dispatch(fetchScoreThunk(simId));
+    return true;
   };
 
   return { apply, loading, error, lastDelta, lastScoreDelta, deltaLoading };

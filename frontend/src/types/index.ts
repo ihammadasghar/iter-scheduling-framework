@@ -16,6 +16,11 @@ export type {
   MetricScoreBreakdown,
   WeightedScoreResult,
   CiResult,
+  ClassFieldDiff,
+  ChangedClass,
+  ScheduleDiff,
+  ConflictDelta,
+  ScheduleComparison,
 } from './domain';
 
 export type {
@@ -26,6 +31,7 @@ export type {
   RawCourse,
   RawClass,
   ScheduleMetadata,
+  ScheduleRoster,
   ScheduleJson,
 } from './schedule';
 

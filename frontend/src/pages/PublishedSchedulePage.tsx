@@ -7,6 +7,7 @@ import Inspector from '@/organisms/Inspector';
 import ViewBySelector from '@/molecules/ViewBySelector';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchPublishedClassesPage, resetClasses } from '@/store/reducers/classSlice';
+import { fetchPublishedScheduleThunk } from '@/store/reducers/scheduleSlice';
 
 const PAGE_SIZE = 50; // must match PAGE_SIZE in classSlice
 
@@ -20,6 +21,11 @@ export default function PublishedSchedulePage(): React.ReactElement {
 
   useEffect(() => {
     dispatch(resetClasses());
+    // Master data (room/professor/course/group names) for this page's chips
+    // and Inspector — fire-and-forget, not awaited before class loading. A
+    // failure here just means labels fall back to ID-derived strings, same
+    // as before this roster existed; no error banner needed for it.
+    void dispatch(fetchPublishedScheduleThunk());
 
     const loadAll = async (): Promise<void> => {
       let page = 1;

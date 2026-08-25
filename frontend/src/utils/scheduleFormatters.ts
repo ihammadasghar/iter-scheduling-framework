@@ -2,6 +2,13 @@
  * Utilities for deriving human-readable labels from schedule entity IDs
  * when full schedule metadata is not separately loaded.
  *
+ * For room/professor/course/group, prefer `useScheduleNames()`
+ * (utils/scheduleNames.ts) — it resolves the entity's real `name` from the
+ * fetched roster and only falls back to these ID-parsing functions when the
+ * roster hasn't loaded or doesn't have that ID. These functions are kept
+ * as that fallback (and used directly for time slots, which have no
+ * separate roster fetch) — never delete them.
+ *
  * ID formats follow the convention defined in schedule.json:
  *   TimeSlot  → TS_MON_P1, TS_TUE_P2, …
  *   Room      → RM_101, RM_LAB_A, …

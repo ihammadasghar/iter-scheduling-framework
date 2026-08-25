@@ -2,6 +2,7 @@ import { parseScheduleJson } from '../utils/ScheduleHydrator.js';
 import type { IGitHubService } from '../interfaces/IGitHubService.js';
 import type { IScheduleService } from '../interfaces/IScheduleService.js';
 import type { ListClassesResult } from '../types/domain.js';
+import type { ScheduleJson, ScheduleRoster } from '../types/scheduleJson.js';
 
 const SOURCE_BRANCH = 'main';
 const SCHEDULE_JSON_PATH = 'schedule.json';
@@ -18,12 +19,33 @@ export class ScheduleService implements IScheduleService {
     const requestedLimit = Number.isFinite(limit) && limit > 0 ? limit : 20;
     const safeLimit = Math.min(requestedLimit, MAX_LIMIT);
 
-    const scheduleJson = await this.github.readFile(SOURCE_BRANCH, SCHEDULE_JSON_PATH);
-    const { classes } = parseScheduleJson(scheduleJson);
+    const { classes } = await this.readPublishedSchedule();
 
     const skip = Math.max(0, (safePage - 1) * safeLimit);
     const data = classes.slice(skip, skip + safeLimit);
 
     return { data, total: classes.length, page: safePage, limit: safeLimit };
+  }
+
+  async getRoster(): Promise<ScheduleRoster> {
+    const { metadata, timeSlots, rooms, professors, studentGroups, courses } =
+      await this.readPublishedSchedule();
+
+    // Explicit field-by-field, not a spread: classes must never leak into
+    // this response, and a hand-edited schedule.json missing an array
+    // should degrade to [] rather than undefined on the wire.
+    return {
+      metadata,
+      timeSlots: timeSlots ?? [],
+      rooms: rooms ?? [],
+      professors: professors ?? [],
+      studentGroups: studentGroups ?? [],
+      courses: courses ?? [],
+    };
+  }
+
+  private async readPublishedSchedule(): Promise<ScheduleJson> {
+    const scheduleJson = await this.github.readFile(SOURCE_BRANCH, SCHEDULE_JSON_PATH);
+    return parseScheduleJson(scheduleJson);
   }
 }

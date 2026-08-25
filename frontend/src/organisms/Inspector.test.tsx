@@ -10,6 +10,7 @@ import conflictReducer from '@/store/reducers/conflictSlice';
 import metricReducer from '@/store/reducers/metricSlice';
 import scoreReducer from '@/store/reducers/scoreSlice';
 import sessionReducer from '@/store/reducers/sessionSlice';
+import scheduleReducer from '@/store/reducers/scheduleSlice';
 import type { ScheduleClass } from '@/types';
 
 // Mock the simulation service to avoid HTTP calls
@@ -48,6 +49,7 @@ const makeStore = (overrides: {
       metric: metricReducer,
       score: scoreReducer,
       session: sessionReducer,
+      schedule: scheduleReducer,
     },
     preloadedState: {
       class: {

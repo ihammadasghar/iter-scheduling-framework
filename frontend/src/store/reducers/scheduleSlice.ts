@@ -1,10 +1,13 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, type ActionReducerMapBuilder, type Draft } from '@reduxjs/toolkit';
 import { simulationService } from '@/services/simulationService';
-import type { RawRoom, RawStudentGroup, ApiError } from '@/types';
+import { scheduleService } from '@/services/scheduleService';
+import type { RawRoom, RawStudentGroup, RawCourse, RawProfessor, ApiError } from '@/types';
 
 interface ScheduleState {
   readonly rooms: RawRoom[];
   readonly studentGroups: RawStudentGroup[];
+  readonly courses: RawCourse[];
+  readonly professors: RawProfessor[];
   readonly loading: boolean;
   readonly error: string | null;
 }
@@ -12,42 +15,89 @@ interface ScheduleState {
 const initialState: ScheduleState = {
   rooms: [],
   studentGroups: [],
+  courses: [],
+  professors: [],
   loading: false,
   error: null,
 };
 
+interface RosterPayload {
+  readonly rooms: RawRoom[];
+  readonly studentGroups: RawStudentGroup[];
+  readonly courses: RawCourse[];
+  readonly professors: RawProfessor[];
+}
+
+// The live/editable roster for a simulation session.
 export const fetchScheduleThunk = createAsyncThunk<
-  { rooms: RawRoom[]; studentGroups: RawStudentGroup[] },
+  RosterPayload,
   string,
   { rejectValue: ApiError }
 >('schedule/fetch', async (simId, { rejectWithValue }) => {
   try {
     const result = await simulationService.getSchedule(simId);
-    return { rooms: [...result.rooms], studentGroups: [...result.studentGroups] };
+    return {
+      rooms: [...result.rooms],
+      studentGroups: [...result.studentGroups],
+      courses: [...result.courses],
+      professors: [...result.professors],
+    };
   } catch (err) {
     return rejectWithValue(err as ApiError);
   }
 });
 
+// The read-only roster for the currently published (main) schedule. Kept
+// separate from fetchScheduleThunk: no simId, and a 404 here just means
+// "labels degrade to ID-derived fallbacks" — not "session expired".
+export const fetchPublishedScheduleThunk = createAsyncThunk<
+  RosterPayload,
+  void,
+  { rejectValue: ApiError }
+>('schedule/fetchPublished', async (_, { rejectWithValue }) => {
+  try {
+    const result = await scheduleService.getPublishedRoster();
+    return {
+      rooms: [...result.rooms],
+      studentGroups: [...result.studentGroups],
+      courses: [...result.courses],
+      professors: [...result.professors],
+    };
+  } catch (err) {
+    return rejectWithValue(err as ApiError);
+  }
+});
+
+const handlePending = (state: Draft<ScheduleState>): void => {
+  state.loading = true;
+  state.error = null;
+};
+
+const handleFulfilled = (state: Draft<ScheduleState>, action: { payload: RosterPayload }): void => {
+  state.loading = false;
+  state.rooms = action.payload.rooms;
+  state.studentGroups = action.payload.studentGroups;
+  state.courses = action.payload.courses;
+  state.professors = action.payload.professors;
+};
+
+const handleRejected = (state: Draft<ScheduleState>, action: { payload?: ApiError }): void => {
+  state.loading = false;
+  state.error = action.payload?.message ?? 'Failed to load schedule data';
+};
+
 const scheduleSlice = createSlice({
   name: 'schedule',
   initialState,
   reducers: {},
-  extraReducers: (builder) => {
+  extraReducers: (builder: ActionReducerMapBuilder<ScheduleState>) => {
     builder
-      .addCase(fetchScheduleThunk.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchScheduleThunk.fulfilled, (state, action) => {
-        state.loading = false;
-        state.rooms = action.payload.rooms;
-        state.studentGroups = action.payload.studentGroups;
-      })
-      .addCase(fetchScheduleThunk.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload?.message ?? 'Failed to load schedule data';
-      });
+      .addCase(fetchScheduleThunk.pending, handlePending)
+      .addCase(fetchScheduleThunk.fulfilled, handleFulfilled)
+      .addCase(fetchScheduleThunk.rejected, handleRejected)
+      .addCase(fetchPublishedScheduleThunk.pending, handlePending)
+      .addCase(fetchPublishedScheduleThunk.fulfilled, handleFulfilled)
+      .addCase(fetchPublishedScheduleThunk.rejected, handleRejected);
   },
 });
 

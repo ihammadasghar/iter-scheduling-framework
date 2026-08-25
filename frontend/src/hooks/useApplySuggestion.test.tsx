@@ -179,14 +179,16 @@ describe('useApplySuggestion', () => {
     const store = makeStore();
     const { result } = renderHook(() => useApplySuggestion(SIM_ID), { wrapper: wrap(store) });
 
+    let succeeded!: boolean;
     await act(async () => {
-      await result.current.apply(CLASS_ID, SUGGESTION);
+      succeeded = await result.current.apply(CLASS_ID, SUGGESTION);
     });
 
     expect(simulationService.simulationService.updateClass).toHaveBeenCalledWith(
       SIM_ID, CLASS_ID, { roomId: 'RM_102', timeSlotIds: ['TS_MON_P2'] },
     );
     expect(store.getState().class.error).toBeNull();
+    expect(succeeded).toBe(true);
   });
 
   it('refreshes conflicts, metrics, and score after a successful commit', async () => {
@@ -215,14 +217,16 @@ describe('useApplySuggestion', () => {
     const store = makeStore();
     const { result } = renderHook(() => useApplySuggestion(SIM_ID), { wrapper: wrap(store) });
 
+    let succeeded!: boolean;
     await act(async () => {
-      await result.current.apply(CLASS_ID, SUGGESTION);
+      succeeded = await result.current.apply(CLASS_ID, SUGGESTION);
     });
 
     expect(result.current.error).toMatch(/failed to apply suggestion/i);
     expect(simulationService.simulationService.updateClass).not.toHaveBeenCalled();
     expect(result.current.lastDelta).toBeNull();
     expect(result.current.lastScoreDelta).toBeNull();
+    expect(succeeded).toBe(false);
   });
 
   it('sets an error and does not set a delta when the commit fails after a successful preview', async () => {
@@ -240,13 +244,15 @@ describe('useApplySuggestion', () => {
     });
     const { result } = renderHook(() => useApplySuggestion(SIM_ID), { wrapper: wrap(store) });
 
+    let succeeded!: boolean;
     await act(async () => {
-      await result.current.apply(CLASS_ID, SUGGESTION);
+      succeeded = await result.current.apply(CLASS_ID, SUGGESTION);
     });
 
     expect(result.current.error).toMatch(/failed to apply suggestion/i);
     expect(result.current.lastDelta).toBeNull();
     expect(result.current.lastScoreDelta).toBeNull();
+    expect(succeeded).toBe(false);
   });
 
   it('sets deltaLoading true only while the preview is in flight', async () => {
@@ -261,7 +267,7 @@ describe('useApplySuggestion', () => {
     const store = makeStore();
     const { result } = renderHook(() => useApplySuggestion(SIM_ID), { wrapper: wrap(store) });
 
-    let applyPromise!: Promise<void>;
+    let applyPromise!: Promise<boolean>;
     act(() => {
       applyPromise = result.current.apply(CLASS_ID, SUGGESTION);
     });

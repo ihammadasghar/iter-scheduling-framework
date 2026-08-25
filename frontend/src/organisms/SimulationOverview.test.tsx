@@ -46,6 +46,8 @@ const makeStore = (overrides: {
       schedule: {
         rooms: [{ id: 'RM_101', name: 'Room 101', capacity: 40, building: 'Building A' }],
         studentGroups: [{ id: 'GRP_BIO_Y1', name: 'Bio Year 1', size: 32 }],
+        courses: [],
+        professors: [],
         loading: overrides.scheduleLoading ?? false,
         error: overrides.scheduleError ?? null,
       },

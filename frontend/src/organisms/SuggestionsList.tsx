@@ -1,52 +1,86 @@
-import { useEffect, useState } from 'react';
-import { Alert, Box, CircularProgress, Divider, Typography } from '@mui/material';
-import SuggestionCard from '@/molecules/SuggestionCard';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, Box, CircularProgress, Divider, Stack, Typography } from '@mui/material';
+import SuggestionCard, { DeltaChip, ScoreDeltaChip } from '@/molecules/SuggestionCard';
+import { formatTimeSlotFull } from '@/utils/scheduleFormatters';
 import { simulationService } from '@/services/simulationService';
 import { useApplySuggestion } from '@/hooks/useApplySuggestion';
-import type { Suggestion } from '@/types';
+import { useScheduleNames } from '@/hooks/useScheduleNames';
+import type { ScheduleClass, Suggestion } from '@/types';
 
 interface SuggestionsListProps {
   readonly simId: string;
   readonly classId: string;
+  // The class these suggestions are for — used to show "currently at X, move
+  // to Y" comparisons in each card instead of the new slot in isolation.
+  readonly currentClass: ScheduleClass;
+}
+
+// What was actually applied — built from the Suggestion object itself, never
+// from `currentClass`, which mutates for every card the instant one
+// suggestion commits (see SuggestionsList.test.tsx for the regression this
+// guards against).
+interface AppliedSummary {
+  readonly roomLabel: string;
+  readonly timeLabel: string;
 }
 
 export default function SuggestionsList({
   simId,
   classId,
+  currentClass,
 }: SuggestionsListProps): React.ReactElement {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [fetchError, setFetchError] = useState('');
   const [appliedIndex, setAppliedIndex] = useState<number | null>(null);
+  const [appliedSummary, setAppliedSummary] = useState<AppliedSummary | null>(null);
 
   const { apply, loading: applying, error: applyError, lastDelta, lastScoreDelta, deltaLoading } =
     useApplySuggestion(simId);
+  const { courseName, roomName } = useScheduleNames();
+
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  const loadSuggestions = useCallback(async (): Promise<void> => {
+    setLoadingSuggestions(true);
+    try {
+      const result = await simulationService.getClassSuggestions(simId, classId);
+      if (mountedRef.current) {
+        setSuggestions(result);
+        setFetchError('');
+      }
+    } catch {
+      if (mountedRef.current) setFetchError('Could not load suggestions. Please try again.');
+    } finally {
+      if (mountedRef.current) setLoadingSuggestions(false);
+    }
+  }, [simId, classId]);
 
   // Re-fetch suggestions whenever the selected class changes
   useEffect(() => {
-    let cancelled = false;
     setFetchError('');
     setAppliedIndex(null);
-
-    const load = async (): Promise<void> => {
-      setLoadingSuggestions(true);
-      try {
-        const result = await simulationService.getClassSuggestions(simId, classId);
-        if (!cancelled) setSuggestions(result);
-      } catch {
-        if (!cancelled) setFetchError('Could not load suggestions. Please try again.');
-      } finally {
-        if (!cancelled) setLoadingSuggestions(false);
-      }
-    };
-
-    void load();
-    return () => { cancelled = true; };
-  }, [simId, classId]);
+    setAppliedSummary(null);
+    void loadSuggestions();
+  }, [loadSuggestions]);
 
   const handleApply = async (index: number, suggestion: Suggestion): Promise<void> => {
     setAppliedIndex(index);
-    await apply(classId, suggestion);
+    const succeeded = await apply(classId, suggestion);
+    if (!succeeded) return;
+
+    setAppliedSummary({
+      roomLabel: roomName(suggestion.roomId),
+      timeLabel: [...suggestion.timeSlotIds].map(formatTimeSlotFull).join(', '),
+    });
+    // The combo that was just applied is no longer a "suggestion" — it's the
+    // current state — and other cards may now be stale/conflicting. Refresh
+    // rather than leaving the old list sitting there looking unchanged.
+    await loadSuggestions();
   };
 
   return (
@@ -58,7 +92,27 @@ export default function SuggestionsList({
       >
         Smart Suggestions
       </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ px: 2, pb: 1 }}>
+        Conflict-free rooms and times {courseName(currentClass.courseId)} could move to.
+        Applying one moves the class immediately.
+      </Typography>
       <Divider />
+
+      {appliedSummary && (
+        <Alert severity="success" sx={{ mx: 2, mt: 1 }}>
+          <Stack spacing={0.5}>
+            <Typography variant="body2">
+              Moved to {appliedSummary.roomLabel} · {appliedSummary.timeLabel}
+            </Typography>
+            {(lastDelta !== null || lastScoreDelta !== null) && (
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {lastDelta !== null && <DeltaChip delta={lastDelta} />}
+                {lastScoreDelta !== null && <ScoreDeltaChip delta={lastScoreDelta} />}
+              </Box>
+            )}
+          </Stack>
+        </Alert>
+      )}
 
       {applyError && (
         <Alert severity="error" sx={{ mx: 2, mt: 1 }}>
@@ -90,10 +144,9 @@ export default function SuggestionsList({
             <SuggestionCard
               key={`${suggestion.roomId}-${suggestion.timeSlotIds.join('-')}`}
               suggestion={suggestion}
+              currentClass={currentClass}
               onApply={() => void handleApply(index, suggestion)}
               applying={applying && appliedIndex === index}
-              metricDelta={appliedIndex === index ? (lastDelta ?? undefined) : undefined}
-              scoreDelta={appliedIndex === index ? (lastScoreDelta ?? undefined) : undefined}
               loadingDelta={deltaLoading && appliedIndex === index}
             />
           ))}

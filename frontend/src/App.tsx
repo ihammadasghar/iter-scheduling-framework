@@ -5,7 +5,7 @@ import { store } from '@/store/store';
 import theme from '@/styles/theme';
 import GlobalStyles from '@/styles/GlobalStyles';
 import GlobalErrorSnackbar from '@/atoms/GlobalErrorSnackbar';
-import AppShell from '@/templates/AppShell';
+import GlobalProposalStatusSnackbar from '@/atoms/GlobalProposalStatusSnackbar';
 import AdminGuard from '@/organisms/AdminGuard';
 import SimulationDashboardPage from '@/pages/SimulationDashboardPage';
 import TimetablePage from '@/pages/TimetablePage';
@@ -28,46 +28,49 @@ export default function App(): React.ReactElement {
         <BrowserRouter>
           {/* Global error Snackbar — listens to all Redux error fields */}
           <GlobalErrorSnackbar />
-          <AppShell>
-            <Routes>
-              {/* User routes */}
-              <Route path="/" element={<SimulationDashboardPage />} />
-              <Route path="/simulations/:id" element={<TimetablePage />} />
-              <Route path="/schedule" element={<PublishedSchedulePage />} />
+          {/* Global proposal-submission-result Snackbar — survives navigating
+              away from the submitting page before/as the result arrives */}
+          <GlobalProposalStatusSnackbar />
+          {/* Each page wraps itself in AppShell (see templates/AppShell.tsx) — don't
+              also wrap Routes here, or the top app bar renders twice, stacked. */}
+          <Routes>
+            {/* User routes */}
+            <Route path="/" element={<SimulationDashboardPage />} />
+            <Route path="/simulations/:id" element={<TimetablePage />} />
+            <Route path="/schedule" element={<PublishedSchedulePage />} />
 
-              {/* Admin routes — guarded by role check */}
-              <Route
-                path="/admin/proposals"
-                element={
-                  <AdminGuard>
-                    <ProposalsDashboardPage />
-                  </AdminGuard>
-                }
-              />
-              <Route
-                path="/admin/proposals/:id"
-                element={
-                  <AdminGuard>
-                    <ProposalReviewPage />
-                  </AdminGuard>
-                }
-              />
-              <Route
-                path="/admin/rules"
-                element={
-                  <AdminGuard>
-                    <RulesPage />
-                  </AdminGuard>
-                }
-              />
+            {/* Admin routes — guarded by role check */}
+            <Route
+              path="/admin/proposals"
+              element={
+                <AdminGuard>
+                  <ProposalsDashboardPage />
+                </AdminGuard>
+              }
+            />
+            <Route
+              path="/admin/proposals/:id"
+              element={
+                <AdminGuard>
+                  <ProposalReviewPage />
+                </AdminGuard>
+              }
+            />
+            <Route
+              path="/admin/rules"
+              element={
+                <AdminGuard>
+                  <RulesPage />
+                </AdminGuard>
+              }
+            />
 
-              {/* Redirect /admin base to proposals */}
-              <Route path="/admin" element={<Navigate to="/admin/proposals" replace />} />
+            {/* Redirect /admin base to proposals */}
+            <Route path="/admin" element={<Navigate to="/admin/proposals" replace />} />
 
-              {/* Catch-all 404 */}
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
-          </AppShell>
+            {/* Catch-all 404 */}
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
         </BrowserRouter>
       </ThemeProvider>
     </Provider>

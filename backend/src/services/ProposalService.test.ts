@@ -5,6 +5,7 @@ import type { IGraphService } from '../interfaces/IGraphService.js';
 import type { ICiPipelineService } from '../interfaces/ICiPipelineService.js';
 import type { IRulesService } from '../interfaces/IRulesService.js';
 import type { Conflict } from '../types/domain.js';
+import type { RawClass, ScheduleJson } from '../types/scheduleJson.js';
 
 const FAKE_CONFLICT: Conflict = {
   id: 'ROOM_DOUBLE_BOOK_CLS_001_CLS_002',
@@ -13,7 +14,94 @@ const FAKE_CONFLICT: Conflict = {
   message: 'Room RM_101 is double-booked',
 };
 
+// Distinct from FAKE_CONFLICT so tests can tell "baseline's conflict" apart
+// from "candidate's conflict" in assertions.
+const BASELINE_CONFLICT: Conflict = {
+  id: 'BASELINE_ROOM_DOUBLE_BOOK',
+  type: 'ROOM_DOUBLE_BOOK',
+  classIds: ['CLS_BASE_1', 'CLS_BASE_2'],
+  message: 'Room RM_100 is double-booked',
+};
+
 const FAKE_SCORE = { score: 0, breakdown: [] };
+
+// get() now parses schedule.json on both sides (via ScheduleDiffer.diffSchedules)
+// to build the class-level change list, so github.readFile must resolve valid
+// ScheduleJson text for get() tests — unlike submit()/the improvement gate,
+// which never parse the file's contents (they only feed it to the mocked
+// graph.hydrate).
+const DEFAULT_CLASS: RawClass = {
+  id: 'CLS_001',
+  courseId: 'CRS_001',
+  title: 'Intro to Biology',
+  professorId: 'PRF_001',
+  studentGroupId: 'GRP_001',
+  roomId: 'RM_101',
+  timeSlotIds: ['TS_MON_P1'],
+};
+
+function makeScheduleJson(classes: readonly RawClass[]): string {
+  const schedule: ScheduleJson = {
+    metadata: {},
+    timeSlots: [],
+    rooms: [],
+    professors: [],
+    studentGroups: [],
+    courses: [],
+    classes,
+  };
+  return JSON.stringify(schedule);
+}
+
+// submit() now hydrates a scratch branch per side (main vs. the simulation
+// branch) via ProposalService.computeConflictsAndScore, whose run id is
+// `check-${branch}-${Date.now()}`. Since queryConflicts/scoreTimetable only
+// ever see that run id (not the branch name directly), tests that care about
+// the gate tell baseline and candidate apart by inspecting the run id's
+// `check-main-` prefix.
+const isBaselineRunId = (runId: string): boolean => runId.startsWith('check-main-');
+
+interface WeightedScoreResultLike {
+  readonly score: number;
+  readonly breakdown: readonly unknown[];
+}
+
+// Default: baseline (main) has one conflict, the candidate simulation branch
+// has none — satisfies the "conflicts reduced" gate unconditionally, so all
+// of the pre-existing happy-path submit() tests below keep passing without
+// having to know the gate exists.
+const makeGraph = (
+  overrides: {
+    baselineConflicts?: readonly Conflict[];
+    baselineScore?: WeightedScoreResultLike;
+    candidateConflicts?: readonly Conflict[];
+    candidateScore?: WeightedScoreResultLike;
+  } = {},
+): IGraphService => {
+  const {
+    baselineConflicts = [BASELINE_CONFLICT],
+    baselineScore = FAKE_SCORE,
+    candidateConflicts = [],
+    candidateScore = FAKE_SCORE,
+  } = overrides;
+
+  return {
+    hydrate: vi.fn().mockResolvedValue(undefined),
+    flush: vi.fn().mockResolvedValue(undefined),
+    exportScheduleJson: vi.fn().mockResolvedValue('{}'),
+    listClasses: vi.fn().mockResolvedValue([]),
+    countClasses: vi.fn().mockResolvedValue(0),
+    updateClass: vi.fn().mockResolvedValue({}),
+    getSuggestions: vi.fn().mockResolvedValue([]),
+    queryConflicts: vi.fn().mockImplementation(async (runId: string) =>
+      isBaselineRunId(runId) ? baselineConflicts : candidateConflicts,
+    ),
+    evaluateMetrics: vi.fn().mockResolvedValue([]),
+    scoreTimetable: vi.fn().mockImplementation(async (runId: string) =>
+      isBaselineRunId(runId) ? baselineScore : candidateScore,
+    ),
+  };
+};
 
 const makeGitHub = (): IGitHubService => ({
   createBranch: vi.fn().mockResolvedValue(undefined),
@@ -34,19 +122,6 @@ const makeGitHub = (): IGitHubService => ({
     createdAt: '2026-06-11T10:00:00.000Z',
   }),
   setPullRequestLabels: vi.fn().mockResolvedValue(undefined),
-});
-
-const makeGraph = (): IGraphService => ({
-  hydrate: vi.fn().mockResolvedValue(undefined),
-  flush: vi.fn().mockResolvedValue(undefined),
-  exportScheduleJson: vi.fn().mockResolvedValue('{}'),
-  listClasses: vi.fn().mockResolvedValue([]),
-  countClasses: vi.fn().mockResolvedValue(0),
-  updateClass: vi.fn().mockResolvedValue({}),
-  getSuggestions: vi.fn().mockResolvedValue([]),
-  queryConflicts: vi.fn().mockResolvedValue([]),
-  evaluateMetrics: vi.fn().mockResolvedValue([]),
-  scoreTimetable: vi.fn().mockResolvedValue(FAKE_SCORE),
 });
 
 const makeCi = (conflicts: readonly Conflict[] = []): ICiPipelineService => ({
@@ -218,6 +293,136 @@ describe('ProposalService.submit()', () => {
   });
 });
 
+describe('ProposalService.submit() — improvement gate', () => {
+  const VALID_PARAMS = {
+    simulationId: 'sim-alice-abc123',
+    description: 'Rescheduling Biology lectures to reduce room conflicts',
+  };
+
+  let github: IGitHubService;
+  let ci: ICiPipelineService;
+  let rules: IRulesService;
+
+  beforeEach(() => {
+    github = makeGitHub();
+    ci = makeCi();
+    rules = makeRules();
+  });
+
+  it('blocks submission when the proposal has more conflicts than published', async () => {
+    const graph = makeGraph({ baselineConflicts: [], candidateConflicts: [FAKE_CONFLICT] });
+    const service = new ProposalService(github, graph, ci, rules);
+
+    await expect(service.submit(VALID_PARAMS)).rejects.toMatchObject({ statusCode: 409 });
+    expect(github.createPullRequest).not.toHaveBeenCalled();
+  });
+
+  it('blocks submission when conflicts are unchanged and the score is unchanged too', async () => {
+    const graph = makeGraph({
+      baselineConflicts: [FAKE_CONFLICT],
+      candidateConflicts: [FAKE_CONFLICT],
+      baselineScore: { score: 50, breakdown: [] },
+      candidateScore: { score: 50, breakdown: [] },
+    });
+    const service = new ProposalService(github, graph, ci, rules);
+
+    await expect(service.submit(VALID_PARAMS)).rejects.toMatchObject({ statusCode: 409 });
+    expect(github.createPullRequest).not.toHaveBeenCalled();
+  });
+
+  it('blocks submission when conflicts are unchanged and there are no metric rules to move the score', async () => {
+    // Default FAKE_SCORE (0) on both sides — no metric rules defined means
+    // there's nothing for the proposal to improve, so it stays blocked.
+    const graph = makeGraph({ baselineConflicts: [FAKE_CONFLICT], candidateConflicts: [FAKE_CONFLICT] });
+    const service = new ProposalService(github, graph, ci, rules);
+
+    await expect(service.submit(VALID_PARAMS)).rejects.toMatchObject({ statusCode: 409 });
+  });
+
+  it('allows submission when conflicts are unchanged but the score improves', async () => {
+    const graph = makeGraph({
+      baselineConflicts: [FAKE_CONFLICT],
+      candidateConflicts: [FAKE_CONFLICT],
+      baselineScore: { score: 50, breakdown: [] },
+      candidateScore: { score: 70, breakdown: [] },
+    });
+    const service = new ProposalService(github, graph, ci, rules);
+
+    await service.submit(VALID_PARAMS);
+
+    expect(github.createPullRequest).toHaveBeenCalledOnce();
+  });
+
+  it('allows submission when conflicts are unchanged but the score regresses (any change counts)', async () => {
+    const graph = makeGraph({
+      baselineConflicts: [FAKE_CONFLICT],
+      candidateConflicts: [FAKE_CONFLICT],
+      baselineScore: { score: 70, breakdown: [] },
+      candidateScore: { score: 50, breakdown: [] },
+    });
+    const service = new ProposalService(github, graph, ci, rules);
+
+    await service.submit(VALID_PARAMS);
+
+    expect(github.createPullRequest).toHaveBeenCalledOnce();
+  });
+
+  it('allows submission when conflicts are strictly reduced, regardless of the score', async () => {
+    const graph = makeGraph({
+      baselineConflicts: [FAKE_CONFLICT, BASELINE_CONFLICT],
+      candidateConflicts: [FAKE_CONFLICT],
+      baselineScore: { score: 90, breakdown: [] },
+      candidateScore: { score: 10, breakdown: [] },
+    });
+    const service = new ProposalService(github, graph, ci, rules);
+
+    await service.submit(VALID_PARAMS);
+
+    expect(github.createPullRequest).toHaveBeenCalledOnce();
+  });
+
+  it('blocks submission when the proposal is strictly worse (more conflicts, even with a better score)', async () => {
+    const graph = makeGraph({
+      baselineConflicts: [FAKE_CONFLICT],
+      candidateConflicts: [FAKE_CONFLICT, BASELINE_CONFLICT],
+      baselineScore: { score: 10, breakdown: [] },
+      candidateScore: { score: 90, breakdown: [] },
+    });
+    const service = new ProposalService(github, graph, ci, rules);
+
+    await expect(service.submit(VALID_PARAMS)).rejects.toMatchObject({ statusCode: 409 });
+  });
+
+  it('reads baseline conflicts/score from main and candidate from the simulation branch', async () => {
+    const graph = makeGraph();
+    const service = new ProposalService(github, graph, ci, rules);
+
+    await service.submit(VALID_PARAMS);
+
+    const readFileBranches = (github.readFile as ReturnType<typeof vi.fn>).mock.calls.map(
+      (call: unknown[]) => call[0],
+    );
+    expect(readFileBranches).toEqual(
+      expect.arrayContaining(['main', VALID_PARAMS.simulationId]),
+    );
+  });
+
+  it('rejection message states both conflict counts and the unchanged score', async () => {
+    const graph = makeGraph({
+      baselineConflicts: [FAKE_CONFLICT],
+      candidateConflicts: [FAKE_CONFLICT],
+      baselineScore: { score: 42, breakdown: [] },
+      candidateScore: { score: 42, breakdown: [] },
+    });
+    const service = new ProposalService(github, graph, ci, rules);
+
+    await expect(service.submit(VALID_PARAMS)).rejects.toMatchObject({
+      statusCode: 409,
+      message: expect.stringContaining('1 conflict vs 1'),
+    });
+  });
+});
+
 describe('ProposalService.list()', () => {
   let github: IGitHubService;
   let service: ProposalService;
@@ -313,6 +518,9 @@ describe('ProposalService.get()', () => {
 
   beforeEach(() => {
     github = makeGitHub();
+    // Same class on both sides by default — no class-diff noise for tests
+    // that aren't specifically exercising the comparison.
+    (github.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(makeScheduleJson([DEFAULT_CLASS]));
     graph = makeGraph();
     rules = makeRules();
     service = new ProposalService(github, graph, makeCi(), rules);
@@ -354,14 +562,15 @@ describe('ProposalService.get()', () => {
     expect(detail.status).toBe('PENDING');
   });
 
-  it('hydrates a scratch "score-" branch from the PR head branch schedule.json', async () => {
+  it('hydrates two scratch "check-" branches — main baseline and the PR head branch', async () => {
     await service.get('42');
 
+    expect(github.readFile).toHaveBeenCalledWith('main', 'schedule.json');
     expect(github.readFile).toHaveBeenCalledWith('sim-alice-abc123', 'schedule.json');
-    expect(graph.hydrate).toHaveBeenCalledOnce();
-    const [scoreRunId] = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string];
-    expect(scoreRunId).toContain('42');
-    expect(scoreRunId).not.toBe('sim-alice-abc123');
+    expect(graph.hydrate).toHaveBeenCalledTimes(2);
+    const runIds = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls.map((call) => call[0] as string);
+    expect(runIds.some((id) => id.startsWith('check-main-'))).toBe(true);
+    expect(runIds.some((id) => id.startsWith('check-sim-alice-abc123-'))).toBe(true);
   });
 
   it('reads current metric rules via rulesService.listMetrics()', async () => {
@@ -370,23 +579,40 @@ describe('ProposalService.get()', () => {
     expect(rules.listMetrics).toHaveBeenCalledOnce();
   });
 
-  it('scores against the scratch branch and attaches the result to ProposalDetail', async () => {
-    const fakeScore = { score: 64, breakdown: [] };
-    (graph.scoreTimetable as ReturnType<typeof vi.fn>).mockResolvedValue(fakeScore);
+  it('scores both branches and attaches the candidate score to ProposalDetail.score', async () => {
+    const baselineScore = { score: 40, breakdown: [] };
+    const candidateScore = { score: 64, breakdown: [] };
+    graph = makeGraph({ baselineScore, candidateScore });
+    service = new ProposalService(github, graph, makeCi(), rules);
 
     const detail = await service.get('42');
 
-    expect(detail.score).toEqual(fakeScore);
-    const [scoreRunId] = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string];
-    expect(graph.scoreTimetable).toHaveBeenCalledWith(scoreRunId, []);
+    expect(detail.score).toEqual(candidateScore);
+    expect(detail.comparison.candidateScore).toEqual(candidateScore);
+    expect(detail.comparison.baselineScore).toEqual(baselineScore);
   });
 
-  it('always flushes the scratch branch, including when scoring fails', async () => {
+  it('always flushes the baseline scratch branch, including when its own scoring fails', async () => {
     (graph.scoreTimetable as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('score error'));
 
     await expect(service.get('42')).rejects.toThrow('score error');
 
+    // Baseline (main) is hydrated/scored first; it fails before the
+    // candidate branch is ever touched.
+    expect(graph.hydrate).toHaveBeenCalledOnce();
     expect(graph.flush).toHaveBeenCalledOnce();
+  });
+
+  it('flushes both scratch branches even when only the candidate side fails', async () => {
+    (graph.scoreTimetable as ReturnType<typeof vi.fn>).mockImplementation(async (runId: string) => {
+      if (isBaselineRunId(runId)) return FAKE_SCORE;
+      throw new Error('candidate score error');
+    });
+
+    await expect(service.get('42')).rejects.toThrow('candidate score error');
+
+    expect(graph.hydrate).toHaveBeenCalledTimes(2);
+    expect(graph.flush).toHaveBeenCalledTimes(2);
   });
 
   it('still flushes the scratch branch when hydrate itself throws', async () => {
@@ -397,6 +623,39 @@ describe('ProposalService.get()', () => {
     expect(graph.flush).toHaveBeenCalledOnce();
     const hydrateRunId = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
     expect(graph.flush).toHaveBeenCalledWith(hydrateRunId);
+  });
+
+  it('computes classDiff from the parsed main vs. candidate schedule.json', async () => {
+    const changedClass: RawClass = { ...DEFAULT_CLASS, roomId: 'RM_102' };
+    const addedClass: RawClass = { ...DEFAULT_CLASS, id: 'CLS_002' };
+    (github.readFile as ReturnType<typeof vi.fn>).mockImplementation(async (branch: string) =>
+      branch === 'main' ? makeScheduleJson([DEFAULT_CLASS]) : makeScheduleJson([changedClass, addedClass]),
+    );
+
+    const detail = await service.get('42');
+
+    expect(detail.comparison.classDiff.added.map((c) => c.id)).toEqual(['CLS_002']);
+    expect(detail.comparison.classDiff.removed).toEqual([]);
+    expect(detail.comparison.classDiff.changed).toEqual([
+      {
+        classId: 'CLS_001',
+        before: DEFAULT_CLASS,
+        after: changedClass,
+        fieldChanges: [{ field: 'roomId', before: 'RM_101', after: 'RM_102' }],
+      },
+    ]);
+  });
+
+  it('computes conflictDelta between baseline and candidate conflicts', async () => {
+    graph = makeGraph({ baselineConflicts: [BASELINE_CONFLICT], candidateConflicts: [FAKE_CONFLICT] });
+    service = new ProposalService(github, graph, makeCi(), rules);
+
+    const detail = await service.get('42');
+
+    expect(detail.comparison.baselineConflicts).toEqual([BASELINE_CONFLICT]);
+    expect(detail.comparison.candidateConflicts).toEqual([FAKE_CONFLICT]);
+    expect(detail.comparison.conflictDelta.added).toEqual([FAKE_CONFLICT]);
+    expect(detail.comparison.conflictDelta.resolved).toEqual([BASELINE_CONFLICT]);
   });
 });
 

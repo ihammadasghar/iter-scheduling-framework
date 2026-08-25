@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import ChangeCard from './ChangeCard';
-import type { ClassChange } from '@/utils/diffParser';
+import type { ClassChange } from '@/types';
 
 const change: ClassChange = {
+  classId: 'CLS_001',
   className: 'Biology 101 Lecture',
   changes: [
     { field: 'Room', from: 'Room 101 (Block A)', to: 'Room 201 (Block B)' },

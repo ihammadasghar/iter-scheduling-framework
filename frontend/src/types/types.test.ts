@@ -82,6 +82,14 @@ describe('types barrel export', () => {
       createdAt: '2026-06-11T10:15:00Z',
       diff: '--- a/schedule.json\n+++ b/schedule.json',
       score: { score: 0, breakdown: [] },
+      comparison: {
+        baselineScore: { score: 0, breakdown: [] },
+        candidateScore: { score: 0, breakdown: [] },
+        baselineConflicts: [],
+        candidateConflicts: [],
+        conflictDelta: { added: [], resolved: [] },
+        classDiff: { added: [], removed: [], changed: [] },
+      },
     };
     expect(pd.diff).toContain('schedule.json');
     expect(pd.id).toBe('42');

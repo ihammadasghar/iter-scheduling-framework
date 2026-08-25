@@ -65,6 +65,20 @@ conflict → commit → submit a proposal → merge, with `GITHUB_PROVIDER=mock`
 its own `vitest.e2e.config.ts` for the same reason as the integration suite —
 excluded from the default `pnpm test` run.
 
+`backend/src/e2e/scoringAndCiLoop.e2e.test.ts` extends the same in-process
+HTTP surface to cover what the happy-path test above doesn't: (1) the RQ2/G2
+institution-defined weighted score (`GET /simulations/:id/score`, and the
+`score` on `GET /proposals/:id`, computed by `GraphService.scoreTimetable`
+against `rules.json`) is consistent whether a proposal is `BLOCKED` or
+`READY`, and unaffected by an edit that only resolves a hard conflict; and
+(2) the CI-blocked branch of the pipeline — submitting with an unresolved
+conflict yields `BLOCKED`, merging a `BLOCKED` proposal is rejected with 409,
+and fixing + resubmitting reaches `READY` and merges. Because there's no
+endpoint to re-run CI on an existing PR, "resubmit" opens a second,
+independent PR for the same simulation branch rather than updating the first
+— this matches the current API, not `docs/sequence-diagram.md`'s "same PR"
+re-run framing.
+
 ```bash
 docker-compose up -d memgraph
 cd backend

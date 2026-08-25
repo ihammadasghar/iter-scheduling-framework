@@ -3,7 +3,16 @@ import type { MockInstance } from 'vitest';
 import type { AxiosResponse } from 'axios';
 import apiClient from './apiClient';
 import { proposalService } from './proposalService';
-import type { Proposal, ProposalDetail, ApiError } from '@/types';
+import type { Proposal, ProposalDetail, ScheduleComparison, ApiError } from '@/types';
+
+const EMPTY_COMPARISON: ScheduleComparison = {
+  baselineScore: { score: 0, breakdown: [] },
+  candidateScore: { score: 0, breakdown: [] },
+  baselineConflicts: [],
+  candidateConflicts: [],
+  conflictDelta: { added: [], resolved: [] },
+  classDiff: { added: [], removed: [], changed: [] },
+};
 
 const axiosOk = <T>(data: T): Promise<AxiosResponse<T>> =>
   Promise.resolve({ data, status: 200, statusText: 'OK', headers: {}, config: {} as never });
@@ -51,7 +60,9 @@ describe('proposalService', () => {
   });
 
   it('getProposal calls GET /proposals/:id', async () => {
-    const detail: ProposalDetail = { ...fakeProposal, diff: '--- a\n+++ b', score: { score: 0, breakdown: [] } };
+    const detail: ProposalDetail = {
+      ...fakeProposal, diff: '--- a\n+++ b', score: { score: 0, breakdown: [] }, comparison: EMPTY_COMPARISON,
+    };
     getSpy.mockReturnValue(axiosOk(detail));
     const result = await proposalService.getProposal('42');
     expect(getSpy).toHaveBeenCalledWith('/proposals/42');
