@@ -122,7 +122,8 @@ const PROFESSOR_AVG_GAP_LENGTH_CYPHER = `
   WHERE c1 <> c2
   WITH c1, p, min(length(path)) AS hops
   WITH p, avg(hops - 1) AS avgGapPerProf
-  RETURN CASE WHEN avgGapPerProf IS NULL THEN 0.0 ELSE round(avg(avgGapPerProf) * 100) / 100 END AS value
+  WITH avg(avgGapPerProf) AS overallAvgGap
+  RETURN CASE WHEN overallAvgGap IS NULL THEN 0.0 ELSE round(overallAvgGap * 100) / 100 END AS value
 `.trim();
 
 // ── Lookup map ────────────────────────────────────────────────────────────────
