@@ -3,7 +3,7 @@ import { CiPipelineService } from './CiPipelineService.js';
 import type { IGitHubService } from '../interfaces/IGitHubService.js';
 import type { IGraphService } from '../interfaces/IGraphService.js';
 import type { IRulesService } from '../interfaces/IRulesService.js';
-import type { Conflict } from '../types/domain.js';
+import type { Conflict, WeightedScoreResult } from '../types/domain.js';
 
 const FAKE_CONFLICT: Conflict = {
   id: 'ROOM_DOUBLE_BOOK_CLS_001_CLS_002',
@@ -27,6 +27,7 @@ const makeGitHub = (): IGitHubService => ({
   deleteBranch: vi.fn().mockResolvedValue(undefined),
   readFile: vi.fn().mockResolvedValue(FAKE_SCHEDULE_JSON),
   readFileWithSha: vi.fn().mockResolvedValue({ content: FAKE_SCHEDULE_JSON, sha: 'mock-sha' }),
+  readBlobBySha: vi.fn().mockResolvedValue(FAKE_SCHEDULE_JSON),
   writeFile: vi.fn().mockResolvedValue(undefined),
   createPullRequest: vi.fn().mockResolvedValue('42'),
   mergePullRequest: vi.fn().mockResolvedValue(undefined),
@@ -38,7 +39,26 @@ const makeGitHub = (): IGitHubService => ({
   setPullRequestLabels: vi.fn().mockResolvedValue(undefined),
 });
 
-const makeGraph = (): IGraphService => ({
+// A run id starting with `check-main-` is CiPipelineService's fresh baseline
+// hydrate of `main` (via the shared ProposalGate.computeConflictsAndScore);
+// anything else is the candidate (`ci-${proposalId}-...`) hydrate of the
+// simulation branch. Mirrors the same distinguishing pattern
+// ProposalService.test.ts uses for its own baseline/candidate mocking.
+const isBaselineRunId = (runId: string): boolean => runId.startsWith('check-main-');
+
+interface GraphMockOptions {
+  readonly baselineConflicts?: readonly Conflict[];
+  readonly candidateConflicts?: readonly Conflict[];
+  readonly baselineScore?: WeightedScoreResult;
+  readonly candidateScore?: WeightedScoreResult;
+}
+
+const makeGraph = ({
+  baselineConflicts = [],
+  candidateConflicts = [],
+  baselineScore = { score: 0, breakdown: [] },
+  candidateScore = { score: 0, breakdown: [] },
+}: GraphMockOptions = {}): IGraphService => ({
   hydrate: vi.fn().mockResolvedValue(undefined),
   flush: vi.fn().mockResolvedValue(undefined),
   exportScheduleJson: vi.fn().mockResolvedValue('{}'),
@@ -46,9 +66,14 @@ const makeGraph = (): IGraphService => ({
   countClasses: vi.fn().mockResolvedValue(0),
   updateClass: vi.fn().mockResolvedValue({}),
   getSuggestions: vi.fn().mockResolvedValue([]),
-  queryConflicts: vi.fn().mockResolvedValue([]),
+  getRoomAvailability: vi.fn().mockResolvedValue([]),
+  queryConflicts: vi.fn().mockImplementation(async (runId: string) =>
+    isBaselineRunId(runId) ? baselineConflicts : candidateConflicts,
+  ),
   evaluateMetrics: vi.fn().mockResolvedValue([]),
-  scoreTimetable: vi.fn().mockResolvedValue({ score: 0, breakdown: [] }),
+  scoreTimetable: vi.fn().mockImplementation(async (runId: string) =>
+    isBaselineRunId(runId) ? baselineScore : candidateScore,
+  ),
 });
 
 const makeRules = (): IRulesService => ({
@@ -68,6 +93,13 @@ describe('CiPipelineService.run()', () => {
   let rules: IRulesService;
   let service: CiPipelineService;
 
+  const candidateHydrateCall = (): [string, string] => {
+    const calls = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls as [string, string][];
+    const call = calls.find(([runId]) => !isBaselineRunId(runId));
+    if (!call) throw new Error('candidate hydrate call not found');
+    return call;
+  };
+
   beforeEach(() => {
     github = makeGitHub();
     graph = makeGraph();
@@ -81,41 +113,83 @@ describe('CiPipelineService.run()', () => {
     expect(github.readFile).toHaveBeenCalledWith(PARAMS.simulationId, 'schedule.json');
   });
 
-  it('hydrates the graph with the schedule.json content', async () => {
+  it('also reads schedule.json from main to compute the baseline', async () => {
     await service.run(PARAMS);
 
-    const [ciRunId, content] = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls[0] as [
-      string,
-      string,
-    ];
+    expect(github.readFile).toHaveBeenCalledWith('main', 'schedule.json');
+  });
+
+  it('hydrates the graph with the candidate schedule.json content', async () => {
+    await service.run(PARAMS);
+
+    const [ciRunId, content] = candidateHydrateCall();
     expect(content).toBe(FAKE_SCHEDULE_JSON);
     expect(ciRunId).toContain(PARAMS.proposalId);
   });
 
-  it('ciRunId contains the proposalId', async () => {
+  it('candidate ciRunId contains the proposalId', async () => {
     await service.run(PARAMS);
 
-    const [ciRunId] = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls[0] as [string];
+    const [ciRunId] = candidateHydrateCall();
     expect(ciRunId).toContain('42');
   });
 
-  it('queries conflicts using the same ciRunId used for hydration', async () => {
+  it('hydrates the baseline (main) before the candidate', async () => {
     await service.run(PARAMS);
 
-    const hydrateRunId = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
-    const conflictsRunId = (graph.queryConflicts as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
-    expect(conflictsRunId).toBe(hydrateRunId);
+    const calls = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls as [string, string][];
+    expect(calls).toHaveLength(2);
+    expect(isBaselineRunId(calls[0]![0])).toBe(true);
+    expect(isBaselineRunId(calls[1]![0])).toBe(false);
   });
 
-  it('returns READY when queryConflicts returns no conflicts', async () => {
+  it('queries conflicts using the same ciRunId used for candidate hydration', async () => {
+    await service.run(PARAMS);
+
+    const [candidateRunId] = candidateHydrateCall();
+    const conflictsCalls = (graph.queryConflicts as ReturnType<typeof vi.fn>).mock.calls as [string][];
+    const candidateConflictsRunId = conflictsCalls.find(([runId]) => !isBaselineRunId(runId))?.[0];
+    expect(candidateConflictsRunId).toBe(candidateRunId);
+  });
+
+  it('returns BLOCKED as a no-op when the candidate has no conflicts, same as main, and the score is unchanged', async () => {
+    graph = makeGraph({ baselineConflicts: [], candidateConflicts: [] });
+    service = new CiPipelineService(github, graph, rules);
+
+    const result = await service.run(PARAMS);
+
+    expect(result.status).toBe('BLOCKED');
+    expect(result.conflicts).toHaveLength(0);
+  });
+
+  it('returns READY when both have zero conflicts but the candidate changes the score', async () => {
+    graph = makeGraph({
+      baselineConflicts: [],
+      candidateConflicts: [],
+      baselineScore: { score: 0, breakdown: [] },
+      candidateScore: { score: 5, breakdown: [] },
+    });
+    service = new CiPipelineService(github, graph, rules);
+
     const result = await service.run(PARAMS);
 
     expect(result.status).toBe('READY');
     expect(result.conflicts).toHaveLength(0);
   });
 
-  it('returns BLOCKED when queryConflicts returns conflicts', async () => {
-    (graph.queryConflicts as ReturnType<typeof vi.fn>).mockResolvedValue([FAKE_CONFLICT]);
+  it('returns READY when the candidate strictly reduces conflicts vs. main, even if not zero', async () => {
+    graph = makeGraph({ baselineConflicts: [FAKE_CONFLICT, FAKE_CONFLICT], candidateConflicts: [FAKE_CONFLICT] });
+    service = new CiPipelineService(github, graph, rules);
+
+    const result = await service.run(PARAMS);
+
+    expect(result.status).toBe('READY');
+    expect(result.conflicts).toEqual([FAKE_CONFLICT]);
+  });
+
+  it('returns BLOCKED when the candidate has more conflicts than main', async () => {
+    graph = makeGraph({ baselineConflicts: [], candidateConflicts: [FAKE_CONFLICT] });
+    service = new CiPipelineService(github, graph, rules);
 
     const result = await service.run(PARAMS);
 
@@ -124,14 +198,43 @@ describe('CiPipelineService.run()', () => {
     expect(result.conflicts[0]).toEqual(FAKE_CONFLICT);
   });
 
-  it('returns BLOCKED when the only conflict is a room-capacity overrun', async () => {
+  it('returns BLOCKED for a no-op: same conflict count and same score as main', async () => {
+    graph = makeGraph({
+      baselineConflicts: [FAKE_CONFLICT],
+      candidateConflicts: [FAKE_CONFLICT],
+      baselineScore: { score: 10, breakdown: [] },
+      candidateScore: { score: 10, breakdown: [] },
+    });
+    service = new CiPipelineService(github, graph, rules);
+
+    const result = await service.run(PARAMS);
+
+    expect(result.status).toBe('BLOCKED');
+  });
+
+  it('returns READY when conflicts are unchanged but the score changed', async () => {
+    graph = makeGraph({
+      baselineConflicts: [FAKE_CONFLICT],
+      candidateConflicts: [FAKE_CONFLICT],
+      baselineScore: { score: 10, breakdown: [] },
+      candidateScore: { score: 20, breakdown: [] },
+    });
+    service = new CiPipelineService(github, graph, rules);
+
+    const result = await service.run(PARAMS);
+
+    expect(result.status).toBe('READY');
+  });
+
+  it('returns BLOCKED when the only conflict is a room-capacity overrun and main has none', async () => {
     const capacityConflict: Conflict = {
       id: 'ROOM_CAPACITY_EXCEEDED_CLS_004',
       type: 'ROOM_CAPACITY_EXCEEDED',
       classIds: ['CLS_004', 'CLS_004'],
       message: "Class CLS_004 assigned to room 'RM_101' (capacity 30) but group 'Bio Year 1' has 40 students",
     };
-    (graph.queryConflicts as ReturnType<typeof vi.fn>).mockResolvedValue([capacityConflict]);
+    graph = makeGraph({ baselineConflicts: [], candidateConflicts: [capacityConflict] });
+    service = new CiPipelineService(github, graph, rules);
 
     const result = await service.run(PARAMS);
 
@@ -139,28 +242,45 @@ describe('CiPipelineService.run()', () => {
     expect(result.conflicts).toEqual([capacityConflict]);
   });
 
-  it('always flushes the ciRunId even when no conflicts', async () => {
+  it('always flushes both the baseline and candidate run ids', async () => {
     await service.run(PARAMS);
 
-    const hydrateRunId = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
-    expect(graph.flush).toHaveBeenCalledWith(hydrateRunId);
+    const hydrateCalls = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls as [string, string][];
+    for (const [runId] of hydrateCalls) {
+      expect(graph.flush).toHaveBeenCalledWith(runId);
+    }
   });
 
-  it('flushes even when queryConflicts throws', async () => {
-    (graph.queryConflicts as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('graph error'));
+  it('flushes even when the candidate queryConflicts throws', async () => {
+    (graph.queryConflicts as ReturnType<typeof vi.fn>).mockImplementation(async (runId: string) => {
+      if (isBaselineRunId(runId)) return [];
+      throw new Error('graph error');
+    });
 
     await expect(service.run(PARAMS)).rejects.toThrow('graph error');
 
-    const hydrateRunId = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
-    expect(graph.flush).toHaveBeenCalledWith(hydrateRunId);
+    const [candidateRunId] = candidateHydrateCall();
+    expect(graph.flush).toHaveBeenCalledWith(candidateRunId);
   });
 
-  it('returns all conflicts in result', async () => {
+  it('flushes the baseline run id even when the baseline queryConflicts throws (never reaches the candidate)', async () => {
+    (graph.queryConflicts as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('baseline graph error'));
+
+    await expect(service.run(PARAMS)).rejects.toThrow('baseline graph error');
+
+    const hydrateCalls = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls as [string, string][];
+    expect(hydrateCalls).toHaveLength(1);
+    expect(isBaselineRunId(hydrateCalls[0]![0])).toBe(true);
+    expect(graph.flush).toHaveBeenCalledWith(hydrateCalls[0]![0]);
+  });
+
+  it('returns all candidate conflicts in result', async () => {
     const conflicts: Conflict[] = [
       FAKE_CONFLICT,
       { ...FAKE_CONFLICT, id: 'PROFESSOR_OVERLAP_A_B', type: 'PROFESSOR_OVERLAP', classIds: ['A', 'B'], message: 'Professor overlap' },
     ];
-    (graph.queryConflicts as ReturnType<typeof vi.fn>).mockResolvedValue(conflicts);
+    graph = makeGraph({ baselineConflicts: [], candidateConflicts: conflicts });
+    service = new CiPipelineService(github, graph, rules);
 
     const result = await service.run(PARAMS);
 
@@ -173,41 +293,48 @@ describe('CiPipelineService.run()', () => {
     expect(rules.listMetrics).toHaveBeenCalledOnce();
   });
 
-  it('scores using the same ciRunId used for hydration, not the proposal/simulation branch', async () => {
+  it('scores using the same ciRunId used for candidate hydration, not the proposal/simulation branch', async () => {
     const metricRules = [{ id: 'mr-1', name: 'Class Count', target: 'Class', condition: 'count', threshold: 0, weight: 1 }];
     (rules.listMetrics as ReturnType<typeof vi.fn>).mockResolvedValue(metricRules);
 
     await service.run(PARAMS);
 
-    const hydrateRunId = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
-    expect(graph.scoreTimetable).toHaveBeenCalledWith(hydrateRunId, metricRules);
-    expect(hydrateRunId).not.toBe(PARAMS.simulationId);
+    const [candidateRunId] = candidateHydrateCall();
+    expect(graph.scoreTimetable).toHaveBeenCalledWith(candidateRunId, metricRules);
+    expect(candidateRunId).not.toBe(PARAMS.simulationId);
   });
 
-  it('attaches the computed score to the returned CiResult', async () => {
+  it('attaches the computed candidate score to the returned CiResult', async () => {
     const fakeScore = { score: 77, breakdown: [] };
-    (graph.scoreTimetable as ReturnType<typeof vi.fn>).mockResolvedValue(fakeScore);
+    graph = makeGraph({ candidateScore: fakeScore });
+    service = new CiPipelineService(github, graph, rules);
 
     const result = await service.run(PARAMS);
 
     expect(result.score).toEqual(fakeScore);
   });
 
-  it('still flushes the ciRunId when scoring fails', async () => {
-    (graph.scoreTimetable as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('score error'));
+  it('still flushes when candidate scoring fails', async () => {
+    (graph.scoreTimetable as ReturnType<typeof vi.fn>).mockImplementation(async (runId: string) => {
+      if (isBaselineRunId(runId)) return { score: 0, breakdown: [] };
+      throw new Error('score error');
+    });
 
     await expect(service.run(PARAMS)).rejects.toThrow('score error');
 
-    const hydrateRunId = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
-    expect(graph.flush).toHaveBeenCalledWith(hydrateRunId);
+    const [candidateRunId] = candidateHydrateCall();
+    expect(graph.flush).toHaveBeenCalledWith(candidateRunId);
   });
 
-  it('still flushes the ciRunId when hydrate itself throws', async () => {
-    (graph.hydrate as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('hydration failed'));
+  it('still flushes when candidate hydrate itself throws', async () => {
+    (graph.hydrate as ReturnType<typeof vi.fn>).mockImplementation(async (runId: string) => {
+      if (!isBaselineRunId(runId)) throw new Error('hydration failed');
+    });
 
     await expect(service.run(PARAMS)).rejects.toThrow('hydration failed');
 
-    const hydrateRunId = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
-    expect(graph.flush).toHaveBeenCalledWith(hydrateRunId);
+    const hydrateCalls = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls as [string, string][];
+    const candidateRunId = hydrateCalls.find(([runId]) => !isBaselineRunId(runId))?.[0];
+    expect(graph.flush).toHaveBeenCalledWith(candidateRunId);
   });
 });
