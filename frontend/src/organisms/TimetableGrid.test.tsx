@@ -34,7 +34,6 @@ const makeStore = (
         error: null,
       },
       ui: {
-        role: 'user' as const,
         selectedClassId: null,
         inspectorOpen: false,
         viewBy,
@@ -44,6 +43,7 @@ const makeStore = (
         studentGroups: [],
         courses: [],
         professors: [],
+        timeSlots: [],
         loading: false,
         error: null,
       },
@@ -58,8 +58,8 @@ const makeStoreWithRooms = (
     reducer: { class: classReducer, ui: uiReducer, schedule: scheduleReducer, conflict: conflictReducer },
     preloadedState: {
       class: { classes, total: classes.length, currentPage: 1, hasMore: false, loading: false, error: null },
-      ui: { role: 'user' as const, selectedClassId: null, inspectorOpen: false, viewBy: 'room' as const },
-      schedule: { rooms, studentGroups: [], courses: [], professors: [], loading: false, error: null },
+      ui: { selectedClassId: null, inspectorOpen: false, viewBy: 'room' as const },
+      schedule: { rooms, studentGroups: [], courses: [], professors: [], timeSlots: [], loading: false, error: null },
       conflict: { conflicts: [], loading: false, lastFetchedAt: null, error: null },
     },
   });
@@ -115,9 +115,9 @@ describe('TimetableGrid', () => {
       reducer: { class: classReducer, ui: uiReducer, schedule: scheduleReducer, conflict: conflictReducer },
       preloadedState: {
         class: { classes: [opaqueClass], total: 1, currentPage: 1, hasMore: false, loading: false, error: null },
-        ui: { role: 'user' as const, selectedClassId: null, inspectorOpen: false, viewBy: 'professor' as const },
+        ui: { selectedClassId: null, inspectorOpen: false, viewBy: 'professor' as const },
         schedule: {
-          rooms: [], studentGroups: [], courses: [],
+          rooms: [], studentGroups: [], courses: [], timeSlots: [],
           professors: [{ id: 'PRF_00001', name: 'Dr. Jane Smith', department: 'Biology' }],
           loading: false, error: null,
         },
@@ -197,8 +197,8 @@ describe('TimetableGrid', () => {
       reducer: { class: classReducer, ui: uiReducer, schedule: scheduleReducer, conflict: conflictReducer },
       preloadedState: {
         class: { classes: [], total: 0, currentPage: 0, hasMore: true, loading: true, error: null },
-        ui: { role: 'user' as const, selectedClassId: null, inspectorOpen: false, viewBy: 'room' as const },
-        schedule: { rooms: [], studentGroups: [], courses: [], professors: [], loading: false, error: null },
+        ui: { selectedClassId: null, inspectorOpen: false, viewBy: 'room' as const },
+        schedule: { rooms: [], studentGroups: [], courses: [], professors: [], timeSlots: [], loading: false, error: null },
         conflict: { conflicts: [], loading: false, lastFetchedAt: null, error: null },
       },
     });

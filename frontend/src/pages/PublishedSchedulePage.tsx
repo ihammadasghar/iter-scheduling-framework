@@ -1,13 +1,21 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Box, Typography } from '@mui/material';
 import AppShell from '@/templates/AppShell';
 import BackButton from '@/atoms/BackButton';
 import TimetableGrid from '@/organisms/TimetableGrid';
+import BrowseSchedulePanel from '@/organisms/BrowseSchedulePanel';
 import Inspector from '@/organisms/Inspector';
 import ViewBySelector from '@/molecules/ViewBySelector';
+import WorkspaceTabs, { type WorkspaceTabValue } from '@/molecules/WorkspaceTabs';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchPublishedClassesPage, resetClasses } from '@/store/reducers/classSlice';
 import { fetchPublishedScheduleThunk } from '@/store/reducers/scheduleSlice';
+
+// Only Full Schedule and Browse apply here — this page has no simulation
+// session, so no conflicts/metrics for Overview, and no redundant "My
+// Schedule" (the Dashboard already shows the signed-in person's own
+// published-schedule calendar).
+const PUBLISHED_TABS: readonly WorkspaceTabValue[] = ['grid', 'browse'];
 
 const PAGE_SIZE = 50; // must match PAGE_SIZE in classSlice
 
@@ -18,6 +26,7 @@ const PAGE_SIZE = 50; // must match PAGE_SIZE in classSlice
 export default function PublishedSchedulePage(): React.ReactElement {
   const dispatch = useAppDispatch();
   const error = useAppSelector((s) => s.class.error);
+  const [tab, setTab] = useState<WorkspaceTabValue>('grid');
 
   useEffect(() => {
     dispatch(resetClasses());
@@ -64,8 +73,13 @@ export default function PublishedSchedulePage(): React.ReactElement {
           <Typography variant="h6" component="h1" sx={{ mr: 1 }}>
             Published Schedule
           </Typography>
-          <ViewBySelector />
+          {tab === 'grid' && <ViewBySelector />}
           <Box sx={{ flex: 1 }} />
+        </Box>
+
+        {/* Tab bar */}
+        <Box sx={{ px: 3, borderBottom: '1px solid', borderColor: 'divider', flexShrink: 0 }}>
+          <WorkspaceTabs value={tab} onChange={setTab} tabs={PUBLISHED_TABS} />
         </Box>
 
         {error && (
@@ -74,10 +88,16 @@ export default function PublishedSchedulePage(): React.ReactElement {
           </Alert>
         )}
 
-        {/* Main area: grid + inspector overlay (read-only — no simId) */}
+        {/* Main area: grid + inspector overlay (read-only — no simId), or Browse */}
         <Box sx={{ flex: 1, overflow: 'hidden', position: 'relative', display: 'flex' }}>
-          <TimetableGrid />
-          <Inspector />
+          {tab === 'grid' ? (
+            <>
+              <TimetableGrid />
+              <Inspector />
+            </>
+          ) : (
+            <BrowseSchedulePanel />
+          )}
         </Box>
       </Box>
     </AppShell>

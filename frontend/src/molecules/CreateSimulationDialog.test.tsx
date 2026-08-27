@@ -78,7 +78,7 @@ describe('CreateSimulationDialog', () => {
   it('calls createSimulation with trimmed name on submit', async () => {
     renderDialog();
     fireEvent.change(screen.getByLabelText(/your name/i), { target: { value: '  Alice  ' } });
-    fireEvent.click(screen.getByRole('button', { name: /create simulation/i }));
+    fireEvent.click(screen.getByRole('button', { name: /start request/i }));
     await waitFor(() =>
       expect(vi.mocked(simulationService.simulationService.createSimulation)).toHaveBeenCalledWith('Alice'),
     );
@@ -126,7 +126,7 @@ describe('CreateSimulationDialog', () => {
   it('calls createSimulation with trimmed name on submit', async () => {
     renderDialog();
     fireEvent.change(screen.getByLabelText(/your name/i), { target: { value: '  Alice  ' } });
-    fireEvent.click(screen.getByRole('button', { name: /create simulation/i }));
+    fireEvent.click(screen.getByRole('button', { name: /start request/i }));
     await waitFor(() =>
       expect(vi.mocked(simulationService.simulationService.createSimulation)).toHaveBeenCalledWith('Alice'),
     );

@@ -94,6 +94,6 @@ describe('SessionExpiryModal', () => {
   it('"Start a New Draft" opens the CreateSimulationDialog', () => {
     renderModal(true);
     fireEvent.click(screen.getByRole('button', { name: /start a new draft/i }));
-    expect(screen.getByRole('heading', { name: /create new simulation/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /request changes/i })).toBeInTheDocument();
   });
 });

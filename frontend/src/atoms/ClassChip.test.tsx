@@ -32,6 +32,7 @@ const renderChip = (
         rooms: [], studentGroups: [],
         courses: roster.courses ?? [],
         professors: roster.professors ?? [],
+        timeSlots: [],
         loading: false, error: null,
       },
     },

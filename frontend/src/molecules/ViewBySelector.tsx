@@ -2,22 +2,23 @@ import { FormControl, InputLabel, MenuItem, Select, Tooltip } from '@mui/materia
 import type { SelectChangeEvent } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setViewBy } from '@/store/reducers/uiSlice';
+import { RESOURCE_TYPE_LABELS } from '@/utils/resourceTypeLabels';
 import type { ViewByOption } from '@/types';
 
 const VIEW_OPTIONS: ReadonlyArray<{ value: ViewByOption; label: string; tooltip: string }> = [
   {
     value: 'room',
-    label: 'View by Room',
+    label: `View by ${RESOURCE_TYPE_LABELS.room}`,
     tooltip: 'Rows show each room; see which classes are scheduled in each space.',
   },
   {
     value: 'professor',
-    label: 'View by Professor',
+    label: `View by ${RESOURCE_TYPE_LABELS.professor}`,
     tooltip: 'Rows show each professor; spot scheduling gaps or overloads at a glance.',
   },
   {
     value: 'studentGroup',
-    label: 'View by Student Group',
+    label: `View by ${RESOURCE_TYPE_LABELS.studentGroup}`,
     tooltip: 'Rows show each student group; check for timetable clashes for students.',
   },
 ];

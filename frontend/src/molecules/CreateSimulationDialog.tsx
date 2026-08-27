@@ -52,7 +52,7 @@ export default function CreateSimulationDialog({
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
       {loading && <LinearProgress aria-label="Creating simulation…" />}
-      <DialogTitle>Create New Simulation</DialogTitle>
+      <DialogTitle>Request Changes</DialogTitle>
       <DialogContent sx={{ pt: '16px !important', display: 'flex', flexDirection: 'column', gap: 2 }}>
         <TextField
           label="Your name"
@@ -76,7 +76,7 @@ export default function CreateSimulationDialog({
           variant="contained"
           disabled={loading || !name.trim()}
         >
-          Create Simulation
+          Start Request
         </Button>
       </DialogActions>
     </Dialog>

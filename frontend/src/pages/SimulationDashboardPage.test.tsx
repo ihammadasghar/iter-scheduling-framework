@@ -5,6 +5,27 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import SimulationDashboardPage from './SimulationDashboardPage';
 import simulationReducer from '@/store/reducers/simulationSlice';
+import classReducer from '@/store/reducers/classSlice';
+import scheduleReducer from '@/store/reducers/scheduleSlice';
+import conflictReducer from '@/store/reducers/conflictSlice';
+import { scheduleService } from '@/services/scheduleService';
+
+vi.mock('@/services/scheduleService', () => ({
+  scheduleService: {
+    getPublishedClasses: vi.fn().mockResolvedValue({ data: [], total: 0, page: 1 }),
+    getPublishedRoster: vi.fn().mockResolvedValue({
+      metadata: {}, courses: [], professors: [], studentGroups: [], rooms: [], timeSlots: [],
+    }),
+  },
+}));
+// Mocked so its own store-reactive rendering doesn't trigger act() warnings
+// when the published-schedule fetch above resolves after a test's
+// synchronous assertions — this page's own heading/button copy is what's
+// under test here, not MyScheduleCalendar's internals (covered by its own
+// test file).
+vi.mock('@/organisms/MyScheduleCalendar', () => ({
+  default: () => <div>My Schedule Content</div>,
+}));
 
 // Stub localStorage (not available in Node test env without jsdom override)
 const localStorageMock = (() => {
@@ -23,13 +44,16 @@ const makeStore = () =>
   configureStore({
     reducer: {
       simulation: simulationReducer,
+      class: classReducer,
+      schedule: scheduleReducer,
+      conflict: conflictReducer,
       ui: () => ({
         selectedClassId: null,
         inspectorOpen: false,
         viewBy: 'room',
       }),
       identity: () => ({
-        identity: { role: 'admin' as const, professorId: null, studentGroupId: null },
+        identity: { role: 'professor' as const, professorId: 'PRF_SMITH', studentGroupId: null },
         hydrated: true,
       }),
       session: () => ({
@@ -68,14 +92,27 @@ describe('SimulationDashboardPage', () => {
 
   it('renders page heading', () => {
     renderPage();
-    expect(screen.getByRole('heading', { name: /my simulations/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /dashboard/i })).toBeInTheDocument();
   });
 
-  it('renders "Create New Simulation" button', () => {
+  it('renders "Request Changes" button', () => {
     renderPage();
     expect(
-      screen.getByRole('button', { name: /\+ create new simulation/i }),
+      screen.getByRole('button', { name: /request changes/i }),
     ).toBeInTheDocument();
+  });
+
+  it('renders the "Your Weekly Schedule" section', () => {
+    renderPage();
+    expect(screen.getByText(/your weekly schedule/i)).toBeInTheDocument();
+  });
+
+  it('shows an error alert when the published schedule fetch failed', async () => {
+    vi.mocked(scheduleService.getPublishedClasses).mockRejectedValueOnce(
+      { message: 'boom', statusCode: 500 },
+    );
+    renderPage();
+    expect(await screen.findByText(/could not load your schedule/i)).toBeInTheDocument();
   });
 
   it('shows empty state when no simulations exist and not loading', () => {
@@ -103,9 +140,9 @@ describe('SimulationDashboardPage', () => {
     expect(screen.getByRole('button', { name: /delete draft/i })).toBeInTheDocument();
   });
 
-  it('opens CreateSimulationDialog when "+ Create New Simulation" is clicked', () => {
+  it('opens CreateSimulationDialog when "Request Changes" is clicked', () => {
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: /\+ create new simulation/i }));
+    fireEvent.click(screen.getByRole('button', { name: /request changes/i }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByLabelText(/your name/i)).toBeInTheDocument();
   });

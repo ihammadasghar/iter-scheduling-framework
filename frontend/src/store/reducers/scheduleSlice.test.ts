@@ -3,7 +3,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import scheduleReducer, { fetchScheduleThunk, fetchPublishedScheduleThunk } from './scheduleSlice';
 import { simulationService } from '@/services/simulationService';
 import { scheduleService } from '@/services/scheduleService';
-import type { RawRoom, RawStudentGroup, RawCourse, RawProfessor } from '@/types';
+import type { RawRoom, RawStudentGroup, RawCourse, RawProfessor, RawTimeSlot } from '@/types';
 
 vi.mock('@/services/simulationService', () => ({
   simulationService: {
@@ -20,6 +20,7 @@ const ROOM: RawRoom = { id: 'RM_101', name: 'Room 101', capacity: 40, building: 
 const GROUP: RawStudentGroup = { id: 'GRP_BIO_Y1', name: 'Bio Year 1', size: 32 };
 const COURSE: RawCourse = { id: 'CRS_BIO101', code: 'BIO101', name: 'Intro to Biology', department: 'Biology' };
 const PROFESSOR: RawProfessor = { id: 'PRF_SMITH', name: 'Dr. Jane Smith', department: 'Biology' };
+const TIME_SLOT: RawTimeSlot = { id: 'TS_MON_P1', day: 'Monday', name: 'Period 1', startTime: '08:30', endTime: '10:15' };
 
 const makeStore = () => configureStore({ reducer: { schedule: scheduleReducer } });
 
@@ -29,7 +30,7 @@ describe('scheduleSlice', () => {
   it('starts with empty rooms/studentGroups/courses/professors and loading=false', () => {
     const store = makeStore();
     expect(store.getState().schedule).toEqual({
-      rooms: [], studentGroups: [], courses: [], professors: [], loading: false, error: null,
+      rooms: [], studentGroups: [], courses: [], professors: [], timeSlots: [], loading: false, error: null,
     });
   });
 
@@ -41,10 +42,10 @@ describe('scheduleSlice', () => {
       expect(store.getState().schedule.loading).toBe(true);
     });
 
-    it('stores rooms, studentGroups, courses, and professors on fulfilled', async () => {
+    it('stores rooms, studentGroups, courses, professors, and timeSlots on fulfilled', async () => {
       vi.mocked(simulationService.getSchedule).mockResolvedValue({
         metadata: { semesterId: 'sem-1', semesterName: 'Fall 2026', academicYear: '2026-2027' },
-        timeSlots: [], classes: [],
+        timeSlots: [TIME_SLOT], classes: [],
         rooms: [ROOM], studentGroups: [GROUP], courses: [COURSE], professors: [PROFESSOR],
       });
       const store = makeStore();
@@ -52,17 +53,19 @@ describe('scheduleSlice', () => {
 
       expect(store.getState().schedule).toEqual({
         rooms: [ROOM], studentGroups: [GROUP], courses: [COURSE], professors: [PROFESSOR],
+        timeSlots: [TIME_SLOT],
         loading: false, error: null,
       });
     });
 
-    // Regression guard: courses/professors were previously destructured out
-    // and discarded here, which is exactly what caused real names to never
-    // reach the UI even though the backend already returned them.
-    it('does not discard courses/professors from the response', async () => {
+    // Regression guard: courses/professors/timeSlots were previously
+    // destructured out and discarded here, which is exactly what caused real
+    // names (and calendar geometry) to never reach the UI even though the
+    // backend already returned them.
+    it('does not discard courses/professors/timeSlots from the response', async () => {
       vi.mocked(simulationService.getSchedule).mockResolvedValue({
         metadata: { semesterId: 'sem-1', semesterName: 'Fall 2026', academicYear: '2026-2027' },
-        timeSlots: [], classes: [], rooms: [], studentGroups: [],
+        timeSlots: [TIME_SLOT], classes: [], rooms: [], studentGroups: [],
         courses: [COURSE], professors: [PROFESSOR],
       });
       const store = makeStore();
@@ -70,6 +73,7 @@ describe('scheduleSlice', () => {
 
       expect(store.getState().schedule.courses).toEqual([COURSE]);
       expect(store.getState().schedule.professors).toEqual([PROFESSOR]);
+      expect(store.getState().schedule.timeSlots).toEqual([TIME_SLOT]);
     });
 
     it('sets an error message on rejected', async () => {
@@ -90,10 +94,10 @@ describe('scheduleSlice', () => {
       expect(store.getState().schedule.loading).toBe(true);
     });
 
-    it('stores rooms, studentGroups, courses, and professors on fulfilled', async () => {
+    it('stores rooms, studentGroups, courses, professors, and timeSlots on fulfilled', async () => {
       vi.mocked(scheduleService.getPublishedRoster).mockResolvedValue({
         metadata: { semesterId: 'sem-1', semesterName: 'Fall 2026', academicYear: '2026-2027' },
-        timeSlots: [],
+        timeSlots: [TIME_SLOT],
         rooms: [ROOM], studentGroups: [GROUP], courses: [COURSE], professors: [PROFESSOR],
       });
       const store = makeStore();
@@ -101,6 +105,7 @@ describe('scheduleSlice', () => {
 
       expect(store.getState().schedule).toEqual({
         rooms: [ROOM], studentGroups: [GROUP], courses: [COURSE], professors: [PROFESSOR],
+        timeSlots: [TIME_SLOT],
         loading: false, error: null,
       });
     });

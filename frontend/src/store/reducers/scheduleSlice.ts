@@ -1,13 +1,14 @@
 import { createSlice, createAsyncThunk, type ActionReducerMapBuilder, type Draft } from '@reduxjs/toolkit';
 import { simulationService } from '@/services/simulationService';
 import { scheduleService } from '@/services/scheduleService';
-import type { RawRoom, RawStudentGroup, RawCourse, RawProfessor, ApiError } from '@/types';
+import type { RawRoom, RawStudentGroup, RawCourse, RawProfessor, RawTimeSlot, ApiError } from '@/types';
 
 interface ScheduleState {
   readonly rooms: RawRoom[];
   readonly studentGroups: RawStudentGroup[];
   readonly courses: RawCourse[];
   readonly professors: RawProfessor[];
+  readonly timeSlots: RawTimeSlot[];
   readonly loading: boolean;
   readonly error: string | null;
 }
@@ -17,6 +18,7 @@ const initialState: ScheduleState = {
   studentGroups: [],
   courses: [],
   professors: [],
+  timeSlots: [],
   loading: false,
   error: null,
 };
@@ -26,6 +28,7 @@ interface RosterPayload {
   readonly studentGroups: RawStudentGroup[];
   readonly courses: RawCourse[];
   readonly professors: RawProfessor[];
+  readonly timeSlots: RawTimeSlot[];
 }
 
 // The live/editable roster for a simulation session.
@@ -41,6 +44,7 @@ export const fetchScheduleThunk = createAsyncThunk<
       studentGroups: [...result.studentGroups],
       courses: [...result.courses],
       professors: [...result.professors],
+      timeSlots: [...result.timeSlots],
     };
   } catch (err) {
     return rejectWithValue(err as ApiError);
@@ -62,6 +66,7 @@ export const fetchPublishedScheduleThunk = createAsyncThunk<
       studentGroups: [...result.studentGroups],
       courses: [...result.courses],
       professors: [...result.professors],
+      timeSlots: [...result.timeSlots],
     };
   } catch (err) {
     return rejectWithValue(err as ApiError);
@@ -79,6 +84,7 @@ const handleFulfilled = (state: Draft<ScheduleState>, action: { payload: RosterP
   state.studentGroups = action.payload.studentGroups;
   state.courses = action.payload.courses;
   state.professors = action.payload.professors;
+  state.timeSlots = action.payload.timeSlots;
 };
 
 const handleRejected = (state: Draft<ScheduleState>, action: { payload?: ApiError }): void => {

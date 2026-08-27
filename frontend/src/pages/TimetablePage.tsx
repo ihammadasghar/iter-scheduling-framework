@@ -3,10 +3,13 @@ import { useParams } from 'react-router-dom';
 import { Box, Typography } from '@mui/material';
 import AppShell from '@/templates/AppShell';
 import TimetableGrid from '@/organisms/TimetableGrid';
+import MyScheduleCalendar from '@/organisms/MyScheduleCalendar';
+import BrowseSchedulePanel from '@/organisms/BrowseSchedulePanel';
 import SimulationOverview from '@/organisms/SimulationOverview';
 import Inspector from '@/organisms/Inspector';
 import HUD from '@/organisms/HUD';
 import SessionExpiryModal from '@/organisms/SessionExpiryModal';
+import ScheduleUpdatedModal from '@/organisms/ScheduleUpdatedModal';
 import SubmitProposalModal from '@/organisms/SubmitProposalModal';
 import ViewBySelector from '@/molecules/ViewBySelector';
 import SaveChangesButton from '@/molecules/SaveChangesButton';
@@ -14,20 +17,29 @@ import InactivityBanner from '@/molecules/InactivityBanner';
 import WorkspaceTabs, { type WorkspaceTabValue } from '@/molecules/WorkspaceTabs';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setSession, markExpired } from '@/store/reducers/sessionSlice';
+import { loadSimulationsFromStorage } from '@/store/reducers/simulationSlice';
 import { fetchClassesPage, resetClasses } from '@/store/reducers/classSlice';
 import { fetchScheduleThunk } from '@/store/reducers/scheduleSlice';
 import { selectClass, toggleInspector } from '@/store/reducers/uiSlice';
 import { useHeartbeat } from '@/hooks/useHeartbeat';
 import { useInactivityWarning } from '@/hooks/useInactivityWarning';
-import type { ConflictType } from '@/types';
+import type { ConflictType, UserRole } from '@/types';
 
 const PAGE_SIZE = 50; // must match PAGE_SIZE in classSlice
+
+// A professor/student's default landing tab is their own calendar; anyone
+// else (admin, or no identity chosen at all — e.g. in isolated tests) lands
+// on the unfiltered Full Schedule grid, since "My Schedule" is meaningless
+// without a professorId/studentGroupId to filter by.
+const defaultTabFor = (role: UserRole | undefined): WorkspaceTabValue =>
+  role === 'professor' || role === 'student' ? 'myschedule' : 'grid';
 
 export default function TimetablePage(): React.ReactElement {
   const { id: simId } = useParams<{ id: string }>();
   const dispatch = useAppDispatch();
+  const identity = useAppSelector((s) => s.identity.identity);
   const [submitOpen, setSubmitOpen] = useState(false);
-  const [tab, setTab] = useState<WorkspaceTabValue>('grid');
+  const [tab, setTab] = useState<WorkspaceTabValue>(() => defaultTabFor(identity?.role));
 
   const conflicts = useAppSelector((s) => s.conflict.conflicts);
   const conflictedClassIds = useMemo(
@@ -47,6 +59,12 @@ export default function TimetablePage(): React.ReactElement {
     if (!simId) return;
     dispatch(resetClasses());
     dispatch(setSession(simId));
+    // Only SimulationDashboardPage normally loads the persisted simulation
+    // list — a user landing directly on this page (bookmark/refresh) would
+    // otherwise have an empty state.simulation.simulations, and
+    // SubmitProposalModal/ScheduleUpdatedModal need this simulation's
+    // baseScheduleVersion to be in there.
+    dispatch(loadSimulationsFromStorage());
     void dispatch(fetchScheduleThunk(simId)).then((result) => {
       if (fetchScheduleThunk.rejected.match(result) && result.payload?.statusCode === 404) {
         dispatch(markExpired());
@@ -114,7 +132,9 @@ export default function TimetablePage(): React.ReactElement {
             flexShrink: 0,
           }}
         >
-          <ViewBySelector />
+          {/* Only meaningful on the Full Schedule grid — it re-groups rows by
+              resource type, which doesn't apply to the single-person calendar. */}
+          {tab === 'grid' && <ViewBySelector />}
           <Box sx={{ flex: 1 }} />
           <SaveChangesButton simId={simId} />
         </Box>
@@ -126,9 +146,19 @@ export default function TimetablePage(): React.ReactElement {
 
         {/* Main area: grid + inspector overlay, or overview */}
         <Box sx={{ flex: 1, overflow: 'hidden', position: 'relative', display: 'flex' }}>
-          {tab === 'grid' ? (
+          {tab === 'myschedule' ? (
+            <>
+              <MyScheduleCalendar conflictedClassIds={conflictedClassIds} />
+              <Inspector simId={simId} />
+            </>
+          ) : tab === 'grid' ? (
             <>
               <TimetableGrid conflictedClassIds={conflictedClassIds} />
+              <Inspector simId={simId} />
+            </>
+          ) : tab === 'browse' ? (
+            <>
+              <BrowseSchedulePanel conflictedClassIds={conflictedClassIds} />
               <Inspector simId={simId} />
             </>
           ) : (
@@ -154,6 +184,7 @@ export default function TimetablePage(): React.ReactElement {
 
       {/* Session expiry overlay — non-dismissable */}
       <SessionExpiryModal />
+      <ScheduleUpdatedModal />
     </AppShell>
   );
 }

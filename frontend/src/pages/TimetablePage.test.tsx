@@ -24,6 +24,12 @@ vi.mock('@/organisms/TimetableGrid', () => ({
     <div>Grid View Content — conflictedClassIds: {[...(props.conflictedClassIds ?? [])].join(',')}</div>
   ),
 }));
+vi.mock('@/organisms/MyScheduleCalendar', () => ({
+  default: () => <div>My Schedule Content</div>,
+}));
+vi.mock('@/organisms/BrowseSchedulePanel', () => ({
+  default: () => <div>Browse Content</div>,
+}));
 vi.mock('@/organisms/SimulationOverview', () => ({
   default: (props: { onSelectConflictType: (type: ConflictType) => void }) => (
     <div>
@@ -37,6 +43,7 @@ vi.mock('@/organisms/SimulationOverview', () => ({
 vi.mock('@/organisms/Inspector', () => ({ default: () => null }));
 vi.mock('@/organisms/HUD', () => ({ default: () => null }));
 vi.mock('@/organisms/SessionExpiryModal', () => ({ default: () => null }));
+vi.mock('@/organisms/ScheduleUpdatedModal', () => ({ default: () => null }));
 vi.mock('@/organisms/SubmitProposalModal', () => ({ default: () => null }));
 vi.mock('@/services/simulationService', () => ({
   simulationService: {
@@ -92,6 +99,14 @@ describe('TimetablePage — workspace tabs', () => {
     renderPage();
     await user.click(screen.getByRole('tab', { name: 'Overview' }));
     expect(screen.getByText(/Overview Content/)).toBeInTheDocument();
+    expect(screen.queryByText(/Grid View Content/)).not.toBeInTheDocument();
+  });
+
+  it('switches to Browse content when the Browse tab is clicked', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(screen.getByRole('tab', { name: 'Browse' }));
+    expect(screen.getByText(/Browse Content/)).toBeInTheDocument();
     expect(screen.queryByText(/Grid View Content/)).not.toBeInTheDocument();
   });
 
@@ -151,5 +166,43 @@ describe('TimetablePage — workspace tabs', () => {
     const { store } = renderPage();
 
     await waitFor(() => expect(store.getState().session.expired).toBe(true));
+  });
+});
+
+describe('TimetablePage — default tab by identity', () => {
+  it('defaults to My Schedule for a professor', () => {
+    renderPage({
+      identity: {
+        identity: { role: 'professor', professorId: 'PRF_SMITH', studentGroupId: null },
+        hydrated: true,
+      },
+    });
+    expect(screen.getByText(/My Schedule Content/)).toBeInTheDocument();
+    expect(screen.queryByText(/Grid View Content/)).not.toBeInTheDocument();
+  });
+
+  it('defaults to My Schedule for a student', () => {
+    renderPage({
+      identity: {
+        identity: { role: 'student', professorId: null, studentGroupId: 'GRP_BIO_Y1' },
+        hydrated: true,
+      },
+    });
+    expect(screen.getByText(/My Schedule Content/)).toBeInTheDocument();
+  });
+
+  it('defaults to the Full Schedule grid for an admin', () => {
+    renderPage({
+      identity: {
+        identity: { role: 'admin', professorId: null, studentGroupId: null },
+        hydrated: true,
+      },
+    });
+    expect(screen.getByText(/Grid View Content/)).toBeInTheDocument();
+  });
+
+  it('defaults to the Full Schedule grid when no identity is set', () => {
+    renderPage();
+    expect(screen.getByText(/Grid View Content/)).toBeInTheDocument();
   });
 });

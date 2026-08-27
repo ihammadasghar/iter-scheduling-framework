@@ -26,7 +26,7 @@ const renderSection = (roster: { professors?: RawProfessor[]; rooms?: RawRoom[] 
       schedule: {
         rooms: roster.rooms ?? [],
         professors: roster.professors ?? [],
-        studentGroups: [], courses: [],
+        studentGroups: [], courses: [], timeSlots: [],
         loading: false, error: null,
       },
     },

@@ -48,6 +48,7 @@ const makeStore = (overrides: {
         studentGroups: [{ id: 'GRP_BIO_Y1', name: 'Bio Year 1', size: 32 }],
         courses: [],
         professors: [],
+        timeSlots: [],
         loading: overrides.scheduleLoading ?? false,
         error: overrides.scheduleError ?? null,
       },
