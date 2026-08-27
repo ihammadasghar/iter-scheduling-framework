@@ -39,3 +39,6 @@ backend/allure-results/
 
 # pnpm
 .pnpm-store/
+
+# Thesis writeup — not part of the app, kept out of this repo's history
+thesis/
