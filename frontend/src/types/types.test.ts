@@ -27,6 +27,7 @@ describe('types barrel export', () => {
       id: 'sim-alice-a1b2c3d4',
       branchId: 'sim-alice-a1b2c3d4',
       createdAt: '2026-06-11T10:00:00Z',
+      baseScheduleVersion: 'main-sha-1',
     };
     expect(sim.id).toBe('sim-alice-a1b2c3d4');
   });
@@ -119,7 +120,7 @@ describe('types barrel export', () => {
 
   it('PaginatedResponse is generic and holds data array', () => {
     const page: PaginatedResponse<Simulation> = {
-      data: [{ id: 'sim-1', branchId: 'sim-1', createdAt: '2026-01-01T00:00:00Z' }],
+      data: [{ id: 'sim-1', branchId: 'sim-1', createdAt: '2026-01-01T00:00:00Z', baseScheduleVersion: 'main-sha-1' }],
       total: 1,
       page: 1,
       limit: 20,
@@ -150,6 +151,7 @@ describe('types barrel export', () => {
     const req: CreateProposalRequest = {
       simulationId: 'sim-alice-a1b2c3d4',
       description: 'Moving BIO101 to Wednesday',
+      baseScheduleVersion: 'main-sha-1',
     };
     expect(req.description).toBeTruthy();
   });
@@ -185,6 +187,7 @@ describe('types barrel export', () => {
       id: 'sim-alice-a1b2c3d4',
       branchId: 'sim-alice-a1b2c3d4',
       createdAt: '2026-06-11T10:00:00Z',
+      baseScheduleVersion: 'main-sha-1',
       conflictCount: 2,
       metrics: [{ name: 'Room Utilization', value: 74, unit: '%' }],
     };

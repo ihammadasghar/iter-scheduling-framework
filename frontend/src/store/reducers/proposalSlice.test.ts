@@ -9,6 +9,7 @@ import proposalReducer, {
   rejectProposalThunk,
   clearCurrentProposal,
   clearLastSubmission,
+  clearStaleDraft,
 } from './proposalSlice';
 import * as proposalService from '@/services/proposalService';
 
@@ -104,7 +105,7 @@ describe('proposalSlice', () => {
 
   it('createProposalThunk.fulfilled appends proposal to list', () => {
     const store = makeStore();
-    store.dispatch(createProposalThunk.fulfilled(fakeProposal, '', { simulationId: 'sim-1', description: 'test' }));
+    store.dispatch(createProposalThunk.fulfilled(fakeProposal, '', { simulationId: 'sim-1', description: 'test', baseScheduleVersion: 'main-sha-1' }));
     expect(store.getState().proposal.proposals).toHaveLength(1);
   });
 
@@ -113,13 +114,13 @@ describe('proposalSlice', () => {
   // GlobalProposalStatusSnackbar / useGlobalProposalStatusSnackbar.
   it('createProposalThunk.fulfilled records the outcome as lastSubmission', () => {
     const store = makeStore();
-    store.dispatch(createProposalThunk.fulfilled(fakeProposal, '', { simulationId: 'sim-1', description: 'test' }));
+    store.dispatch(createProposalThunk.fulfilled(fakeProposal, '', { simulationId: 'sim-1', description: 'test', baseScheduleVersion: 'main-sha-1' }));
     expect(store.getState().proposal.lastSubmission).toEqual({ status: 'READY' });
   });
 
   it('clearLastSubmission nulls out lastSubmission', () => {
     const store = makeStore();
-    store.dispatch(createProposalThunk.fulfilled(fakeProposal, '', { simulationId: 'sim-1', description: 'test' }));
+    store.dispatch(createProposalThunk.fulfilled(fakeProposal, '', { simulationId: 'sim-1', description: 'test', baseScheduleVersion: 'main-sha-1' }));
     store.dispatch(clearLastSubmission());
     expect(store.getState().proposal.lastSubmission).toBeNull();
   });
@@ -131,7 +132,7 @@ describe('proposalSlice', () => {
   it('createProposalThunk.rejected sets error to the backend\'s actual message', () => {
     const store = makeStore();
     store.dispatch(
-      createProposalThunk.rejected(null, '', { simulationId: 'sim-1', description: 'test' }, {
+      createProposalThunk.rejected(null, '', { simulationId: 'sim-1', description: 'test', baseScheduleVersion: 'main-sha-1' }, {
         statusCode: 409,
         code: 'CONFLICT',
         message: 'A proposal for this draft is already open — check My Proposals before submitting again.',
@@ -140,6 +141,34 @@ describe('proposalSlice', () => {
     expect(store.getState().proposal.error).toBe(
       'A proposal for this draft is already open — check My Proposals before submitting again.',
     );
+  });
+
+  // ScheduleUpdatedModal watches staleDraft, not error, so it can offer a
+  // rebase instead of just a plain error toast for this specific rejection.
+  it('createProposalThunk.rejected with MAIN_SCHEDULE_CHANGED sets staleDraft instead of error', () => {
+    const store = makeStore();
+    store.dispatch(
+      createProposalThunk.rejected(null, '', { simulationId: 'sim-1', description: 'test', baseScheduleVersion: 'old-sha' }, {
+        statusCode: 409,
+        code: 'MAIN_SCHEDULE_CHANGED',
+        message: 'The published schedule has changed since this draft was created. Update your draft before submitting.',
+      }),
+    );
+    expect(store.getState().proposal.staleDraft).toEqual({ simulationId: 'sim-1' });
+    expect(store.getState().proposal.error).toBeNull();
+  });
+
+  it('clearStaleDraft nulls out staleDraft', () => {
+    const store = makeStore();
+    store.dispatch(
+      createProposalThunk.rejected(null, '', { simulationId: 'sim-1', description: 'test', baseScheduleVersion: 'old-sha' }, {
+        statusCode: 409,
+        code: 'MAIN_SCHEDULE_CHANGED',
+        message: 'stale',
+      }),
+    );
+    store.dispatch(clearStaleDraft());
+    expect(store.getState().proposal.staleDraft).toBeNull();
   });
 
   it('mergeProposalThunk.fulfilled removes proposal from list', () => {

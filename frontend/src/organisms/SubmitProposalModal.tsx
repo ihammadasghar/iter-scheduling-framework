@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import CommitGate from '@/molecules/CommitGate';
 import ProposalForm from '@/molecules/ProposalForm';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -25,7 +26,14 @@ export default function SubmitProposalModal({
   onClose,
 }: SubmitProposalModalProps): React.ReactElement {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const hasUnsavedChanges = useAppSelector((s) => s.session.hasUnsavedChanges);
+  // Whatever main looked like when this draft was forked — sent back so the
+  // backend can tell whether the published schedule has since changed (see
+  // ScheduleUpdatedModal for what happens when it has).
+  const baseScheduleVersion = useAppSelector(
+    (s) => s.simulation.simulations.find((sim) => sim.id === simId)?.baseScheduleVersion ?? '',
+  );
 
   const [stage, setStage] = useState<Stage>('proposal-form');
 
@@ -40,7 +48,16 @@ export default function SubmitProposalModal({
 
   const handleSubmit = async (description: string): Promise<void> => {
     onClose();
-    await dispatch(createProposalThunk({ simulationId: simId, description }));
+    const result = await dispatch(
+      createProposalThunk({ simulationId: simId, description, baseScheduleVersion }),
+    );
+    // Only leave the editor once the submission actually went through — a
+    // rejection (including the "published schedule changed" case, handled
+    // by ScheduleUpdatedModal) should keep the user right where they are so
+    // they can act on whatever the failure was.
+    if (createProposalThunk.fulfilled.match(result)) {
+      navigate('/');
+    }
   };
 
   return (

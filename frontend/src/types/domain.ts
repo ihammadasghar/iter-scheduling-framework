@@ -8,6 +8,10 @@ export interface Simulation {
   readonly branchId: string;
   readonly createdAt: string;
   readonly userId?: string;
+  // The git blob SHA of `main`'s schedule.json when this simulation was
+  // forked — an opaque version marker sent back on proposal submission so
+  // the backend can tell whether the published schedule has since changed.
+  readonly baseScheduleVersion: string;
 }
 
 export interface ScheduleClass {
@@ -43,6 +47,18 @@ export interface Suggestion {
   readonly roomId: string;
   readonly timeSlotIds: readonly string[];
   readonly conflictFree: boolean;
+}
+
+// Per-room availability for a specific class: whether the room is even big
+// enough for the class's student group (time-independent), and which
+// individual timeslots are free of room/professor/group overlap for that
+// class. Unlike Suggestion, every room appears here — even one with an
+// empty freeTimeSlotIds — so "busy everywhere" can be told apart from
+// "busy right now, free later".
+export interface RoomAvailability {
+  readonly roomId: string;
+  readonly capacityOk: boolean;
+  readonly freeTimeSlotIds: readonly string[];
 }
 
 export type ProposalStatus = 'PENDING' | 'READY' | 'BLOCKED' | 'MERGED' | 'REJECTED';

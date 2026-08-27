@@ -39,7 +39,7 @@ const makeStore = () =>
     reducer: { simulation: simulationReducer, session: sessionReducer, class: classReducer },
     preloadedState: {
       simulation: {
-        simulations: [{ id: 'sim-1', branchId: 'b', createdAt: new Date().toISOString() }],
+        simulations: [{ id: 'sim-1', branchId: 'b', createdAt: new Date().toISOString(), baseScheduleVersion: 'main-sha-1' }],
         current: null,
         loading: false,
         error: null,

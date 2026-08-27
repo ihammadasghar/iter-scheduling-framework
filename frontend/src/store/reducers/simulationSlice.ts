@@ -43,6 +43,24 @@ export const createSimulationThunk = createAsyncThunk<
   }
 });
 
+// Updates a stale draft to reflect the latest published schedule while
+// preserving the user's own edits (see ScheduleUpdatedModal, which dispatches
+// this when the user chooses "Update My Draft"). Returns the simulationId
+// alongside the new baseScheduleVersion so the reducer knows which stored
+// record to patch.
+export const rebaseSimulationThunk = createAsyncThunk<
+  { simulationId: string; baseScheduleVersion: string },
+  { simulationId: string; baseScheduleVersion: string },
+  { rejectValue: ApiError }
+>('simulation/rebase', async ({ simulationId, baseScheduleVersion }, { rejectWithValue }) => {
+  try {
+    const result = await simulationService.rebaseSimulation(simulationId, baseScheduleVersion);
+    return { simulationId, baseScheduleVersion: result.baseScheduleVersion };
+  } catch (err) {
+    return rejectWithValue(err as ApiError);
+  }
+});
+
 export const deleteSimulationThunk = createAsyncThunk<
   string,
   string,
@@ -88,6 +106,19 @@ const simulationSlice = createSlice({
       .addCase(createSimulationThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload?.message ?? 'Failed to create simulation';
+      })
+      .addCase(rebaseSimulationThunk.fulfilled, (state, action) => {
+        const { simulationId, baseScheduleVersion } = action.payload;
+        state.simulations = state.simulations.map((s) =>
+          s.id === simulationId ? { ...s, baseScheduleVersion } : s,
+        );
+        if (state.current?.id === simulationId) {
+          state.current = { ...state.current, baseScheduleVersion };
+        }
+        writeStorage(state.simulations);
+      })
+      .addCase(rebaseSimulationThunk.rejected, (state, action) => {
+        state.error = action.payload?.message ?? 'Failed to update your draft with the latest published schedule';
       })
       .addCase(deleteSimulationThunk.pending, (state) => {
         state.loading = true;

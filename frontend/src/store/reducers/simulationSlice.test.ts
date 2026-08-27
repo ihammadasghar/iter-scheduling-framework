@@ -6,6 +6,7 @@ import simulationReducer, {
   clearCurrentSimulation,
   createSimulationThunk,
   deleteSimulationThunk,
+  rebaseSimulationThunk,
 } from './simulationSlice';
 import type { Simulation } from '@/types';
 
@@ -13,6 +14,7 @@ const fakeSimulation: Simulation = {
   id: 'sim-alice-a1b2c3d4',
   branchId: 'sim-alice-a1b2c3d4',
   createdAt: '2026-06-11T10:00:00Z',
+  baseScheduleVersion: 'main-sha-1',
 };
 
 // Stub localStorage
@@ -110,6 +112,56 @@ describe('simulationSlice', () => {
     store.dispatch(setCurrentSimulation(fakeSimulation));
     store.dispatch(deleteSimulationThunk.fulfilled('sim-alice-a1b2c3d4', 'del-id', 'sim-alice-a1b2c3d4'));
     expect(store.getState().simulation.current).toBeNull();
+  });
+
+  it('rebaseSimulationThunk.fulfilled patches baseScheduleVersion on the matching stored simulation', () => {
+    const store = makeStore();
+    store.dispatch(createSimulationThunk.fulfilled(fakeSimulation, 'req-id', 'alice'));
+
+    store.dispatch(rebaseSimulationThunk.fulfilled(
+      { simulationId: fakeSimulation.id, baseScheduleVersion: 'main-sha-2' },
+      'rebase-req-id',
+      { simulationId: fakeSimulation.id, baseScheduleVersion: 'main-sha-1' },
+    ));
+
+    const state = store.getState().simulation;
+    expect(state.simulations[0]?.baseScheduleVersion).toBe('main-sha-2');
+  });
+
+  it('rebaseSimulationThunk.fulfilled updates current when it matches', () => {
+    const store = makeStore();
+    store.dispatch(setCurrentSimulation(fakeSimulation));
+
+    store.dispatch(rebaseSimulationThunk.fulfilled(
+      { simulationId: fakeSimulation.id, baseScheduleVersion: 'main-sha-2' },
+      'rebase-req-id',
+      { simulationId: fakeSimulation.id, baseScheduleVersion: 'main-sha-1' },
+    ));
+
+    expect(store.getState().simulation.current?.baseScheduleVersion).toBe('main-sha-2');
+  });
+
+  it('rebaseSimulationThunk.fulfilled persists the patched simulations to localStorage', () => {
+    const store = makeStore();
+    store.dispatch(createSimulationThunk.fulfilled(fakeSimulation, 'req-id', 'alice'));
+
+    store.dispatch(rebaseSimulationThunk.fulfilled(
+      { simulationId: fakeSimulation.id, baseScheduleVersion: 'main-sha-2' },
+      'rebase-req-id',
+      { simulationId: fakeSimulation.id, baseScheduleVersion: 'main-sha-1' },
+    ));
+
+    const stored = JSON.parse(localStorageMock.getItem('unisched_simulations') ?? '[]') as Simulation[];
+    expect(stored[0]?.baseScheduleVersion).toBe('main-sha-2');
+  });
+
+  it('rebaseSimulationThunk.rejected sets an error message', () => {
+    const store = makeStore();
+    const error = { statusCode: 404, code: 'NOT_FOUND', message: 'Simulation not found or expired' };
+    store.dispatch(rebaseSimulationThunk.rejected(
+      null, 'req-id', { simulationId: fakeSimulation.id, baseScheduleVersion: 'main-sha-1' }, error,
+    ));
+    expect(store.getState().simulation.error).toBe('Simulation not found or expired');
   });
 
   describe('createSimulationThunk (async)', () => {

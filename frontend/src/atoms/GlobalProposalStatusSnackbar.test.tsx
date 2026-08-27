@@ -28,7 +28,7 @@ describe('GlobalProposalStatusSnackbar', () => {
   it('renders a success Snackbar after a READY submission', () => {
     const store = makeStore();
     store.dispatch(
-      createProposalThunk.fulfilled(fakeProposal('READY'), '', { simulationId: 'sim-1', description: 'x' }),
+      createProposalThunk.fulfilled(fakeProposal('READY'), '', { simulationId: 'sim-1', description: 'x', baseScheduleVersion: 'main-sha-1' }),
     );
 
     render(
@@ -47,7 +47,7 @@ describe('GlobalProposalStatusSnackbar', () => {
     // the submission is no longer the one on screen.
     const store = makeStore();
     store.dispatch(
-      createProposalThunk.fulfilled(fakeProposal('BLOCKED'), '', { simulationId: 'sim-1', description: 'x' }),
+      createProposalThunk.fulfilled(fakeProposal('BLOCKED'), '', { simulationId: 'sim-1', description: 'x', baseScheduleVersion: 'main-sha-1' }),
     );
 
     render(

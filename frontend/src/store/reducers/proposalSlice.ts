@@ -10,6 +10,14 @@ interface LastSubmission {
   readonly status: ProposalStatus;
 }
 
+// Set instead of `error` when a submission is rejected specifically because
+// the published schedule changed since the draft was created (backend code
+// MAIN_SCHEDULE_CHANGED) — ScheduleUpdatedModal watches this to offer a
+// rebase instead of just showing a plain error toast.
+interface StaleDraft {
+  readonly simulationId: string;
+}
+
 interface ProposalState {
   readonly proposals: Proposal[];       // ci:ready
   readonly blocked: Proposal[];         // ci:blocked
@@ -17,6 +25,7 @@ interface ProposalState {
   readonly loading: boolean;
   readonly error: string | null;
   readonly lastSubmission: LastSubmission | null;
+  readonly staleDraft: StaleDraft | null;
 }
 
 const initialState: ProposalState = {
@@ -26,6 +35,7 @@ const initialState: ProposalState = {
   loading: false,
   error: null,
   lastSubmission: null,
+  staleDraft: null,
 };
 
 export const fetchProposalsThunk = createAsyncThunk<
@@ -114,6 +124,9 @@ const proposalSlice = createSlice({
     clearLastSubmission(state) {
       state.lastSubmission = null;
     },
+    clearStaleDraft(state) {
+      state.staleDraft = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -151,6 +164,7 @@ const proposalSlice = createSlice({
       .addCase(createProposalThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
+        state.staleDraft = null;
       })
       .addCase(createProposalThunk.fulfilled, (state, action) => {
         state.loading = false;
@@ -159,6 +173,13 @@ const proposalSlice = createSlice({
       })
       .addCase(createProposalThunk.rejected, (state, action) => {
         state.loading = false;
+        // The published schedule changed since this draft was created —
+        // ScheduleUpdatedModal offers a rebase for this case instead of the
+        // plain error toast every other rejection gets.
+        if (action.payload?.code === 'MAIN_SCHEDULE_CHANGED') {
+          state.staleDraft = { simulationId: action.meta.arg.simulationId };
+          return;
+        }
         state.error = action.payload?.message ?? 'Failed to submit proposal';
       })
       // Merge
@@ -185,5 +206,6 @@ const proposalSlice = createSlice({
   },
 });
 
-export const { clearCurrentProposal, clearProposalError, clearLastSubmission } = proposalSlice.actions;
+export const { clearCurrentProposal, clearProposalError, clearLastSubmission, clearStaleDraft } =
+  proposalSlice.actions;
 export default proposalSlice.reducer;

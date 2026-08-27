@@ -2,10 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import SubmitProposalModal from './SubmitProposalModal';
 import sessionReducer from '@/store/reducers/sessionSlice';
 import proposalReducer from '@/store/reducers/proposalSlice';
 import conflictReducer from '@/store/reducers/conflictSlice';
+import simulationReducer from '@/store/reducers/simulationSlice';
 import { proposalService } from '@/services/proposalService';
 import type { Conflict, Proposal } from '@/types';
 
@@ -31,6 +33,7 @@ const makeStore = (overrides: {
       session: sessionReducer,
       proposal: proposalReducer,
       conflict: conflictReducer,
+      simulation: simulationReducer,
     },
     preloadedState: {
       session: {
@@ -39,6 +42,14 @@ const makeStore = (overrides: {
         expired: false,
         hasUnsavedChanges: overrides.hasUnsavedChanges ?? false,
         lastPatchAt: 0,
+      },
+      simulation: {
+        simulations: [
+          { id: 'sim-test', branchId: 'sim-test', createdAt: '2026-06-11T10:00:00Z', baseScheduleVersion: 'main-sha-1' },
+        ],
+        current: null,
+        loading: false,
+        error: null,
       },
       conflict: {
         conflicts: Array.from({ length: overrides.conflictCount ?? 0 }, (_, i) => ({
@@ -59,7 +70,15 @@ const render_ = (overrides = {}) => {
   const onClose = vi.fn();
   render(
     <Provider store={store}>
-      <SubmitProposalModal open simId="sim-test" onClose={onClose} />
+      <MemoryRouter initialEntries={['/simulations/sim-test']}>
+        <Routes>
+          <Route
+            path="/simulations/:id"
+            element={<SubmitProposalModal open simId="sim-test" onClose={onClose} />}
+          />
+          <Route path="/" element={<div>Home Screen</div>} />
+        </Routes>
+      </MemoryRouter>
     </Provider>,
   );
   return { store, onClose };
@@ -155,7 +174,11 @@ describe('SubmitProposalModal', () => {
       expect(proposalService.createProposal).toHaveBeenCalledWith({
         simulationId: 'sim-test',
         description: 'Fixed room double booking',
+        baseScheduleVersion: 'main-sha-1',
       });
+
+      // A successful submission redirects the user to the home screen.
+      await waitFor(() => expect(screen.getByText('Home Screen')).toBeInTheDocument());
     });
 
     it('records a BLOCKED outcome in the store when the proposal is blocked', async () => {
@@ -196,6 +219,51 @@ describe('SubmitProposalModal', () => {
       await waitFor(() =>
         expect(store.getState().proposal.error).toBe(
           'A proposal for this draft is already open — check My Proposals before submitting again.',
+        ),
+      );
+
+      // A failed submission does not redirect — the user stays put to see the error.
+      expect(screen.queryByText('Home Screen')).not.toBeInTheDocument();
+    });
+
+    it('records a staleDraft (not a plain error) when the published schedule changed, and does not redirect', async () => {
+      vi.mocked(proposalService.createProposal).mockRejectedValue({
+        statusCode: 409,
+        code: 'MAIN_SCHEDULE_CHANGED',
+        message: 'The published schedule has changed since this draft was created. Update your draft before submitting.',
+      });
+
+      const { store } = render_({ hasUnsavedChanges: false });
+      fireEvent.change(screen.getByLabelText(/explain your changes/i), {
+        target: { value: 'Some changes' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /submit.*review/i }));
+
+      await waitFor(() =>
+        expect(store.getState().proposal.staleDraft).toEqual({ simulationId: 'sim-test' }),
+      );
+      expect(store.getState().proposal.error).toBeNull();
+      expect(screen.queryByText('Home Screen')).not.toBeInTheDocument();
+    });
+
+    it('sends the simulation\'s stored baseScheduleVersion along with the submission', async () => {
+      const proposal: Proposal = {
+        id: 'prop-3',
+        simulationId: 'sim-test',
+        status: 'READY',
+        createdAt: new Date().toISOString(),
+      };
+      vi.mocked(proposalService.createProposal).mockResolvedValue(proposal);
+
+      render_({ hasUnsavedChanges: false });
+      fireEvent.change(screen.getByLabelText(/explain your changes/i), {
+        target: { value: 'Some changes' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /submit.*review/i }));
+
+      await waitFor(() =>
+        expect(proposalService.createProposal).toHaveBeenCalledWith(
+          expect.objectContaining({ baseScheduleVersion: 'main-sha-1' }),
         ),
       );
     });

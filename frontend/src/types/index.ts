@@ -8,6 +8,7 @@ export type {
   Conflict,
   MetricResult,
   Suggestion,
+  RoomAvailability,
   ProposalStatus,
   Proposal,
   ProposalDetail,
@@ -43,6 +44,7 @@ export type {
   CreateProposalRequest,
   CreateMetricRuleRequest,
   CreateConstraintRequest,
+  RebaseResponse,
 } from './api';
 
 export type {

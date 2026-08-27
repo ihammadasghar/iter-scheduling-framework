@@ -5,11 +5,13 @@ import type {
   Conflict,
   MetricResult,
   Suggestion,
+  RoomAvailability,
   PaginatedResponse,
   UpdateClassRequest,
   WeightedScoreResult,
   ApiError,
   ScheduleJson,
+  RebaseResponse,
 } from '@/types';
 
 export interface PreviewClassUpdateResponse {
@@ -56,6 +58,12 @@ export const simulationService = {
       .then((r) => r.data);
   },
 
+  getRoomAvailability(simId: string, classId: string): Promise<RoomAvailability[]> {
+    return apiClient
+      .get<RoomAvailability[]>(`/simulations/${simId}/classes/${classId}/room-availability`)
+      .then((r) => r.data);
+  },
+
   getConflicts(simId: string): Promise<Conflict[]> {
     return apiClient
       .get<Conflict[]>(`/simulations/${simId}/conflicts`)
@@ -96,6 +104,15 @@ export const simulationService = {
     return apiClient
       .post<void>(`/simulations/${simId}/commit`)
       .then(() => undefined);
+  },
+
+  // Updates a stale draft to reflect the latest published schedule while
+  // preserving the user's own edits. Returns the new baseScheduleVersion so
+  // the caller can update its stored copy before submitting again.
+  rebaseSimulation(simId: string, baseScheduleVersion: string): Promise<RebaseResponse> {
+    return apiClient
+      .post<RebaseResponse>(`/simulations/${simId}/rebase`, { baseScheduleVersion })
+      .then((r) => r.data);
   },
 
   sendHeartbeat(simId: string): Promise<void> {

@@ -34,7 +34,7 @@ describe('useGlobalProposalStatusSnackbar', () => {
 
     act(() => {
       store.dispatch(
-        createProposalThunk.fulfilled(fakeProposal('READY'), '', { simulationId: 'sim-1', description: 'x' }),
+        createProposalThunk.fulfilled(fakeProposal('READY'), '', { simulationId: 'sim-1', description: 'x', baseScheduleVersion: 'main-sha-1' }),
       );
     });
 
@@ -49,7 +49,7 @@ describe('useGlobalProposalStatusSnackbar', () => {
 
     act(() => {
       store.dispatch(
-        createProposalThunk.fulfilled(fakeProposal('BLOCKED'), '', { simulationId: 'sim-1', description: 'x' }),
+        createProposalThunk.fulfilled(fakeProposal('BLOCKED'), '', { simulationId: 'sim-1', description: 'x', baseScheduleVersion: 'main-sha-1' }),
       );
     });
 
@@ -63,7 +63,7 @@ describe('useGlobalProposalStatusSnackbar', () => {
     // instance stands in for a different page mounting afterwards).
     const store = makeStore();
     store.dispatch(
-      createProposalThunk.fulfilled(fakeProposal('READY'), '', { simulationId: 'sim-1', description: 'x' }),
+      createProposalThunk.fulfilled(fakeProposal('READY'), '', { simulationId: 'sim-1', description: 'x', baseScheduleVersion: 'main-sha-1' }),
     );
 
     const { result } = renderHook(() => useGlobalProposalStatusSnackbar(), { wrapper: wrapper(store) });
@@ -73,7 +73,7 @@ describe('useGlobalProposalStatusSnackbar', () => {
   it('handleClose closes the snackbar and clears lastSubmission from the store', () => {
     const store = makeStore();
     store.dispatch(
-      createProposalThunk.fulfilled(fakeProposal('READY'), '', { simulationId: 'sim-1', description: 'x' }),
+      createProposalThunk.fulfilled(fakeProposal('READY'), '', { simulationId: 'sim-1', description: 'x', baseScheduleVersion: 'main-sha-1' }),
     );
     const { result } = renderHook(() => useGlobalProposalStatusSnackbar(), { wrapper: wrapper(store) });
     expect(result.current.open).toBe(true);
@@ -87,7 +87,7 @@ describe('useGlobalProposalStatusSnackbar', () => {
   it('does not reopen after clearLastSubmission until another submission fulfills', () => {
     const store = makeStore();
     store.dispatch(
-      createProposalThunk.fulfilled(fakeProposal('READY'), '', { simulationId: 'sim-1', description: 'x' }),
+      createProposalThunk.fulfilled(fakeProposal('READY'), '', { simulationId: 'sim-1', description: 'x', baseScheduleVersion: 'main-sha-1' }),
     );
     act(() => { store.dispatch(clearLastSubmission()); });
 

@@ -38,10 +38,12 @@ describe('proposalService', () => {
     const result = await proposalService.createProposal({
       simulationId: 'sim-alice-a1b2c3d4',
       description: 'Moving BIO101',
+      baseScheduleVersion: 'main-sha-1',
     });
     expect(postSpy).toHaveBeenCalledWith('/proposals', {
       simulationId: 'sim-alice-a1b2c3d4',
       description: 'Moving BIO101',
+      baseScheduleVersion: 'main-sha-1',
     });
     expect(result.status).toBe('READY');
   });

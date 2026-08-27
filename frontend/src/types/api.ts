@@ -25,6 +25,7 @@ export interface UpdateClassRequest {
   readonly roomId?: string;
   readonly professorId?: string;
   readonly timeSlotIds?: readonly string[];
+  readonly studentGroupId?: string;
 }
 
 // --- Proposals ---
@@ -32,6 +33,13 @@ export interface UpdateClassRequest {
 export interface CreateProposalRequest {
   readonly simulationId: string;
   readonly description: string;
+  readonly baseScheduleVersion: string;
+}
+
+// --- Rebase (updating a stale draft onto the latest published schedule) ---
+
+export interface RebaseResponse {
+  readonly baseScheduleVersion: string;
 }
 
 // --- Rules ---

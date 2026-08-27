@@ -3,7 +3,7 @@ import type { MockInstance } from 'vitest';
 import type { AxiosResponse } from 'axios';
 import apiClient from './apiClient';
 import { simulationService } from './simulationService';
-import type { Simulation, ScheduleClass, Conflict, MetricResult, Suggestion, WeightedScoreResult, ApiError, ScheduleJson } from '@/types';
+import type { Simulation, ScheduleClass, Conflict, MetricResult, Suggestion, RoomAvailability, WeightedScoreResult, ApiError, ScheduleJson } from '@/types';
 
 // Helper to build a minimal Axios response wrapper
 const axiosOk = <T>(data: T): Promise<AxiosResponse<T>> =>
@@ -13,6 +13,7 @@ const fakeSimulation: Simulation = {
   id: 'sim-alice-a1b2c3d4',
   branchId: 'sim-alice-a1b2c3d4',
   createdAt: '2026-06-11T10:00:00Z',
+  baseScheduleVersion: 'main-sha-1',
 };
 
 const fakeClass: ScheduleClass = {
@@ -68,6 +69,23 @@ describe('simulationService', () => {
     getSpy.mockReturnValue(axiosOk(suggestions));
     const result = await simulationService.getClassSuggestions('sim-1', 'CLS_00001');
     expect(getSpy).toHaveBeenCalledWith('/simulations/sim-1/classes/CLS_00001/suggestions');
+    expect(result).toHaveLength(1);
+  });
+
+  it('rebaseSimulation calls POST rebase with the baseScheduleVersion and returns the new one', async () => {
+    postSpy.mockReturnValue(axiosOk({ baseScheduleVersion: 'new-main-sha' }));
+    const result = await simulationService.rebaseSimulation('sim-1', 'old-main-sha');
+    expect(postSpy).toHaveBeenCalledWith('/simulations/sim-1/rebase', { baseScheduleVersion: 'old-main-sha' });
+    expect(result).toEqual({ baseScheduleVersion: 'new-main-sha' });
+  });
+
+  it('getRoomAvailability calls GET room-availability endpoint', async () => {
+    const availability: RoomAvailability[] = [
+      { roomId: 'RM_102', capacityOk: true, freeTimeSlotIds: ['TS_WED_P1'] },
+    ];
+    getSpy.mockReturnValue(axiosOk(availability));
+    const result = await simulationService.getRoomAvailability('sim-1', 'CLS_00001');
+    expect(getSpy).toHaveBeenCalledWith('/simulations/sim-1/classes/CLS_00001/room-availability');
     expect(result).toHaveLength(1);
   });
 

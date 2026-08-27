@@ -13,6 +13,7 @@ const sim = {
   id: 'sim-bob-dead1234',
   branchId: 'sim-bob-dead1234',
   createdAt: new Date(Date.now() - 3600_000).toISOString(), // 1 hour ago
+  baseScheduleVersion: 'main-sha-1',
 };
 
 const renderCard = (props: Partial<React.ComponentProps<typeof SimulationCard>> = {}) =>
