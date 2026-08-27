@@ -11,6 +11,7 @@ import {
   computeCalendarBounds,
   filterMine,
   filterByResource,
+  filterExcludedDays,
   buildCalendarBlocks,
 } from '@/utils/calendarLayout';
 import type { ViewByOption } from '@/types';
@@ -24,6 +25,10 @@ interface MyScheduleCalendarProps {
   // Overrides the default "No classes are scheduled for you..." empty-state
   // copy — the Browse tab names the entity that was searched for instead.
   readonly emptyMessage?: string;
+  // Day name -> holiday reason, for the currently-viewed week (from
+  // weekNavigation.ts's excludedDaysForWeek). Those day columns don't render
+  // this week — see filterExcludedDays.
+  readonly excludedDays?: ReadonlyMap<string, string>;
 }
 
 const PIXELS_PER_MINUTE = 1.2;
@@ -51,6 +56,7 @@ export default function MyScheduleCalendar({
   conflictedClassIds = new Set(),
   resource,
   emptyMessage,
+  excludedDays = new Map(),
 }: MyScheduleCalendarProps): React.ReactElement {
   const dispatch = useAppDispatch();
   const classes = useAppSelector((s) => s.class.classes);
@@ -66,7 +72,10 @@ export default function MyScheduleCalendar({
   );
   const timeSlotById = useMemo(() => new Map(timeSlots.map((ts) => [ts.id, ts])), [timeSlots]);
   const classById = useMemo(() => new Map(myClasses.map((c) => [c.id, c])), [myClasses]);
-  const dayOrder = useMemo(() => deriveDayOrder(timeSlots), [timeSlots]);
+  const dayOrder = useMemo(
+    () => filterExcludedDays(deriveDayOrder(timeSlots), excludedDays),
+    [timeSlots, excludedDays],
+  );
   const bounds = useMemo(() => computeCalendarBounds(timeSlots), [timeSlots]);
   const blocks = useMemo(
     () => buildCalendarBlocks(myClasses, timeSlotById),

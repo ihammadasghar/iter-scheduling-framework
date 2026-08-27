@@ -56,7 +56,7 @@ const makeStore = () =>
       schedule: scheduleReducer,
     },
     preloadedState: {
-      schedule: { rooms: ROOMS, studentGroups: [], courses: [], professors: [], timeSlots: [], loading: false, error: null },
+      schedule: { rooms: ROOMS, studentGroups: [], courses: [], professors: [], timeSlots: [], metadata: null, loading: false, error: null },
     },
   });
 

@@ -33,6 +33,7 @@ const renderChip = (
         courses: roster.courses ?? [],
         professors: roster.professors ?? [],
         timeSlots: [],
+        metadata: null,
         loading: false, error: null,
       },
     },

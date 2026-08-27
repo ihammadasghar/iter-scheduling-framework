@@ -46,7 +46,7 @@ const makeStore = (opts: {
       },
       schedule: {
         rooms: [], studentGroups: [], courses: [], professors: [],
-        timeSlots: TIME_SLOTS, loading: false, error: null,
+        timeSlots: TIME_SLOTS, metadata: null, loading: false, error: null,
       },
       conflict: { conflicts: opts.conflicts ?? [], loading: false, lastFetchedAt: null, error: null },
       identity: { identity: opts.identity === undefined ? PROFESSOR_IDENTITY : opts.identity, hydrated: true },
@@ -126,6 +126,17 @@ describe('MyScheduleCalendar', () => {
       </Provider>,
     );
     expect(screen.getByText('HIS201')).toBeInTheDocument();
+    expect(screen.queryByText('BIO101')).not.toBeInTheDocument();
+  });
+
+  it('drops an excluded day\'s column (and its classes) entirely, matching filterExcludedDays', () => {
+    const store = makeStore();
+    render(
+      <Provider store={store}>
+        <MyScheduleCalendar excludedDays={new Map([['Monday', 'Thanksgiving Break']])} />
+      </Provider>,
+    );
+    expect(screen.queryByText('Monday')).not.toBeInTheDocument();
     expect(screen.queryByText('BIO101')).not.toBeInTheDocument();
   });
 

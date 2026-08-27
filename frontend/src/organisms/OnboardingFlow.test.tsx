@@ -24,7 +24,7 @@ const makeStore = (opts: { hydrated?: boolean; identity?: null; rosterLoading?: 
       schedule: {
         rooms: [], courses: [], timeSlots: [],
         professors: PROFESSORS, studentGroups: STUDENT_GROUPS,
-        loading: opts.rosterLoading ?? false, error: null,
+        metadata: null, loading: opts.rosterLoading ?? false, error: null,
       },
     },
   });
@@ -118,7 +118,7 @@ describe('OnboardingFlow', () => {
       reducer: { identity: identityReducer, schedule: scheduleReducer },
       preloadedState: {
         identity: { identity: { role: 'admin' as const, professorId: null, studentGroupId: null }, hydrated: true },
-        schedule: { rooms: [], courses: [], timeSlots: [], professors: [], studentGroups: [], loading: false, error: null },
+        schedule: { rooms: [], courses: [], timeSlots: [], professors: [], studentGroups: [], metadata: null, loading: false, error: null },
       },
     });
     renderFlow(store);

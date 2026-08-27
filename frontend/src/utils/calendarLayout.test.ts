@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   timeToMinutes,
   deriveDayOrder,
+  filterExcludedDays,
   computeCalendarBounds,
   filterByResource,
   filterMine,
@@ -52,6 +53,17 @@ describe('deriveDayOrder', () => {
 
   it('returns an empty array for no time slots', () => {
     expect(deriveDayOrder([])).toEqual([]);
+  });
+});
+
+describe('filterExcludedDays', () => {
+  it('drops a day present in excludedDays', () => {
+    const excluded = new Map([['Wednesday', 'Thanksgiving Break']]);
+    expect(filterExcludedDays(['Monday', 'Tuesday', 'Wednesday'], excluded)).toEqual(['Monday', 'Tuesday']);
+  });
+
+  it('returns the input unchanged when excludedDays is empty', () => {
+    expect(filterExcludedDays(['Monday', 'Tuesday'], new Map())).toEqual(['Monday', 'Tuesday']);
   });
 });
 

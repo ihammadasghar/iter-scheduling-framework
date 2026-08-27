@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Box, Button, Container, Typography } from '@mui/material';
 import { EditOutlined, InboxOutlined } from '@mui/icons-material';
 import AppShell from '@/templates/AppShell';
@@ -8,10 +8,12 @@ import SimulationCardSkeleton from '@/organisms/SimulationCardSkeleton';
 import PublishedScheduleCard from '@/organisms/PublishedScheduleCard';
 import MyScheduleCalendar from '@/organisms/MyScheduleCalendar';
 import CreateSimulationDialog from '@/molecules/CreateSimulationDialog';
+import WeekNavigator from '@/molecules/WeekNavigator';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { loadSimulationsFromStorage } from '@/store/reducers/simulationSlice';
 import { fetchPublishedClassesPage, resetClasses } from '@/store/reducers/classSlice';
 import { fetchPublishedScheduleThunk } from '@/store/reducers/scheduleSlice';
+import { initialWeekStart, excludedDaysForWeek } from '@/utils/weekNavigation';
 
 const PAGE_SIZE = 50; // must match PAGE_SIZE in classSlice
 
@@ -22,6 +24,20 @@ export default function SimulationDashboardPage(): React.ReactElement {
   const classError = useAppSelector((state) => state.class.error);
 
   const [createOpen, setCreateOpen] = useState(false);
+
+  // Independent week-nav state — this page has no sibling tabs to stay in
+  // sync with (unlike TimetablePage/PublishedSchedulePage's shared tab set).
+  const metadata = useAppSelector((state) => state.schedule.metadata);
+  const [weekStart, setWeekStart] = useState<string | null>(null);
+  useEffect(() => {
+    if (metadata !== null && weekStart === null) {
+      setWeekStart(initialWeekStart(metadata.timeline));
+    }
+  }, [metadata, weekStart]);
+  const excludedDays = useMemo(
+    () => (metadata && weekStart ? excludedDaysForWeek(weekStart, metadata.timeline) : new Map<string, string>()),
+    [metadata, weekStart],
+  );
 
   // Hydrate simulation list from localStorage, and load the published
   // schedule (roster + classes) so "Your Weekly Schedule" below has
@@ -74,9 +90,14 @@ export default function SimulationDashboardPage(): React.ReactElement {
         {/* The signed-in professor/student's own weekly schedule, straight
             from the published timetable — "see your schedule" is step one
             of the see → request → simulate → propose flow. */}
-        <Typography variant="overline" color="text.secondary" component="h2" sx={{ display: 'block', mb: 1 }}>
-          Your Weekly Schedule
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+          <Typography variant="overline" color="text.secondary" component="h2">
+            Your Weekly Schedule
+          </Typography>
+          {metadata !== null && weekStart !== null && (
+            <WeekNavigator weekStart={weekStart} onWeekChange={setWeekStart} timeline={metadata.timeline} />
+          )}
+        </Box>
         {classError && (
           <Alert severity="error" sx={{ mb: 2 }}>
             Could not load your schedule. Please try again.
@@ -93,7 +114,7 @@ export default function SimulationDashboardPage(): React.ReactElement {
             mb: 4,
           }}
         >
-          <MyScheduleCalendar />
+          <MyScheduleCalendar excludedDays={excludedDays} />
         </Box>
 
         {/* Published schedule reference card */}

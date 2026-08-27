@@ -324,8 +324,18 @@ export class SimulationService implements ISimulationService {
       throw ApiError.notFound('Simulation not found or expired');
     }
 
+    // exportScheduleJson never hydrates metadata into the graph (it's not an
+    // entity), so it always comes back as `{}` — read the branch's own
+    // schedule.json for the real (static, never-edited-in-a-simulation)
+    // metadata and merge it in, same trick commit() already uses on the
+    // write path to preserve metadata across a graph round-trip.
+    const existingJson = await this.github.readFile(simulationId, SCHEDULE_JSON_PATH);
+    const existing = parseScheduleJson(existingJson);
+
     const exportedJson = await this.graph.exportScheduleJson(simulationId);
-    return JSON.parse(exportedJson) as ScheduleJson;
+    const exported = parseScheduleJson(exportedJson);
+
+    return { ...exported, metadata: existing.metadata };
   }
 
   private async readMetricRules(): Promise<readonly MetricRule[]> {

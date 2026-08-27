@@ -14,7 +14,11 @@ vi.mock('@/services/scheduleService', () => ({
   scheduleService: {
     getPublishedClasses: vi.fn().mockResolvedValue({ data: [], total: 0, page: 1 }),
     getPublishedRoster: vi.fn().mockResolvedValue({
-      metadata: {}, courses: [], professors: [], studentGroups: [], rooms: [], timeSlots: [],
+      metadata: {
+        semesterId: 'sem-1', semesterName: 'Fall 2026', academicYear: '2026-2027',
+        timeline: { semesterStartDate: '2026-09-07', semesterEndDate: '2026-12-18', exclusionDates: [] },
+      },
+      courses: [], professors: [], studentGroups: [], rooms: [], timeSlots: [],
     }),
   },
 }));
@@ -161,5 +165,10 @@ describe('SimulationDashboardPage', () => {
     };
     renderPage({ storedSimulations: [sim] });
     expect(screen.queryByText('sim-alice-abc12345')).not.toBeInTheDocument();
+  });
+
+  it('shows the WeekNavigator above the calendar once metadata has loaded, clamped to the semester start', async () => {
+    renderPage();
+    expect(await screen.findByText('Sep 7 – Sep 13, 2026')).toBeInTheDocument();
   });
 });

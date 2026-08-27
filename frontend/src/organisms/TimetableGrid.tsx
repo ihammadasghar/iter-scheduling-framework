@@ -17,6 +17,10 @@ import type { ScheduleClass, ViewByOption } from '@/types';
 
 interface TimetableGridProps {
   readonly conflictedClassIds?: ReadonlySet<string>;
+  // Day names ("Monday".."Sunday") excluded for the currently-viewed week —
+  // classes scheduled entirely on those days don't appear this week (see
+  // weekNavigation.ts's excludedDaysForWeek).
+  readonly excludedDays?: ReadonlySet<string>;
 }
 
 // --- Pure helpers ---
@@ -104,12 +108,14 @@ const cellSx = {
 
 export default function TimetableGrid({
   conflictedClassIds = new Set(),
+  excludedDays = new Set(),
 }: TimetableGridProps): React.ReactElement {
   const dispatch = useAppDispatch();
   const classes = useAppSelector((s) => s.class.classes);
   const loading = useAppSelector((s) => s.class.loading);
   const viewBy = useAppSelector((s) => s.ui.viewBy);
   const rooms = useAppSelector((s) => s.schedule.rooms);
+  const timeSlots = useAppSelector((s) => s.schedule.timeSlots);
   const conflicts = useAppSelector((s) => s.conflict.conflicts);
   const names = useScheduleNames();
 
@@ -135,19 +141,43 @@ export default function TimetableGrid({
     });
   };
 
+  // Which weekday each time slot falls on, from the roster's authoritative
+  // RawTimeSlot.day — used only for excludedDays filtering below; column
+  // sorting/labeling still goes through scheduleFormatters.ts's ID parsing.
+  const dayByTsId = useMemo(
+    () => new Map(timeSlots.map((ts) => [ts.id, ts.day])),
+    [timeSlots],
+  );
+
+  // Classes hidden this week because at least one of their slots lands on
+  // an excluded day (e.g. a holiday) — filtered before column/row
+  // derivation so an excluded day's columns simply don't appear that week,
+  // and a resource with nothing left to show that week drops out of the
+  // row list too. A class is only kept if every slot it occupies is on a
+  // non-excluded day: since a class here renders as one spanning cell (not
+  // one block per day, unlike MyScheduleCalendar), there's no way to show
+  // "part of" a class while hiding another part — the whole occurrence
+  // goes with the excluded day.
+  const visibleClasses = useMemo(() => {
+    if (excludedDays.size === 0) return classes;
+    return classes.filter((cls) =>
+      cls.timeSlotIds.every((tsId) => !excludedDays.has(dayByTsId.get(tsId) ?? '')),
+    );
+  }, [classes, excludedDays, dayByTsId]);
+
   const sortedTsIds = useMemo(() => {
-    const allIds = classes.flatMap((c) => [...c.timeSlotIds]);
+    const allIds = visibleClasses.flatMap((c) => [...c.timeSlotIds]);
     return sortTimeSlotIds(uniqueSorted(allIds));
-  }, [classes]);
+  }, [visibleClasses]);
 
   const resourceIds = useMemo(() => {
-    const ids = classes.map((c) => resourceIdOf(c, viewBy));
+    const ids = visibleClasses.map((c) => resourceIdOf(c, viewBy));
     return uniqueSorted(ids).sort();
-  }, [classes, viewBy]);
+  }, [visibleClasses, viewBy]);
 
   const lookup = useMemo(
-    () => buildLookup(classes, sortedTsIds, viewBy),
-    [classes, sortedTsIds, viewBy],
+    () => buildLookup(visibleClasses, sortedTsIds, viewBy),
+    [visibleClasses, sortedTsIds, viewBy],
   );
 
   if (loading && classes.length === 0) {

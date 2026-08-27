@@ -7,6 +7,8 @@ import type { ViewByOption } from '@/types';
 
 interface BrowseSchedulePanelProps {
   readonly conflictedClassIds?: ReadonlySet<string>;
+  // Forwarded straight to MyScheduleCalendar — see its own prop doc.
+  readonly excludedDays?: ReadonlyMap<string, string>;
 }
 
 const nameResolverFor = (
@@ -29,6 +31,7 @@ const nameResolverFor = (
  */
 export default function BrowseSchedulePanel({
   conflictedClassIds,
+  excludedDays,
 }: BrowseSchedulePanelProps): React.ReactElement {
   const [resourceType, setResourceType] = useState<ViewByOption>('room');
   const [resourceId, setResourceId] = useState<string | null>(null);
@@ -55,6 +58,7 @@ export default function BrowseSchedulePanel({
         <MyScheduleCalendar
           resource={{ type: resourceType, id: resourceId }}
           conflictedClassIds={conflictedClassIds}
+          excludedDays={excludedDays}
           emptyMessage={`No classes are scheduled for ${nameResolverFor(names, resourceType)(resourceId)} this week.`}
         />
       )}

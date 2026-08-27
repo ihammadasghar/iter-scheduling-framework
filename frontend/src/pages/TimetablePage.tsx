@@ -15,6 +15,7 @@ import ViewBySelector from '@/molecules/ViewBySelector';
 import SaveChangesButton from '@/molecules/SaveChangesButton';
 import InactivityBanner from '@/molecules/InactivityBanner';
 import WorkspaceTabs, { type WorkspaceTabValue } from '@/molecules/WorkspaceTabs';
+import WeekNavigator from '@/molecules/WeekNavigator';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setSession, markExpired } from '@/store/reducers/sessionSlice';
 import { loadSimulationsFromStorage } from '@/store/reducers/simulationSlice';
@@ -23,6 +24,7 @@ import { fetchScheduleThunk } from '@/store/reducers/scheduleSlice';
 import { selectClass, toggleInspector } from '@/store/reducers/uiSlice';
 import { useHeartbeat } from '@/hooks/useHeartbeat';
 import { useInactivityWarning } from '@/hooks/useInactivityWarning';
+import { initialWeekStart, excludedDaysForWeek } from '@/utils/weekNavigation';
 import type { ConflictType, UserRole } from '@/types';
 
 const PAGE_SIZE = 50; // must match PAGE_SIZE in classSlice
@@ -46,6 +48,22 @@ export default function TimetablePage(): React.ReactElement {
     () => new Set(conflicts.flatMap((c) => c.classIds)),
     [conflicts],
   );
+
+  // Week navigation — shared across the My Schedule/Full Schedule/Browse
+  // tabs so switching tabs preserves the selected week. null until the
+  // roster's metadata (and thus semester bounds) has loaded.
+  const metadata = useAppSelector((s) => s.schedule.metadata);
+  const [weekStart, setWeekStart] = useState<string | null>(null);
+  useEffect(() => {
+    if (metadata !== null && weekStart === null) {
+      setWeekStart(initialWeekStart(metadata.timeline));
+    }
+  }, [metadata, weekStart]);
+  const excludedDays = useMemo(
+    () => (metadata && weekStart ? excludedDaysForWeek(weekStart, metadata.timeline) : new Map<string, string>()),
+    [metadata, weekStart],
+  );
+  const excludedDaySet = useMemo(() => new Set(excludedDays.keys()), [excludedDays]);
 
   // Session lifecycle hooks
   useHeartbeat(simId ?? null);
@@ -135,6 +153,11 @@ export default function TimetablePage(): React.ReactElement {
           {/* Only meaningful on the Full Schedule grid — it re-groups rows by
               resource type, which doesn't apply to the single-person calendar. */}
           {tab === 'grid' && <ViewBySelector />}
+          {/* Week-agnostic — the Overview tab summarizes conflicts/metrics across
+              the whole simulation, not one week. */}
+          {tab !== 'overview' && metadata !== null && weekStart !== null && (
+            <WeekNavigator weekStart={weekStart} onWeekChange={setWeekStart} timeline={metadata.timeline} />
+          )}
           <Box sx={{ flex: 1 }} />
           <SaveChangesButton simId={simId} />
         </Box>
@@ -148,17 +171,17 @@ export default function TimetablePage(): React.ReactElement {
         <Box sx={{ flex: 1, overflow: 'hidden', position: 'relative', display: 'flex' }}>
           {tab === 'myschedule' ? (
             <>
-              <MyScheduleCalendar conflictedClassIds={conflictedClassIds} />
+              <MyScheduleCalendar conflictedClassIds={conflictedClassIds} excludedDays={excludedDays} />
               <Inspector simId={simId} />
             </>
           ) : tab === 'grid' ? (
             <>
-              <TimetableGrid conflictedClassIds={conflictedClassIds} />
+              <TimetableGrid conflictedClassIds={conflictedClassIds} excludedDays={excludedDaySet} />
               <Inspector simId={simId} />
             </>
           ) : tab === 'browse' ? (
             <>
-              <BrowseSchedulePanel conflictedClassIds={conflictedClassIds} />
+              <BrowseSchedulePanel conflictedClassIds={conflictedClassIds} excludedDays={excludedDays} />
               <Inspector simId={simId} />
             </>
           ) : (

@@ -20,8 +20,11 @@ vi.mock('@/hooks/useInactivityWarning', () => ({
   useInactivityWarning: vi.fn().mockReturnValue({ showWarning: false, dismiss: vi.fn() }),
 }));
 vi.mock('@/organisms/TimetableGrid', () => ({
-  default: (props: { conflictedClassIds?: ReadonlySet<string> }) => (
-    <div>Grid View Content — conflictedClassIds: {[...(props.conflictedClassIds ?? [])].join(',')}</div>
+  default: (props: { conflictedClassIds?: ReadonlySet<string>; excludedDays?: ReadonlySet<string> }) => (
+    <>
+      <div>Grid View Content — conflictedClassIds: {[...(props.conflictedClassIds ?? [])].join(',')}</div>
+      <div>excludedDays: {[...(props.excludedDays ?? [])].join(',')}</div>
+    </>
   ),
 }));
 vi.mock('@/organisms/MyScheduleCalendar', () => ({
@@ -49,7 +52,14 @@ vi.mock('@/services/simulationService', () => ({
   simulationService: {
     getSimulationClasses: vi.fn().mockResolvedValue({ data: [], total: 0, page: 1 }),
     getSchedule: vi.fn().mockResolvedValue({
-      metadata: {}, courses: [], professors: [], studentGroups: [], rooms: [], timeSlots: [], classes: [],
+      metadata: {
+        semesterId: 'sem-1', semesterName: 'Fall 2026', academicYear: '2026-2027',
+        timeline: {
+          semesterStartDate: '2026-09-07', semesterEndDate: '2026-12-18',
+          exclusionDates: [{ date: '2026-11-26', reason: 'Thanksgiving Break' }],
+        },
+      },
+      courses: [], professors: [], studentGroups: [], rooms: [], timeSlots: [], classes: [],
     }),
     getConflicts: vi.fn().mockResolvedValue([]),
     getMetrics: vi.fn().mockResolvedValue([]),
@@ -204,5 +214,52 @@ describe('TimetablePage — default tab by identity', () => {
   it('defaults to the Full Schedule grid when no identity is set', () => {
     renderPage();
     expect(screen.getByText(/Grid View Content/)).toBeInTheDocument();
+  });
+});
+
+describe('TimetablePage — week navigation', () => {
+  it('shows the WeekNavigator once the roster metadata has loaded, clamped to the semester start', async () => {
+    renderPage();
+    // Real "today" is well before this fixture's Sep 7 2026 semester start,
+    // so the initial week should clamp to the semester's first week.
+    expect(await screen.findByText('Sep 7 – Sep 13, 2026')).toBeInTheDocument();
+  });
+
+  it('does not show the WeekNavigator on the Overview tab', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Sep 7 – Sep 13, 2026');
+
+    await user.click(screen.getByRole('tab', { name: 'Overview' }));
+
+    expect(screen.queryByText('Sep 7 – Sep 13, 2026')).not.toBeInTheDocument();
+  });
+
+  it('clicking Next week advances the week and passes the new excludedDays down to TimetableGrid', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Sep 7 – Sep 13, 2026');
+
+    // Step from the semester's first week to the Thanksgiving week (Nov 23–29).
+    for (let i = 0; i < 11; i++) {
+      // eslint-disable-next-line no-await-in-loop
+      await user.click(screen.getByLabelText('Next week'));
+    }
+
+    expect(await screen.findByText('Nov 23 – Nov 29, 2026')).toBeInTheDocument();
+    expect(screen.getByText('excludedDays: Thursday')).toBeInTheDocument();
+  });
+
+  it('preserves the selected week when switching from Full Schedule to My Schedule', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Sep 7 – Sep 13, 2026');
+    await user.click(screen.getByLabelText('Next week'));
+    await screen.findByText('Sep 14 – Sep 20, 2026');
+
+    await user.click(screen.getByRole('tab', { name: 'My Schedule' }));
+    await user.click(screen.getByRole('tab', { name: 'Full Schedule' }));
+
+    expect(screen.getByText('Sep 14 – Sep 20, 2026')).toBeInTheDocument();
   });
 });

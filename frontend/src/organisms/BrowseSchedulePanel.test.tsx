@@ -40,6 +40,7 @@ const makeStore = () =>
         ],
         courses: [],
         timeSlots: TIME_SLOTS,
+        metadata: null,
         loading: false,
         error: null,
       },
@@ -89,6 +90,22 @@ describe('BrowseSchedulePanel', () => {
     expect(
       await screen.findByText('No classes are scheduled for History Year 1 this week.'),
     ).toBeInTheDocument();
+  });
+
+  it('forwards excludedDays to the underlying calendar (excluded day\'s column disappears)', async () => {
+    const user = userEvent.setup();
+    const store = makeStore();
+    render(
+      <Provider store={store}>
+        <BrowseSchedulePanel excludedDays={new Map([['Monday', 'Thanksgiving Break']])} />
+      </Provider>,
+    );
+
+    await user.click(screen.getByLabelText('Search rooms'));
+    await user.click(await screen.findByText('Room 101'));
+
+    expect(screen.queryByText('Monday')).not.toBeInTheDocument();
+    expect(screen.queryByText('BIO101')).not.toBeInTheDocument();
   });
 
   it('resets the selected entity when switching resource type', async () => {

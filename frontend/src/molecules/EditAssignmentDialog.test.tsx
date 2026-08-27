@@ -77,7 +77,7 @@ const makeStore = (classes: ScheduleClass[] = [currentClass, otherRoomClass]) =>
       class: { classes, total: classes.length, currentPage: 1, hasMore: false, loading: false, error: null },
       schedule: {
         rooms: ROOMS, professors: PROFESSORS, studentGroups: GROUPS, courses: [], timeSlots: TIME_SLOTS,
-        loading: false, error: null,
+        metadata: null, loading: false, error: null,
       },
     },
   });
