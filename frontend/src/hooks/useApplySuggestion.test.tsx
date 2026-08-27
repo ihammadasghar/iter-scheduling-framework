@@ -84,6 +84,58 @@ describe('useApplySuggestion', () => {
     expect(previewOrder).toBeLessThan(commitOrder);
   });
 
+  // Regression guard: apply()'s second parameter is its own ReschedulePatch
+  // type (not the full Suggestion, which has no conflictFree field) so any
+  // caller can reuse this hook with a hand-picked target — this must keep
+  // working with just the two required fields present.
+  it('accepts a bare {roomId, timeSlotIds} target with no conflictFree field (manual reschedule)', async () => {
+    vi.mocked(simulationService.simulationService.previewClassUpdate).mockResolvedValue({
+      metrics: [], score: { score: 50, breakdown: [] },
+    });
+    vi.mocked(simulationService.simulationService.updateClass).mockResolvedValue({
+      id: CLASS_ID, courseId: 'C', title: 'T', professorId: 'P', studentGroupId: 'G', roomId: 'RM_103', timeSlotIds: ['TS_WED_P1'],
+    });
+
+    const store = makeStore();
+    const { result } = renderHook(() => useApplySuggestion(SIM_ID), { wrapper: wrap(store) });
+
+    let succeeded = false;
+    await act(async () => {
+      succeeded = await result.current.apply(CLASS_ID, { roomId: 'RM_103', timeSlotIds: ['TS_WED_P1'] });
+    });
+
+    expect(succeeded).toBe(true);
+    expect(simulationService.simulationService.previewClassUpdate).toHaveBeenCalledWith(
+      SIM_ID, CLASS_ID, { roomId: 'RM_103', timeSlotIds: ['TS_WED_P1'] },
+    );
+  });
+
+  it('includes professorId and studentGroupId in the patch when the target provides them', async () => {
+    vi.mocked(simulationService.simulationService.previewClassUpdate).mockResolvedValue({
+      metrics: [], score: { score: 50, breakdown: [] },
+    });
+    vi.mocked(simulationService.simulationService.updateClass).mockResolvedValue({
+      id: CLASS_ID, courseId: 'C', title: 'T', professorId: 'PRF_002', studentGroupId: 'GRP_002', roomId: 'RM_102', timeSlotIds: ['TS_MON_P2'],
+    });
+
+    const store = makeStore();
+    const { result } = renderHook(() => useApplySuggestion(SIM_ID), { wrapper: wrap(store) });
+
+    await act(async () => {
+      await result.current.apply(CLASS_ID, {
+        roomId: 'RM_102',
+        timeSlotIds: ['TS_MON_P2'],
+        professorId: 'PRF_002',
+        studentGroupId: 'GRP_002',
+      });
+    });
+
+    expect(simulationService.simulationService.previewClassUpdate).toHaveBeenCalledWith(
+      SIM_ID, CLASS_ID,
+      { roomId: 'RM_102', timeSlotIds: ['TS_MON_P2'], professorId: 'PRF_002', studentGroupId: 'GRP_002' },
+    );
+  });
+
   it('sets lastDelta from the preview response — not from live store state re-read after commit', async () => {
     // Redux still holds the OLD metric value even though the preview (and,
     // in a real backend, the commit) reflects a NEW one — proves the delta

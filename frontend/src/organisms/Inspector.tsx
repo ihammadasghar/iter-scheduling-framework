@@ -3,7 +3,6 @@ import { Close } from '@mui/icons-material';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { deselectClass, toggleInspector } from '@/store/reducers/uiSlice';
 import ClassDetailSection from '@/molecules/ClassDetailSection';
-import ConflictDetailSection from '@/molecules/ConflictDetailSection';
 import SuggestionsList from '@/organisms/SuggestionsList';
 import InspectorSkeleton from '@/organisms/InspectorSkeleton';
 import { useScheduleNames } from '@/hooks/useScheduleNames';
@@ -100,11 +99,11 @@ export default function Inspector({ simId }: InspectorProps): React.ReactElement
 
         {selectedClass !== undefined && (
           <>
-            <ClassDetailSection classItem={selectedClass} />
-            <ConflictDetailSection
+            <ClassDetailSection
               classItem={selectedClass}
               conflicts={conflicts}
               classes={classes}
+              simId={simId}
             />
             {simId !== undefined && (
               <>

@@ -5,15 +5,29 @@ import { fetchConflictsThunk } from '@/store/reducers/conflictSlice';
 import { fetchMetricsThunk } from '@/store/reducers/metricSlice';
 import { fetchScoreThunk } from '@/store/reducers/scoreSlice';
 import { simulationService } from '@/services/simulationService';
-import type { Suggestion, MetricDelta, MetricResult } from '@/types';
+import type { MetricDelta, MetricResult } from '@/types';
 
 export interface ScoreDelta {
   readonly before: number;
   readonly after: number;
 }
 
+// apply() reads roomId/timeSlotIds (and optionally professorId/
+// studentGroupId) off its second argument — this loosened type (rather than
+// the full Suggestion, which also carries conflictFree and never varies
+// professor/group) lets any caller build its own hand-picked target and
+// reuse this hook's PATCH/preview/refetch flow unchanged, with no parallel
+// implementation. Suggestion satisfies this structurally (its extra fields
+// are simply absent), so existing callers keep compiling unchanged.
+export interface ReschedulePatch {
+  readonly roomId: string;
+  readonly timeSlotIds: readonly string[];
+  readonly professorId?: string;
+  readonly studentGroupId?: string;
+}
+
 interface UseApplySuggestionResult {
-  readonly apply: (classId: string, suggestion: Suggestion) => Promise<boolean>;
+  readonly apply: (classId: string, target: ReschedulePatch) => Promise<boolean>;
   readonly loading: boolean;
   readonly error: string | null;
   readonly lastDelta: MetricDelta | null;
@@ -66,15 +80,17 @@ export const useApplySuggestion = (simId: string): UseApplySuggestionResult => {
   const [lastDelta, setLastDelta] = useState<MetricDelta | null>(null);
   const [lastScoreDelta, setLastScoreDelta] = useState<ScoreDelta | null>(null);
 
-  const apply = async (classId: string, suggestion: Suggestion): Promise<boolean> => {
+  const apply = async (classId: string, target: ReschedulePatch): Promise<boolean> => {
     setLoading(true);
     setError(null);
     setLastDelta(null);
     setLastScoreDelta(null);
 
     const patch = {
-      roomId: suggestion.roomId,
-      timeSlotIds: [...suggestion.timeSlotIds],
+      roomId: target.roomId,
+      timeSlotIds: [...target.timeSlotIds],
+      ...(target.professorId !== undefined && { professorId: target.professorId }),
+      ...(target.studentGroupId !== undefined && { studentGroupId: target.studentGroupId }),
     };
 
     setDeltaLoading(true);

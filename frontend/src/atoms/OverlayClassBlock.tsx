@@ -1,0 +1,75 @@
+import { Box, Tooltip } from '@mui/material';
+import type { OverlayBlock } from '@/utils/overlayLayout';
+
+// Sibling to CalendarClassBlock.tsx, for the Edit Assignment dialog's
+// multi-source overlay rather than the main app's personal-schedule
+// calendar — purely informational here (no click-to-select-class
+// navigation), colored by which resource's schedule it came from instead of
+// conflict/selection state, so `pointerEvents: 'none'` lets every click pass
+// through to the day column's per-timeslot click-to-set region underneath.
+interface OverlayClassBlockProps {
+  readonly label: string;
+  readonly tooltip: string;
+  readonly block: OverlayBlock;
+  readonly minMinutes: number;
+  readonly pixelsPerMinute: number;
+  readonly bgcolor: string;
+  readonly color: string;
+}
+
+const MIN_BLOCK_HEIGHT = 32;
+
+export default function OverlayClassBlock({
+  label,
+  tooltip,
+  block,
+  minMinutes,
+  pixelsPerMinute,
+  bgcolor,
+  color,
+}: OverlayClassBlockProps): React.ReactElement {
+  const top = (block.startMinutes - minMinutes) * pixelsPerMinute;
+  const height = Math.max((block.endMinutes - block.startMinutes) * pixelsPerMinute, MIN_BLOCK_HEIGHT);
+  const widthPct = 100 / block.laneCount;
+  const leftPct = widthPct * block.laneIndex;
+
+  return (
+    <Tooltip title={tooltip} enterDelay={300}>
+      <Box
+        aria-label={tooltip}
+        sx={{
+          position: 'absolute',
+          top: `${top}px`,
+          height: `${height}px`,
+          left: `${leftPct}%`,
+          width: `calc(${widthPct}% - 4px)`,
+          boxSizing: 'border-box',
+          overflow: 'hidden',
+          pointerEvents: 'none',
+          borderRadius: 1,
+          px: 0.75,
+          py: 0.25,
+          fontSize: '0.7rem',
+          fontWeight: 600,
+          bgcolor,
+          color,
+        }}
+      >
+        <Box
+          component="span"
+          sx={{
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            whiteSpace: 'normal',
+            wordBreak: 'break-word',
+            lineHeight: 1.15,
+          }}
+        >
+          {label}
+        </Box>
+      </Box>
+    </Tooltip>
+  );
+}
