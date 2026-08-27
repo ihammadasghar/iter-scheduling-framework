@@ -40,6 +40,18 @@ export class SimulationController {
     }
   }
 
+  async rebase(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await this.service.rebase(
+        req.params['id'] as string,
+        (req.body as { baseScheduleVersion: string }).baseScheduleVersion,
+      );
+      res.status(200).json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async listClasses(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await this.service.listClasses({
@@ -73,6 +85,18 @@ export class SimulationController {
         req.params['classId'] as string,
       );
       res.status(200).json(suggestions);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getRoomAvailability(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const availability = await this.service.getRoomAvailability(
+        req.params['id'] as string,
+        req.params['classId'] as string,
+      );
+      res.status(200).json(availability);
     } catch (err) {
       next(err);
     }

@@ -9,6 +9,12 @@ export interface IGitHubService {
   // to writeFile as expectedSha for optimistic-concurrency protection on a
   // shared file (e.g. rules.json) that multiple callers may race to update.
   readFileWithSha(branch: string, path: string): Promise<{ content: string; sha: string }>;
+  // Fetches a file's content by its git blob SHA directly, independent of
+  // whatever branch/ref currently points at it (or even if none does
+  // anymore) — content-addressed lookup. Used to recover the exact
+  // `main` schedule.json a simulation was forked from, even after `main`
+  // has since moved past that point (see SimulationService.rebase).
+  readBlobBySha(sha: string): Promise<string>;
   // expectedSha is optional: omit it to preserve today's "always write,
   // fetching whatever SHA is current" behavior (used for per-simulation
   // scratch files nothing else can race on). Pass it — from a prior

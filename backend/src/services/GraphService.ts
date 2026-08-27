@@ -10,6 +10,7 @@ import type {
   MetricResult,
   MetricRule,
   Suggestion,
+  RoomAvailability,
   WeightedScoreResult,
   MetricScoreBreakdown,
 } from '../types/domain.js';
@@ -211,6 +212,21 @@ export class GraphService implements IGraphService {
       );
     }
 
+    if (patch.studentGroupId !== undefined) {
+      await this.client.run(
+        `
+        MATCH (c:Class {id: $classId, branchId: $branchId})
+        OPTIONAL MATCH (c)-[rel:ATTENDED_BY]->()
+        DELETE rel
+        WITH c
+        MATCH (g:StudentGroup {id: $studentGroupId, branchId: $branchId})
+        MERGE (c)-[:ATTENDED_BY]->(g)
+        SET c.studentGroupId = $studentGroupId
+        `.trim(),
+        { branchId: simulationId, classId, studentGroupId: patch.studentGroupId },
+      );
+    }
+
     return this.fetchClass(simulationId, classId);
   }
 
@@ -283,6 +299,41 @@ export class GraphService implements IGraphService {
       roomId: String(row['roomId'] ?? ''),
       timeSlotIds: Array.isArray(row['timeSlotIds']) ? (row['timeSlotIds'] as string[]) : [],
       conflictFree: true,
+    }));
+  }
+
+  // Like getSuggestions, but reports on every room instead of only ones with
+  // at least one conflict-free slot — so a "Change Room" browser can tell a
+  // room that's merely busy right now apart from one that's never usable.
+  async getRoomAvailability(simulationId: string, classId: string): Promise<readonly RoomAvailability[]> {
+    const branchId = simulationId;
+
+    const cypher = `
+      MATCH (cls:Class {id: $classId, branchId: $branchId})-[:ATTENDED_BY]->(g:StudentGroup {branchId: $branchId})
+      MATCH (r:Room {branchId: $branchId}), (t:TimeSlot {branchId: $branchId})
+      OPTIONAL MATCH (roomOcc:Class {branchId: $branchId})-[:HELD_IN]->(r)
+        WHERE (roomOcc)-[:SCHEDULED_AT]->(t) AND roomOcc.id <> cls.id
+      WITH cls, g, r, t, count(roomOcc) AS roomConflicts
+      OPTIONAL MATCH (profOcc:Class {branchId: $branchId})-[:TAUGHT_BY]->(:Professor {id: cls.professorId, branchId: $branchId})
+        WHERE (profOcc)-[:SCHEDULED_AT]->(t) AND profOcc.id <> cls.id
+      WITH cls, g, r, t, roomConflicts, count(profOcc) AS profConflicts
+      OPTIONAL MATCH (groupOcc:Class {branchId: $branchId})-[:ATTENDED_BY]->(:StudentGroup {id: cls.studentGroupId, branchId: $branchId})
+        WHERE (groupOcc)-[:SCHEDULED_AT]->(t) AND groupOcc.id <> cls.id
+      WITH g, r, t, roomConflicts, profConflicts, count(groupOcc) AS groupConflicts
+      WITH g, r,
+           CASE WHEN roomConflicts = 0 AND profConflicts = 0 AND groupConflicts = 0 THEN t.id ELSE null END AS freeSlotId
+      WITH g, r, collect(freeSlotId) AS freeSlotIdsRaw
+      RETURN r.id AS roomId, (g.size <= r.capacity) AS capacityOk,
+             [x IN freeSlotIdsRaw WHERE x IS NOT NULL] AS freeTimeSlotIds
+      ORDER BY r.id
+    `.trim();
+
+    const rows = await this.client.run<RoomAvailabilityRow>(cypher, { branchId, classId });
+
+    return rows.map((row) => ({
+      roomId: String(row['roomId'] ?? ''),
+      capacityOk: Boolean(row['capacityOk']),
+      freeTimeSlotIds: Array.isArray(row['freeTimeSlotIds']) ? (row['freeTimeSlotIds'] as string[]) : [],
     }));
   }
 
@@ -439,4 +490,10 @@ const toCapacityConflict = (row: CapacityConflictRow): Conflict => ({
 interface SuggestionRow {
   readonly roomId: string;
   readonly timeSlotIds: readonly string[];
+}
+
+interface RoomAvailabilityRow {
+  readonly roomId: string;
+  readonly capacityOk: boolean;
+  readonly freeTimeSlotIds: readonly string[];
 }

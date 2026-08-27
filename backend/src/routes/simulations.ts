@@ -17,6 +17,9 @@ export function createSimulationsRouter(controller: SimulationController): IRout
   // POST /simulations/:id/commit — flush graph → save JSON to Git branch
   router.post('/:id/commit', (req, res, next) => controller.commit(req, res, next));
 
+  // POST /simulations/:id/rebase — update a stale draft onto the latest published schedule
+  router.post('/:id/rebase', (req, res, next) => controller.rebase(req, res, next));
+
   // GET /simulations/:id/classes — paginated class list
   router.get('/:id/classes', (req, res, next) => controller.listClasses(req, res, next));
 
@@ -26,6 +29,13 @@ export function createSimulationsRouter(controller: SimulationController): IRout
   // GET /simulations/:id/classes/:classId/suggestions — pathfind valid conflict-free slots
   router.get('/:id/classes/:classId/suggestions', (req, res, next) =>
     controller.getSuggestions(req, res, next),
+  );
+
+  // GET /simulations/:id/classes/:classId/room-availability — every room's
+  // capacity fit + conflict-free timeslots for this class, including rooms
+  // that are busy at every slot (unlike suggestions, none are dropped)
+  router.get('/:id/classes/:classId/room-availability', (req, res, next) =>
+    controller.getRoomAvailability(req, res, next),
   );
 
   // GET /simulations/:id/conflicts — run hard constraint checks

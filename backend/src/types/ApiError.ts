@@ -29,4 +29,11 @@ export class ApiError extends Error {
   static conflict(message: string): ApiError {
     return new ApiError(409, 'CONFLICT', message);
   }
+
+  // Distinct from a plain conflict() so callers (the frontend) can tell "the
+  // published schedule changed since this draft was created" apart from an
+  // ordinary 409 and offer a rebase instead of just showing an error.
+  static staleBase(message: string): ApiError {
+    return new ApiError(409, 'MAIN_SCHEDULE_CHANGED', message);
+  }
 }

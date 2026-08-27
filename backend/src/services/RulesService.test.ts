@@ -13,6 +13,7 @@ const makeGitHub = (
   deleteBranch: vi.fn().mockResolvedValue(undefined),
   readFile: vi.fn().mockResolvedValue(rulesJson),
   readFileWithSha: vi.fn().mockResolvedValue({ content: rulesJson, sha }),
+  readBlobBySha: vi.fn().mockResolvedValue(rulesJson),
   writeFile: vi.fn().mockResolvedValue(undefined),
   createPullRequest: vi.fn().mockResolvedValue('pr-1'),
   mergePullRequest: vi.fn().mockResolvedValue(undefined),

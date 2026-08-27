@@ -40,6 +40,7 @@ const makeGitHub = (scheduleJson = scheduleJsonWith(3)): IGitHubService => ({
   deleteBranch: vi.fn().mockResolvedValue(undefined),
   readFile: vi.fn().mockResolvedValue(scheduleJson),
   readFileWithSha: vi.fn().mockResolvedValue({ content: scheduleJson, sha: 'mock-sha' }),
+  readBlobBySha: vi.fn().mockResolvedValue(scheduleJson),
   writeFile: vi.fn().mockResolvedValue(undefined),
   createPullRequest: vi.fn().mockResolvedValue('42'),
   mergePullRequest: vi.fn().mockResolvedValue(undefined),

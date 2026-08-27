@@ -7,9 +7,11 @@ const makeService = (): ISimulationService => ({
   create: vi.fn(),
   heartbeat: vi.fn(),
   commit: vi.fn(),
+  rebase: vi.fn(),
   listClasses: vi.fn(),
   updateClass: vi.fn(),
   getSuggestions: vi.fn(),
+  getRoomAvailability: vi.fn(),
   getConflicts: vi.fn(),
   getMetrics: vi.fn(),
   getScore: vi.fn(),
@@ -25,6 +27,40 @@ const makeRes = (): Response => {
   res.send = vi.fn().mockReturnValue(res);
   return res;
 };
+
+describe('SimulationController.rebase()', () => {
+  it('returns 200 with the result from the service, passing simulationId and baseScheduleVersion', async () => {
+    const service = makeService();
+    const result = { baseScheduleVersion: 'new-sha' };
+    (service.rebase as ReturnType<typeof vi.fn>).mockResolvedValue(result);
+    const controller = new SimulationController(service);
+    const req = { params: { id: 'sim-1' }, body: { baseScheduleVersion: 'old-sha' } } as unknown as Request;
+    const res = makeRes();
+    const next: NextFunction = vi.fn();
+
+    await controller.rebase(req, res, next);
+
+    expect(service.rebase).toHaveBeenCalledWith('sim-1', 'old-sha');
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(result);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('passes errors to next()', async () => {
+    const service = makeService();
+    const error = new Error('boom');
+    (service.rebase as ReturnType<typeof vi.fn>).mockRejectedValue(error);
+    const controller = new SimulationController(service);
+    const req = { params: { id: 'sim-1' }, body: { baseScheduleVersion: 'old-sha' } } as unknown as Request;
+    const res = makeRes();
+    const next: NextFunction = vi.fn();
+
+    await controller.rebase(req, res, next);
+
+    expect(next).toHaveBeenCalledWith(error);
+    expect(res.status).not.toHaveBeenCalled();
+  });
+});
 
 describe('SimulationController.getSchedule()', () => {
   it('returns 200 with the schedule from the service', async () => {

@@ -6,9 +6,11 @@ import type {
   ScheduleClass,
   UpdateClassParams,
   Suggestion,
+  RoomAvailability,
   Conflict,
   MetricResult,
   WeightedScoreResult,
+  RebaseResult,
 } from '../types/domain.js';
 import type { ScheduleJson } from '../types/scheduleJson.js';
 
@@ -23,9 +25,15 @@ export interface ISimulationService {
   delete(simulationId: string): Promise<void>;
   heartbeat(simulationId: string): Promise<void>;
   commit(simulationId: string): Promise<void>;
+  // Updates a stale draft to reflect the latest published schedule while
+  // preserving what the user changed. baseScheduleVersion is the version the
+  // client currently believes its draft is based on (used to fetch that
+  // exact old content for diffing).
+  rebase(simulationId: string, baseScheduleVersion: string): Promise<RebaseResult>;
   listClasses(params: ListClassesParams): Promise<ListClassesResult>;
   updateClass(simulationId: string, classId: string, patch: UpdateClassParams): Promise<ScheduleClass>;
   getSuggestions(simulationId: string, classId: string): Promise<readonly Suggestion[]>;
+  getRoomAvailability(simulationId: string, classId: string): Promise<readonly RoomAvailability[]>;
   getConflicts(simulationId: string): Promise<readonly Conflict[]>;
   getMetrics(simulationId: string): Promise<readonly MetricResult[]>;
   getScore(simulationId: string): Promise<WeightedScoreResult>;

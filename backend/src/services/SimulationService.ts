@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { ApiError } from '../types/ApiError.js';
 import { parseScheduleJson, stringifyScheduleJson } from '../utils/ScheduleHydrator.js';
+import { diffSchedules } from '../utils/ScheduleDiffer.js';
 import type { IGitHubService } from '../interfaces/IGitHubService.js';
 import type { IGraphService } from '../interfaces/IGraphService.js';
 import type { ISimulationService, PreviewClassUpdateResult } from '../interfaces/ISimulationService.js';
@@ -13,10 +14,12 @@ import type {
   ScheduleClass,
   UpdateClassParams,
   Suggestion,
+  RoomAvailability,
   Conflict,
   MetricResult,
   MetricRule,
   WeightedScoreResult,
+  RebaseResult,
 } from '../types/domain.js';
 import { parseRulesJson } from '../types/rulesJson.js';
 import type { ScheduleJson } from '../types/scheduleJson.js';
@@ -42,6 +45,13 @@ export class SimulationService implements ISimulationService {
     const simulationId = `sim-${sanitizedUserId}-${randomUUID().slice(0, 8)}`;
     const createdAt = new Date().toISOString();
 
+    // Captured before the fork: the version marker a later submit/rebase
+    // compares against to detect whether `main` has moved since.
+    const { sha: baseScheduleVersion } = await this.github.readFileWithSha(
+      SOURCE_BRANCH,
+      SCHEDULE_JSON_PATH,
+    );
+
     await this.github.createBranch(simulationId, SOURCE_BRANCH);
 
     const scheduleJson = await this.github.readFile(simulationId, SCHEDULE_JSON_PATH);
@@ -55,7 +65,62 @@ export class SimulationService implements ISimulationService {
 
     this.registry.register(simulationId);
 
-    return { id: simulationId, branchId: simulationId, createdAt };
+    return { id: simulationId, branchId: simulationId, createdAt, baseScheduleVersion };
+  }
+
+  // Updates a stale draft to reflect the latest published schedule while
+  // preserving exactly what the user changed. Isolates the user's edits by
+  // diffing their draft against the *old* main (the version their draft was
+  // originally forked from, fetched by its content-addressed blob SHA —
+  // `main` itself has since moved past it), then reapplies those edits on
+  // top of the *current* main. The user's edits always win on any class
+  // their draft touched; any resulting clash just surfaces as an ordinary
+  // conflict, the same as any other edit's would.
+  async rebase(simulationId: string, baseScheduleVersion: string): Promise<RebaseResult> {
+    const touched = this.registry.touch(simulationId);
+    if (!touched) {
+      throw ApiError.notFound('Simulation not found or expired');
+    }
+
+    const oldMainJson = await this.github.readBlobBySha(baseScheduleVersion);
+    const candidateJson = await this.github.readFile(simulationId, SCHEDULE_JSON_PATH);
+    const { content: newMainJson, sha: newBaseScheduleVersion } = await this.github.readFileWithSha(
+      SOURCE_BRANCH,
+      SCHEDULE_JSON_PATH,
+    );
+
+    const oldMain = parseScheduleJson(oldMainJson);
+    const candidate = parseScheduleJson(candidateJson);
+    const newMain = parseScheduleJson(newMainJson);
+
+    const changes = diffSchedules(oldMain, candidate);
+
+    const mergedClasses = new Map(newMain.classes.map((c) => [c.id, c] as const));
+    for (const changedClass of changes.changed) {
+      mergedClasses.set(changedClass.classId, changedClass.after);
+    }
+    for (const addedClass of changes.added) {
+      if (!mergedClasses.has(addedClass.id)) {
+        mergedClasses.set(addedClass.id, addedClass);
+      }
+    }
+    for (const removedClass of changes.removed) {
+      mergedClasses.delete(removedClass.id);
+    }
+
+    const mergedJson = stringifyScheduleJson({ ...newMain, classes: [...mergedClasses.values()] });
+
+    await this.github.writeFile(
+      simulationId,
+      SCHEDULE_JSON_PATH,
+      mergedJson,
+      'chore(schedule): rebase draft onto latest published schedule',
+    );
+
+    await this.graph.flush(simulationId);
+    await this.graph.hydrate(simulationId, mergedJson);
+
+    return { baseScheduleVersion: newBaseScheduleVersion };
   }
 
   async delete(simulationId: string): Promise<void> {
@@ -140,8 +205,15 @@ export class SimulationService implements ISimulationService {
       throw ApiError.notFound('Simulation not found or expired');
     }
 
-    if (patch.roomId === undefined && patch.timeSlotIds === undefined && patch.professorId === undefined) {
-      throw ApiError.badRequest('Patch must include at least one field: roomId, timeSlotIds, or professorId');
+    if (
+      patch.roomId === undefined
+      && patch.timeSlotIds === undefined
+      && patch.professorId === undefined
+      && patch.studentGroupId === undefined
+    ) {
+      throw ApiError.badRequest(
+        'Patch must include at least one field: roomId, timeSlotIds, professorId, or studentGroupId',
+      );
     }
 
     return this.graph.updateClass(simulationId, classId, patch);
@@ -154,6 +226,15 @@ export class SimulationService implements ISimulationService {
     }
 
     return this.graph.getSuggestions(simulationId, classId);
+  }
+
+  async getRoomAvailability(simulationId: string, classId: string): Promise<readonly RoomAvailability[]> {
+    const touched = this.registry.touch(simulationId);
+    if (!touched) {
+      throw ApiError.notFound('Simulation not found or expired');
+    }
+
+    return this.graph.getRoomAvailability(simulationId, classId);
   }
 
   async getConflicts(simulationId: string): Promise<readonly Conflict[]> {
@@ -199,8 +280,15 @@ export class SimulationService implements ISimulationService {
       throw ApiError.notFound('Simulation not found or expired');
     }
 
-    if (patch.roomId === undefined && patch.timeSlotIds === undefined && patch.professorId === undefined) {
-      throw ApiError.badRequest('Patch must include at least one field: roomId, timeSlotIds, or professorId');
+    if (
+      patch.roomId === undefined
+      && patch.timeSlotIds === undefined
+      && patch.professorId === undefined
+      && patch.studentGroupId === undefined
+    ) {
+      throw ApiError.badRequest(
+        'Patch must include at least one field: roomId, timeSlotIds, professorId, or studentGroupId',
+      );
     }
 
     const exportedJson = await this.graph.exportScheduleJson(simulationId);

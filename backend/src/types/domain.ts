@@ -7,6 +7,11 @@ export interface Simulation {
   readonly id: string;
   readonly branchId: string;
   readonly createdAt: string;
+  // The git blob SHA of `main`'s schedule.json at the moment this
+  // simulation branch was forked — an opaque version marker used to detect
+  // whether `main` has moved since (see ProposalService.submit's staleness
+  // check and SimulationService.rebase).
+  readonly baseScheduleVersion: string;
 }
 
 export interface CreateSimulationParams {
@@ -40,12 +45,25 @@ export interface UpdateClassParams {
   readonly professorId?: string;
   readonly roomId?: string;
   readonly timeSlotIds?: readonly string[];
+  readonly studentGroupId?: string;
 }
 
 export interface Suggestion {
   readonly roomId: string;
   readonly timeSlotIds: readonly string[];
   readonly conflictFree: boolean;
+}
+
+// Per-room availability for a specific class: whether the room is even big
+// enough for the class's student group (time-independent), and which
+// individual timeslots are free of room/professor/group overlap for that
+// class. Unlike Suggestion, every room in the branch appears here — even one
+// with an empty freeTimeSlotIds — so "busy everywhere" can be told apart
+// from "busy right now, free later".
+export interface RoomAvailability {
+  readonly roomId: string;
+  readonly capacityOk: boolean;
+  readonly freeTimeSlotIds: readonly string[];
 }
 
 export interface Conflict {
@@ -71,6 +89,16 @@ export interface Proposal {
 export interface CreateProposalParams {
   readonly simulationId: string;
   readonly description: string;
+  // The simulation's baseScheduleVersion at the time the client is
+  // submitting — compared against main's current schedule.json SHA to
+  // detect a draft that's gone stale (see ProposalService.submit).
+  readonly baseScheduleVersion: string;
+}
+
+// Result of rebasing a simulation's draft onto the latest published
+// schedule (see SimulationService.rebase).
+export interface RebaseResult {
+  readonly baseScheduleVersion: string;
 }
 
 export interface MetricRule {

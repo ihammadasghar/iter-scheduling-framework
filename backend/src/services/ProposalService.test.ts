@@ -93,6 +93,7 @@ const makeGraph = (
     countClasses: vi.fn().mockResolvedValue(0),
     updateClass: vi.fn().mockResolvedValue({}),
     getSuggestions: vi.fn().mockResolvedValue([]),
+    getRoomAvailability: vi.fn().mockResolvedValue([]),
     queryConflicts: vi.fn().mockImplementation(async (runId: string) =>
       isBaselineRunId(runId) ? baselineConflicts : candidateConflicts,
     ),
@@ -108,6 +109,7 @@ const makeGitHub = (): IGitHubService => ({
   deleteBranch: vi.fn().mockResolvedValue(undefined),
   readFile: vi.fn().mockResolvedValue(''),
   readFileWithSha: vi.fn().mockResolvedValue({ content: '', sha: 'mock-sha' }),
+  readBlobBySha: vi.fn().mockResolvedValue(''),
   writeFile: vi.fn().mockResolvedValue(undefined),
   createPullRequest: vi.fn().mockResolvedValue('42'),
   mergePullRequest: vi.fn().mockResolvedValue(undefined),
@@ -145,6 +147,10 @@ describe('ProposalService.submit()', () => {
   const VALID_PARAMS = {
     simulationId: 'sim-alice-abc123',
     description: 'Rescheduling Biology lectures to reduce room conflicts',
+    // Matches makeGitHub()'s default readFileWithSha('main', ...) sha, so
+    // submit()'s staleness check passes by default; tests below that care
+    // about staleness override this explicitly.
+    baseScheduleVersion: 'mock-sha',
   };
 
   let github: IGitHubService;
@@ -181,6 +187,38 @@ describe('ProposalService.submit()', () => {
     ).rejects.toMatchObject({ statusCode: 400, message: 'description is required' });
 
     expect(github.createPullRequest).not.toHaveBeenCalled();
+  });
+
+  it('throws 400 when baseScheduleVersion is empty', async () => {
+    await expect(
+      service.submit({ ...VALID_PARAMS, baseScheduleVersion: '' }),
+    ).rejects.toMatchObject({ statusCode: 400, message: 'baseScheduleVersion is required' });
+
+    expect(github.createPullRequest).not.toHaveBeenCalled();
+  });
+
+  it('throws MAIN_SCHEDULE_CHANGED when baseScheduleVersion no longer matches main\'s current sha', async () => {
+    (github.readFileWithSha as ReturnType<typeof vi.fn>).mockResolvedValue({ content: '', sha: 'newer-sha' });
+
+    await expect(
+      service.submit({ ...VALID_PARAMS, baseScheduleVersion: 'mock-sha' }),
+    ).rejects.toMatchObject({ statusCode: 409, code: 'MAIN_SCHEDULE_CHANGED' });
+
+    expect(github.createPullRequest).not.toHaveBeenCalled();
+  });
+
+  it('checks main\'s current sha via readFileWithSha before doing anything else', async () => {
+    (github.readFileWithSha as ReturnType<typeof vi.fn>).mockResolvedValue({ content: '', sha: 'newer-sha' });
+
+    await expect(service.submit(VALID_PARAMS)).rejects.toMatchObject({ statusCode: 409 });
+
+    expect(github.readFileWithSha).toHaveBeenCalledWith('main', 'schedule.json');
+  });
+
+  it('proceeds normally when baseScheduleVersion matches main\'s current sha', async () => {
+    await expect(service.submit(VALID_PARAMS)).resolves.toBeDefined();
+
+    expect(github.createPullRequest).toHaveBeenCalledOnce();
   });
 
   it('calls github.createPullRequest with head=simulationId and base=main', async () => {
@@ -297,6 +335,10 @@ describe('ProposalService.submit() — improvement gate', () => {
   const VALID_PARAMS = {
     simulationId: 'sim-alice-abc123',
     description: 'Rescheduling Biology lectures to reduce room conflicts',
+    // Matches makeGitHub()'s default readFileWithSha('main', ...) sha, so
+    // submit()'s staleness check passes by default; tests below that care
+    // about staleness override this explicitly.
+    baseScheduleVersion: 'mock-sha',
   };
 
   let github: IGitHubService;

@@ -6,13 +6,13 @@ import type { IProposalService } from '../interfaces/IProposalService.js';
 import type { IRulesService } from '../interfaces/IRulesService.js';
 import { parseScheduleJson } from '../utils/ScheduleHydrator.js';
 import { diffConflictsById, diffSchedules } from '../utils/ScheduleDiffer.js';
+import { computeConflictsAndScore, isProposalAcceptable } from '../utils/ProposalGate.js';
+import type { ConflictsAndScore } from '../utils/ProposalGate.js';
 import type {
   Proposal,
   ProposalDetail,
   CreateProposalParams,
-  WeightedScoreResult,
   ScheduleComparison,
-  Conflict,
   MetricRule,
 } from '../types/domain.js';
 
@@ -33,7 +33,7 @@ export class ProposalService implements IProposalService {
   ) {}
 
   async submit(params: CreateProposalParams): Promise<Proposal> {
-    const { simulationId, description } = params;
+    const { simulationId, description, baseScheduleVersion } = params;
 
     if (!simulationId || simulationId.trim() === '') {
       throw ApiError.badRequest('simulationId is required');
@@ -41,7 +41,11 @@ export class ProposalService implements IProposalService {
     if (!description || description.trim() === '') {
       throw ApiError.badRequest('description is required');
     }
+    if (!baseScheduleVersion || baseScheduleVersion.trim() === '') {
+      throw ApiError.badRequest('baseScheduleVersion is required');
+    }
 
+    await this.assertNotStale(baseScheduleVersion);
     await this.assertImprovesOnPublished(simulationId);
 
     const prId = await this.github.createPullRequest(
@@ -130,13 +134,27 @@ export class ProposalService implements IProposalService {
     };
   }
 
+  // Refuses a submission whose draft was forked from a `main` that no
+  // longer exists — checked first, before any PR is opened, so a stale
+  // submit never leaves a stray PR behind. The frontend catches the
+  // MAIN_SCHEDULE_CHANGED code and offers to rebase the draft instead of
+  // just showing a plain error (see ScheduleUpdatedModal).
+  private async assertNotStale(baseScheduleVersion: string): Promise<void> {
+    const { sha: currentMainVersion } = await this.github.readFileWithSha(SOURCE_BRANCH, SCHEDULE_JSON_PATH);
+
+    if (baseScheduleVersion !== currentMainVersion) {
+      throw ApiError.staleBase(
+        'The published schedule has changed since this draft was created. Update your draft before submitting.',
+      );
+    }
+  }
+
   // A proposal is only allowed through if it doesn't make the published
-  // schedule worse: either it strictly reduces the number of hard-constraint
-  // conflicts vs. what's live on `main` today, or — when conflicts are
-  // unchanged — it changes the institution's weighted metric score at all
-  // (better or worse; the point is the author is proposing a deliberate
-  // trade-off, not a no-op). Anything else is rejected before a PR is ever
-  // opened, so a blocked attempt never leaves a stray PR behind.
+  // schedule worse (see ProposalGate.isProposalAcceptable for the exact
+  // rule — same one CiPipelineService uses for the ci:ready/ci:blocked
+  // label, so the two gates never disagree). Anything else is rejected
+  // before a PR is ever opened, so a blocked attempt never leaves a stray
+  // PR behind.
   private async assertImprovesOnPublished(simulationId: string): Promise<void> {
     const metricRules = await this.rulesService.listMetrics();
 
@@ -149,11 +167,7 @@ export class ProposalService implements IProposalService {
     const baseline = await this.computeConflictsAndScore(SOURCE_BRANCH, metricRules);
     const candidate = await this.computeConflictsAndScore(simulationId, metricRules);
 
-    const conflictsReduced = candidate.conflicts.length < baseline.conflicts.length;
-    const conflictsUnchanged = candidate.conflicts.length === baseline.conflicts.length;
-    const scoreChanged = candidate.score.score !== baseline.score.score;
-
-    if (conflictsReduced || (conflictsUnchanged && scoreChanged)) {
+    if (isProposalAcceptable(baseline, candidate)) {
       return;
     }
 
@@ -171,18 +185,8 @@ export class ProposalService implements IProposalService {
   private async computeConflictsAndScore(
     branch: string,
     metricRules: readonly MetricRule[],
-  ): Promise<{ conflicts: readonly Conflict[]; score: WeightedScoreResult }> {
-    const runId = `check-${branch}-${Date.now()}`;
-    const scheduleJson = await this.github.readFile(branch, SCHEDULE_JSON_PATH);
-
-    try {
-      await this.graph.hydrate(runId, scheduleJson);
-      const conflicts = await this.graph.queryConflicts(runId);
-      const score = await this.graph.scoreTimetable(runId, metricRules);
-      return { conflicts, score };
-    } finally {
-      await this.graph.flush(runId);
-    }
+  ): Promise<ConflictsAndScore> {
+    return computeConflictsAndScore(this.github, this.graph, branch, metricRules);
   }
 
   // Builds the full main-vs-candidate comparison shown on the proposal review
@@ -246,7 +250,7 @@ function labelsToStatus(labels: readonly string[]): Proposal['status'] {
 
 function formatCiComment(status: 'READY' | 'BLOCKED', conflictCount: number): string {
   if (status === 'READY') {
-    return '✅ **CI passed** — No hard constraint conflicts detected. This proposal is ready to merge.';
+    return "✅ **CI passed** — This proposal doesn't add any new conflicts beyond what's already published. Ready to merge.";
   }
-  return `❌ **CI failed** — ${conflictCount} hard constraint conflict${conflictCount === 1 ? '' : 's'} detected. Fix the conflicts and push again to re-trigger CI.`;
+  return `❌ **CI failed** — ${conflictCount} hard constraint conflict${conflictCount === 1 ? '' : 's'} detected, more than what's currently published. Fix the conflicts and push again to re-trigger CI.`;
 }

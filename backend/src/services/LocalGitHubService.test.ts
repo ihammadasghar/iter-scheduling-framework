@@ -64,6 +64,31 @@ describe('LocalGitHubService', () => {
     expect(mainContent).toBe(JSON.stringify({ value: 'main-schedule' }));
   });
 
+  // ── readFileWithSha / readBlobBySha ───────────────────────────────────────────
+
+  it('readBlobBySha fetches content by the sha readFileWithSha returned, independent of the branch', async () => {
+    const { sha } = await service.readFileWithSha('main', 'schedule.json');
+
+    const blob = await service.readBlobBySha(sha);
+
+    expect(blob).toBe(JSON.stringify({ value: 'main-schedule' }));
+  });
+
+  it('readBlobBySha still returns the old content by its old sha after the branch is overwritten', async () => {
+    const { sha: oldSha } = await service.readFileWithSha('main', 'schedule.json');
+
+    await service.writeFile('main', 'schedule.json', '{"value":"updated"}', 'edit');
+
+    expect(await service.readBlobBySha(oldSha)).toBe(JSON.stringify({ value: 'main-schedule' }));
+    const { sha: newSha } = await service.readFileWithSha('main', 'schedule.json');
+    expect(newSha).not.toBe(oldSha);
+    expect(await service.readBlobBySha(newSha)).toBe('{"value":"updated"}');
+  });
+
+  it('readBlobBySha throws notFound for an unknown sha', async () => {
+    await expect(service.readBlobBySha('unknown-sha')).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
   // ── createPullRequest / getPullRequest / setPullRequestLabels ────────────────
 
   it('createPullRequest returns incrementing numeric ids and getPullRequest reflects them', async () => {
@@ -115,6 +140,23 @@ describe('LocalGitHubService', () => {
 
   it('mergePullRequest throws notFound for an unknown id', async () => {
     await expect(service.mergePullRequest('999')).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  // Regression guard: a caller (ProposalService.submit's staleness check,
+  // SimulationService.rebase) that captured main's schedule.json sha before
+  // this merge must see a *different* sha afterward — otherwise a merge
+  // would be invisible to anything checking "has main moved?".
+  it('mergePullRequest gives the base branch a new sha for each merged file, not the old cached one', async () => {
+    const { sha: shaBeforeMerge } = await service.readFileWithSha('main', 'schedule.json');
+
+    await service.createBranch('sim-1', 'main');
+    await service.writeFile('sim-1', 'schedule.json', '{"updated":true}', 'edit');
+    const id = await service.createPullRequest('sim-1', 'main', 'My PR', 'description');
+    await service.mergePullRequest(id);
+
+    const { sha: shaAfterMerge } = await service.readFileWithSha('main', 'schedule.json');
+    expect(shaAfterMerge).not.toBe(shaBeforeMerge);
+    expect(await service.readBlobBySha(shaAfterMerge)).toBe('{"updated":true}');
   });
 
   // ── getPullRequestDiff ────────────────────────────────────────────────────────

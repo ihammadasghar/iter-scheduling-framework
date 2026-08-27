@@ -28,6 +28,11 @@ export class LocalGitHubService implements IGitHubService {
   // sha keyed by "branch:path" — mirrors GitHub's blob SHA well enough to
   // exercise the optimistic-concurrency path in RulesService/GitHubService.
   private readonly fileShas = new Map<string, string>();
+  // content keyed by sha — real GitHub blob SHAs are content-addressed, so
+  // any blob ever handed out stays fetchable by readBlobBySha even after
+  // the branch that produced it has since moved on. Every sha minted below
+  // (in readFileWithSha, writeFile, and mergePullRequest) is recorded here.
+  private readonly blobsBySha = new Map<string, string>();
   private readonly pullRequests = new Map<string, PullRequestRecord>();
   private nextPullRequestNumber = 1;
 
@@ -64,7 +69,16 @@ export class LocalGitHubService implements IGitHubService {
       sha = randomUUID();
       this.fileShas.set(shaKey, sha);
     }
+    this.blobsBySha.set(sha, content);
     return { content, sha };
+  }
+
+  async readBlobBySha(sha: string): Promise<string> {
+    const content = this.blobsBySha.get(sha);
+    if (content === undefined) {
+      throw ApiError.notFound(`Blob '${sha}' not found`);
+    }
+    return content;
   }
 
   async writeFile(
@@ -84,7 +98,9 @@ export class LocalGitHubService implements IGitHubService {
 
     const files = this.getBranchFiles(branch);
     files.set(path, content);
-    this.fileShas.set(shaKey, randomUUID());
+    const newSha = randomUUID();
+    this.fileShas.set(shaKey, newSha);
+    this.blobsBySha.set(newSha, content);
   }
 
   private shaKey(branch: string, path: string): string {
@@ -111,6 +127,14 @@ export class LocalGitHubService implements IGitHubService {
     const baseFiles = this.getBranchFiles(pr.base);
     for (const [path, content] of headFiles) {
       baseFiles.set(path, content);
+      // Mint a fresh sha for the base branch's copy, same as writeFile
+      // would — otherwise a stale cached sha for e.g. "main:schedule.json"
+      // would make this merge invisible to readFileWithSha-based staleness
+      // checks (see ProposalService.submit / SimulationService.rebase).
+      const shaKey = this.shaKey(pr.base, path);
+      const newSha = randomUUID();
+      this.fileShas.set(shaKey, newSha);
+      this.blobsBySha.set(newSha, content);
     }
     pr.state = 'merged';
   }

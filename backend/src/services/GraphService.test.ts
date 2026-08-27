@@ -125,12 +125,30 @@ describe('GraphService', () => {
       expect(calls[0]![1]).toMatchObject({ classId: CLASS_ID, professorId: 'PRF_002', branchId: BRANCH_ID });
     });
 
-    it('runs all three mutations when all fields are patched', async () => {
+    it('runs an ATTENDED_BY mutation when studentGroupId is patched', async () => {
+      mockClient = {
+        run: vi.fn()
+          .mockResolvedValueOnce([]) // group mutation
+          .mockResolvedValueOnce([{ class: UPDATED_CLASS }]), // re-fetch
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+
+      await service.updateClass(BRANCH_ID, CLASS_ID, { studentGroupId: 'GRP_002' });
+
+      const calls = (mockClient.run as ReturnType<typeof vi.fn>).mock.calls as Array<[string, Record<string, unknown>]>;
+      expect(calls).toHaveLength(2);
+      expect(calls[0]![0]).toContain('ATTENDED_BY');
+      expect(calls[0]![1]).toMatchObject({ classId: CLASS_ID, studentGroupId: 'GRP_002', branchId: BRANCH_ID });
+    });
+
+    it('runs all four mutations when all fields are patched', async () => {
       mockClient = {
         run: vi.fn()
           .mockResolvedValueOnce([]) // room mutation
           .mockResolvedValueOnce([]) // timeslot mutation
           .mockResolvedValueOnce([]) // professor mutation
+          .mockResolvedValueOnce([]) // group mutation
           .mockResolvedValueOnce([{ class: UPDATED_CLASS }]), // re-fetch
         close: vi.fn(),
       };
@@ -140,9 +158,10 @@ describe('GraphService', () => {
         roomId: 'RM_102',
         timeSlotIds: ['TS_MON_P2'],
         professorId: 'PRF_002',
+        studentGroupId: 'GRP_002',
       });
 
-      expect(mockClient.run).toHaveBeenCalledTimes(4);
+      expect(mockClient.run).toHaveBeenCalledTimes(5);
     });
 
     it('returns the updated ScheduleClass after mutations', async () => {
@@ -735,6 +754,92 @@ describe('GraphService', () => {
       service = new GraphService(mockClient);
 
       await service.getSuggestions(BRANCH_ID, CLASS_ID);
+
+      const [cypher] = (mockClient.run as ReturnType<typeof vi.fn>).mock.calls[0] as [string];
+      expect(cypher).toContain('HELD_IN');
+      expect(cypher).toContain('TAUGHT_BY');
+      expect(cypher).toContain('ATTENDED_BY');
+    });
+  });
+
+  // ── getRoomAvailability ──────────────────────────────────────────────────────
+
+  describe('getRoomAvailability()', () => {
+    const CLASS_ID = 'CLS_001';
+    const AVAILABILITY_ROW = {
+      roomId: 'RM_101',
+      capacityOk: true,
+      freeTimeSlotIds: ['TS_MON_P1', 'TS_MON_P2'],
+    };
+
+    it('calls client.run() exactly once', async () => {
+      mockClient = { run: vi.fn().mockResolvedValue([AVAILABILITY_ROW]), close: vi.fn() };
+      service = new GraphService(mockClient);
+
+      await service.getRoomAvailability(BRANCH_ID, CLASS_ID);
+
+      expect(mockClient.run).toHaveBeenCalledOnce();
+    });
+
+    it('passes both branchId and classId as params', async () => {
+      mockClient = { run: vi.fn().mockResolvedValue([]), close: vi.fn() };
+      service = new GraphService(mockClient);
+
+      await service.getRoomAvailability(BRANCH_ID, CLASS_ID);
+
+      const [, params] = (mockClient.run as ReturnType<typeof vi.fn>).mock.calls[0] as [
+        string,
+        Record<string, unknown>,
+      ];
+      expect(params['branchId']).toBe(BRANCH_ID);
+      expect(params['classId']).toBe(CLASS_ID);
+    });
+
+    it('maps rows to RoomAvailability objects', async () => {
+      mockClient = { run: vi.fn().mockResolvedValue([AVAILABILITY_ROW]), close: vi.fn() };
+      service = new GraphService(mockClient);
+
+      const result = await service.getRoomAvailability(BRANCH_ID, CLASS_ID);
+
+      expect(result).toEqual([
+        { roomId: 'RM_101', capacityOk: true, freeTimeSlotIds: ['TS_MON_P1', 'TS_MON_P2'] },
+      ]);
+    });
+
+    it('keeps a room with an empty freeTimeSlotIds list instead of dropping it', async () => {
+      const busyRow = { roomId: 'RM_102', capacityOk: true, freeTimeSlotIds: [] };
+      mockClient = { run: vi.fn().mockResolvedValue([busyRow]), close: vi.fn() };
+      service = new GraphService(mockClient);
+
+      const result = await service.getRoomAvailability(BRANCH_ID, CLASS_ID);
+
+      expect(result).toEqual([{ roomId: 'RM_102', capacityOk: true, freeTimeSlotIds: [] }]);
+    });
+
+    it('flags capacityOk: false regardless of free timeslots', async () => {
+      const tooSmallRow = { roomId: 'RM_103', capacityOk: false, freeTimeSlotIds: ['TS_MON_P1'] };
+      mockClient = { run: vi.fn().mockResolvedValue([tooSmallRow]), close: vi.fn() };
+      service = new GraphService(mockClient);
+
+      const result = await service.getRoomAvailability(BRANCH_ID, CLASS_ID);
+
+      expect(result[0]).toMatchObject({ roomId: 'RM_103', capacityOk: false });
+    });
+
+    it('returns an empty array when the branch has no rooms', async () => {
+      mockClient = { run: vi.fn().mockResolvedValue([]), close: vi.fn() };
+      service = new GraphService(mockClient);
+
+      const result = await service.getRoomAvailability(BRANCH_ID, CLASS_ID);
+
+      expect(result).toEqual([]);
+    });
+
+    it('includes all three constraint checks in the Cypher (HELD_IN, TAUGHT_BY, ATTENDED_BY)', async () => {
+      mockClient = { run: vi.fn().mockResolvedValue([]), close: vi.fn() };
+      service = new GraphService(mockClient);
+
+      await service.getRoomAvailability(BRANCH_ID, CLASS_ID);
 
       const [cypher] = (mockClient.run as ReturnType<typeof vi.fn>).mock.calls[0] as [string];
       expect(cypher).toContain('HELD_IN');

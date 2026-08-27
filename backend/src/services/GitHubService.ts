@@ -41,6 +41,16 @@ export class GitHubService implements IGitHubService {
     return this.fetchFile(branch, path);
   }
 
+  async readBlobBySha(sha: string): Promise<string> {
+    const { data } = await this.octokit.rest.git.getBlob({
+      owner: this.owner,
+      repo: this.repo,
+      file_sha: sha,
+    });
+
+    return Buffer.from(data.content, data.encoding as BufferEncoding).toString('utf-8');
+  }
+
   async writeFile(
     branch: string,
     path: string,

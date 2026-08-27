@@ -11,8 +11,11 @@ const makeGitHub = (): IGitHubService => ({
   readFile: vi.fn().mockResolvedValue('{"metadata":[],"timeSlots":[],"rooms":[],"professors":[],"studentGroups":[],"courses":[],"classes":[]}'),
   readFileWithSha: vi.fn().mockResolvedValue({
     content: '{"metadata":[],"timeSlots":[],"rooms":[],"professors":[],"studentGroups":[],"courses":[],"classes":[]}',
-    sha: 'mock-sha',
+    sha: 'main-sha-1',
   }),
+  readBlobBySha: vi.fn().mockResolvedValue(
+    '{"metadata":[],"timeSlots":[],"rooms":[],"professors":[],"studentGroups":[],"courses":[],"classes":[]}',
+  ),
   writeFile: vi.fn().mockResolvedValue(undefined),
   createPullRequest: vi.fn().mockResolvedValue('pr-1'),
   mergePullRequest: vi.fn().mockResolvedValue(undefined),
@@ -32,6 +35,7 @@ const makeGraph = (): IGraphService => ({
   countClasses: vi.fn().mockResolvedValue(0),
   updateClass: vi.fn().mockResolvedValue({}),
   getSuggestions: vi.fn().mockResolvedValue([]),
+  getRoomAvailability: vi.fn().mockResolvedValue([]),
   queryConflicts: vi.fn().mockResolvedValue([]),
   evaluateMetrics: vi.fn().mockResolvedValue([]),
   scoreTimetable: vi.fn().mockResolvedValue({ score: 0, breakdown: [] }),
@@ -103,6 +107,21 @@ describe('SimulationService.create()', () => {
     expect(simulation.branchId).toBe(simulation.id);
     expect(simulation.createdAt >= beforeCall).toBe(true);
     expect(simulation.createdAt <= afterCall).toBe(true);
+  });
+
+  it('captures main\'s current schedule.json SHA as baseScheduleVersion', async () => {
+    const simulation = await service.create({ userId: 'alice' });
+
+    expect(github.readFileWithSha).toHaveBeenCalledWith('main', 'schedule.json');
+    expect(simulation.baseScheduleVersion).toBe('main-sha-1');
+  });
+
+  it('captures the baseScheduleVersion before forking the branch', async () => {
+    await service.create({ userId: 'alice' });
+
+    const shaCall = (github.readFileWithSha as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0]!;
+    const branchCall = (github.createBranch as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0]!;
+    expect(shaCall).toBeLessThan(branchCall);
   });
 
   it('throws 400 if userId is missing', async () => {
@@ -278,6 +297,12 @@ describe('SimulationService.updateClass()', () => {
       service.updateClass(SIM_ID, CLASS_ID, { professorId: 'PRF_002' }),
     ).resolves.toEqual(UPDATED_CLASS);
   });
+
+  it('accepts a patch with only studentGroupId', async () => {
+    await expect(
+      service.updateClass(SIM_ID, CLASS_ID, { studentGroupId: 'GRP_002' }),
+    ).resolves.toEqual(UPDATED_CLASS);
+  });
 });
 
 describe('SimulationService.commit()', () => {
@@ -376,6 +401,149 @@ describe('SimulationService.commit()', () => {
     expect(JSON.parse(timeSlotLine!.replace(/,$/, '').trim())).toEqual({
       id: 'TS_MON_P1', day: 'Monday', name: 'P1', startTime: '08:30', endTime: '10:15',
     });
+  });
+});
+
+describe('SimulationService.rebase()', () => {
+  const SIM_ID = 'sim-alice-abc123';
+  const OLD_BASE_SHA = 'old-main-sha';
+  const NEW_MAIN_SHA = 'new-main-sha';
+
+  const baseClass = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+    id: 'CLS_001', courseId: 'C1', title: 'Bio', professorId: 'P1', studentGroupId: 'G1',
+    roomId: 'RM_101', timeSlotIds: ['TS1'], ...overrides,
+  });
+
+  // What main looked like when this draft was forked.
+  const OLD_MAIN_JSON = JSON.stringify({
+    metadata: {}, timeSlots: [], rooms: [], professors: [], studentGroups: [], courses: [],
+    classes: [
+      baseClass(),
+      { id: 'CLS_002', courseId: 'C2', title: 'Chem', professorId: 'P2', studentGroupId: 'G2', roomId: 'RM_201', timeSlotIds: ['TS2'] },
+      { id: 'CLS_004', courseId: 'C4', title: 'Art', professorId: 'P4', studentGroupId: 'G4', roomId: 'RM_401', timeSlotIds: ['TS4'] },
+    ],
+  });
+
+  // The user's draft: moved CLS_001 to RM_102, deleted CLS_004, added CLS_005.
+  const CANDIDATE_JSON = JSON.stringify({
+    metadata: {}, timeSlots: [], rooms: [], professors: [], studentGroups: [], courses: [],
+    classes: [
+      baseClass({ roomId: 'RM_102' }),
+      { id: 'CLS_002', courseId: 'C2', title: 'Chem', professorId: 'P2', studentGroupId: 'G2', roomId: 'RM_201', timeSlotIds: ['TS2'] },
+      { id: 'CLS_005', courseId: 'C5', title: 'Music', professorId: 'P5', studentGroupId: 'G5', roomId: 'RM_501', timeSlotIds: ['TS5'] },
+    ],
+  });
+
+  // Current main: someone else moved CLS_002 to RM_202 and added CLS_003,
+  // unrelated to anything the user touched.
+  const NEW_MAIN_JSON = JSON.stringify({
+    metadata: { term: 'Spring 2026' }, timeSlots: [], rooms: [], professors: [], studentGroups: [], courses: [],
+    classes: [
+      baseClass(),
+      { id: 'CLS_002', courseId: 'C2', title: 'Chem', professorId: 'P2', studentGroupId: 'G2', roomId: 'RM_202', timeSlotIds: ['TS2'] },
+      { id: 'CLS_003', courseId: 'C3', title: 'Phys', professorId: 'P3', studentGroupId: 'G3', roomId: 'RM_301', timeSlotIds: ['TS3'] },
+      { id: 'CLS_004', courseId: 'C4', title: 'Art', professorId: 'P4', studentGroupId: 'G4', roomId: 'RM_401', timeSlotIds: ['TS4'] },
+    ],
+  });
+
+  let github: IGitHubService;
+  let graph: IGraphService;
+  let registry: ISessionRegistry;
+  let service: SimulationService;
+
+  beforeEach(() => {
+    github = makeGitHub();
+    graph = makeGraph();
+    registry = makeRegistry(true);
+    (github.readBlobBySha as ReturnType<typeof vi.fn>).mockResolvedValue(OLD_MAIN_JSON);
+    (github.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(CANDIDATE_JSON);
+    (github.readFileWithSha as ReturnType<typeof vi.fn>).mockResolvedValue({
+      content: NEW_MAIN_JSON,
+      sha: NEW_MAIN_SHA,
+    });
+    service = new SimulationService(github, graph, registry);
+  });
+
+  it('throws 404 when the simulation session is not found', async () => {
+    const expiredRegistry = makeRegistry(false);
+    const svc = new SimulationService(github, graph, expiredRegistry);
+
+    await expect(svc.rebase(SIM_ID, OLD_BASE_SHA)).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Simulation not found or expired',
+    });
+  });
+
+  it('fetches the old main content by the given baseScheduleVersion sha', async () => {
+    await service.rebase(SIM_ID, OLD_BASE_SHA);
+
+    expect(github.readBlobBySha).toHaveBeenCalledWith(OLD_BASE_SHA);
+  });
+
+  it('reapplies the user\'s own edit (changed class) onto the latest main', async () => {
+    await service.rebase(SIM_ID, OLD_BASE_SHA);
+
+    const [, , written] = (github.writeFile as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string, string];
+    const merged = JSON.parse(written) as { classes: { id: string; roomId: string }[] };
+    const cls1 = merged.classes.find((c) => c.id === 'CLS_001');
+    expect(cls1?.roomId).toBe('RM_102');
+  });
+
+  it('preserves a concurrent change on main to a class the user never touched', async () => {
+    await service.rebase(SIM_ID, OLD_BASE_SHA);
+
+    const [, , written] = (github.writeFile as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string, string];
+    const merged = JSON.parse(written) as { classes: { id: string; roomId: string }[] };
+    const cls2 = merged.classes.find((c) => c.id === 'CLS_002');
+    expect(cls2?.roomId).toBe('RM_202');
+  });
+
+  it('keeps a class main added that the user never touched', async () => {
+    await service.rebase(SIM_ID, OLD_BASE_SHA);
+
+    const [, , written] = (github.writeFile as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string, string];
+    const merged = JSON.parse(written) as { classes: { id: string }[] };
+    expect(merged.classes.some((c) => c.id === 'CLS_003')).toBe(true);
+  });
+
+  it('adds a class the user added that main doesn\'t have', async () => {
+    await service.rebase(SIM_ID, OLD_BASE_SHA);
+
+    const [, , written] = (github.writeFile as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string, string];
+    const merged = JSON.parse(written) as { classes: { id: string }[] };
+    expect(merged.classes.some((c) => c.id === 'CLS_005')).toBe(true);
+  });
+
+  it('removes a class the user deleted, even though main still has it', async () => {
+    await service.rebase(SIM_ID, OLD_BASE_SHA);
+
+    const [, , written] = (github.writeFile as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string, string];
+    const merged = JSON.parse(written) as { classes: { id: string }[] };
+    expect(merged.classes.some((c) => c.id === 'CLS_004')).toBe(false);
+  });
+
+  it('writes the merged schedule back to the simulation branch', async () => {
+    await service.rebase(SIM_ID, OLD_BASE_SHA);
+
+    const [branch, path, , message] = (github.writeFile as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string, string, string];
+    expect(branch).toBe(SIM_ID);
+    expect(path).toBe('schedule.json');
+    expect(message).toBe('chore(schedule): rebase draft onto latest published schedule');
+  });
+
+  it('re-hydrates the graph session with the merged schedule', async () => {
+    await service.rebase(SIM_ID, OLD_BASE_SHA);
+
+    expect(graph.flush).toHaveBeenCalledWith(SIM_ID);
+    const [simId, json] = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string];
+    expect(simId).toBe(SIM_ID);
+    expect(JSON.parse(json).classes.find((c: { id: string }) => c.id === 'CLS_001').roomId).toBe('RM_102');
+  });
+
+  it('returns the new baseScheduleVersion (main\'s current sha)', async () => {
+    const result = await service.rebase(SIM_ID, OLD_BASE_SHA);
+
+    expect(result).toEqual({ baseScheduleVersion: NEW_MAIN_SHA });
   });
 });
 
@@ -599,6 +767,51 @@ describe('SimulationService.getSuggestions()', () => {
   });
 });
 
+describe('SimulationService.getRoomAvailability()', () => {
+  const SIM_ID = 'sim-alice-abc123';
+  const CLASS_ID = 'CLS_001';
+  const FAKE_AVAILABILITY = [
+    { roomId: 'RM_101', capacityOk: true, freeTimeSlotIds: ['TS_MON_P1'] },
+    { roomId: 'RM_102', capacityOk: false, freeTimeSlotIds: [] },
+  ];
+
+  let github: IGitHubService;
+  let graph: IGraphService;
+  let registry: ISessionRegistry;
+  let service: SimulationService;
+
+  beforeEach(() => {
+    github = makeGitHub();
+    graph = makeGraph();
+    registry = makeRegistry(true);
+    (graph.getRoomAvailability as ReturnType<typeof vi.fn>).mockResolvedValue(FAKE_AVAILABILITY);
+    service = new SimulationService(github, graph, registry);
+  });
+
+  it('throws 404 when the simulation session is not found', async () => {
+    const expiredRegistry = makeRegistry(false);
+    const svc = new SimulationService(github, graph, expiredRegistry);
+
+    await expect(svc.getRoomAvailability(SIM_ID, CLASS_ID)).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Simulation not found or expired',
+    });
+  });
+
+  it('delegates to graph.getRoomAvailability with the correct arguments', async () => {
+    await service.getRoomAvailability(SIM_ID, CLASS_ID);
+
+    expect(graph.getRoomAvailability).toHaveBeenCalledOnce();
+    expect(graph.getRoomAvailability).toHaveBeenCalledWith(SIM_ID, CLASS_ID);
+  });
+
+  it('returns the RoomAvailability array from graph.getRoomAvailability', async () => {
+    const result = await service.getRoomAvailability(SIM_ID, CLASS_ID);
+
+    expect(result).toEqual(FAKE_AVAILABILITY);
+  });
+});
+
 describe('SimulationService.getScore()', () => {
   const SIM_ID = 'sim-alice-abc123';
   const METRIC_RULES = [
@@ -737,6 +950,14 @@ describe('SimulationService.previewClassUpdate()', () => {
     const [, hydratedJson] = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string];
     const hydrated = JSON.parse(hydratedJson) as { classes: Array<{ id: string; roomId: string }> };
     expect(hydrated.classes.find((c) => c.id === CLASS_ID)?.roomId).toBe('RM_102');
+  });
+
+  it('accepts and hydrates a patch with only studentGroupId', async () => {
+    await service.previewClassUpdate(SIM_ID, CLASS_ID, { studentGroupId: 'GRP_002' });
+
+    const [, hydratedJson] = (graph.hydrate as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string];
+    const hydrated = JSON.parse(hydratedJson) as { classes: Array<{ id: string; studentGroupId: string }> };
+    expect(hydrated.classes.find((c) => c.id === CLASS_ID)?.studentGroupId).toBe('GRP_002');
   });
 
   it('always flushes the scratch branch, including when evaluation fails', async () => {

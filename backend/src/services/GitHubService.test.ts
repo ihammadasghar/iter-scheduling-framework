@@ -10,6 +10,7 @@ type MockOctokit = {
       getRef: ReturnType<typeof vi.fn>;
       createRef: ReturnType<typeof vi.fn>;
       deleteRef: ReturnType<typeof vi.fn>;
+      getBlob: ReturnType<typeof vi.fn>;
     };
     repos: {
       getContent: ReturnType<typeof vi.fn>;
@@ -40,6 +41,7 @@ function buildMockOctokit(): MockOctokit {
         getRef: vi.fn(),
         createRef: vi.fn(),
         deleteRef: vi.fn(),
+        getBlob: vi.fn(),
       },
       repos: {
         getContent: vi.fn(),
@@ -142,6 +144,21 @@ describe('GitHubService', () => {
 
     await expect(service.readFileWithSha('main', 'some-dir')).rejects.toMatchObject({
       code: 'BAD_REQUEST',
+    });
+  });
+
+  // ── readBlobBySha ───────────────────────────────────────────────────────────
+
+  it('readBlobBySha decodes a blob fetched directly by its SHA', async () => {
+    const rawContent = JSON.stringify({ classes: [] });
+    const encoded = Buffer.from(rawContent, 'utf-8').toString('base64');
+    mock.rest.git.getBlob.mockResolvedValue({ data: { content: encoded, encoding: 'base64' } });
+
+    const result = await service.readBlobBySha('some-blob-sha');
+
+    expect(result).toBe(rawContent);
+    expect(mock.rest.git.getBlob).toHaveBeenCalledWith({
+      owner: OWNER, repo: REPO, file_sha: 'some-blob-sha',
     });
   });
 
