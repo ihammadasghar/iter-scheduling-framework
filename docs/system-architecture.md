@@ -1,8 +1,8 @@
-# System Architecture: University Scheduling System
+# System Architecture: ITER (Interactive Timetable Evaluation & Repair) Scheduling Framework
 *Human-in-the-Loop Decision Support System for Academic Timetables*
 
 ## 1. Project Vision
-The University Scheduling System introduces a "Git-flow" architecture to academic timetable management. It acts as a continuous improvement (CI/CD) and change management tool. Users can branch off the main schedule to simulate changes in a sandbox environment and submit their proposals as Merge Requests. The system calculates custom metrics and checks for logical constraints (e.g., double-bookings) to evaluate proposals before they are merged into the "Main Schedule."
+ITER introduces a "Git-flow" architecture to academic timetable management. It acts as a continuous improvement (CI/CD) and change management tool. Users can branch off the main schedule to simulate changes in a sandbox environment and submit their proposals as Merge Requests. The system calculates custom metrics and checks for logical constraints (e.g., double-bookings) to evaluate proposals before they are merged into the "Main Schedule."
 
 ---
 

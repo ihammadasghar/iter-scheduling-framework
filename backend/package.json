@@ -1,7 +1,7 @@
 {
   "name": "iter-scheduling-api",
   "version": "1.0.0",
-  "description": "University Scheduling System — Express API",
+  "description": "ITER (Interactive Timetable Evaluation & Repair) scheduling framework — Express API",
   "main": "dist/server.js",
   "type": "module",
   "scripts": {

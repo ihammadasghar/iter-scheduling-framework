@@ -1,8 +1,8 @@
-# Copilot Instructions: University Scheduling System
+# Copilot Instructions: ITER (Interactive Timetable Evaluation & Repair) Scheduling Framework
 
 ## Project Overview
 
-A "Git-flow" decision support system for university timetable management. Users branch off a main schedule to simulate changes, then submit proposals (Pull Requests) for review. A CI pipeline validates proposals for hard constraint violations before an Admin can merge them.
+ITER is a "Git-flow" decision support system for university timetable management. Users branch off a main schedule to simulate changes, then submit proposals (Pull Requests) for review. A CI pipeline validates proposals for hard constraint violations before an Admin can merge them.
 
 ---
 

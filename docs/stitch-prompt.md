@@ -1,11 +1,11 @@
 # Google Stitch UI Generation Prompt
-## UniSchedule — University Scheduling System Web Application
+## ITER — Interactive Timetable Evaluation & Repair Scheduling Framework Web Application
 
 ---
 
 ## OVERVIEW
 
-Build a desktop web application prototype called **UniSchedule** — a university timetable change-management tool. Think of it as "Google Docs Track Changes" applied to academic scheduling: university staff and professors can propose timetable edits in a private sandbox ("draft"), check for scheduling conflicts, then submit them for an administrator to review and publish to the live timetable.
+Build a desktop web application prototype called **ITER** — a university timetable change-management tool. Think of it as "Google Docs Track Changes" applied to academic scheduling: university staff and professors can propose timetable edits in a private sandbox ("draft"), check for scheduling conflicts, then submit them for an administrator to review and publish to the live timetable.
 
 The visual language should feel like a **professional, calm administrative tool** — not a developer dashboard. Closer to a polished internal HR or university portal (think Workday or a modern student information system). The aesthetic should be clean, spacious, and trustworthy. Users are primarily 50+ year old non-technical staff — the design must be generous, legible, and anxiety-free.
 
@@ -52,11 +52,11 @@ The shell wraps every screen.
 Full-width, white background, 1px bottom border, 64px tall.
 
 ```
-│ 🗓 UniSchedule │  My Simulations  │ ─────────────────────── │ Switch to Admin View ○ │ DEMO │
+│ 🗓 ITER │  My Simulations  │ ─────────────────────── │ Switch to Admin View ○ │ DEMO │
   Logo (blue)      Nav link (User)                               MUI Switch + text label   Chip
 ```
 
-- **Logo:** Calendar emoji + "UniSchedule" in 20px bold primary blue
+- **Logo:** Calendar emoji + "ITER" in 20px bold primary blue
 - **User View nav:** "My Simulations" link only
 - **Admin View nav:** "Proposals" link + "Rules" link (User nav hidden)
 - **Role switch:** A labelled MUI Switch — label "Switch to Admin View" to its left, a small grey "DEMO ONLY" pill chip to its right

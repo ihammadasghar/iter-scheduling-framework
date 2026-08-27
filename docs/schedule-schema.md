@@ -1,5 +1,5 @@
 # Schedule JSON Schema & Data Model
-*University Scheduling System - Single Source of Truth*
+*ITER - Single Source of Truth*
 
 ## 1. Overview
 The schedule data is stored as a flat JSON document in a Git repository. This format is the definitive "Source of Truth" for any given branch (Main Schedule or User Simulation). 
