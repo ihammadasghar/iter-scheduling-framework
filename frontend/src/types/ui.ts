@@ -1,7 +1,18 @@
 // Frontend-only types — UI state shapes not part of the backend domain.
 import type { MetricResult, Simulation } from './domain';
 
-export type UserRole = 'user' | 'admin';
+export type UserRole = 'professor' | 'student' | 'admin';
+
+// Who is using the app right now — chosen once via the onboarding flow and
+// persisted to localStorage (see identitySlice.ts). There is no real
+// authentication in this system (see docs/system-architecture.md §3), so
+// this is a frontend-only stand-in: exactly one of professorId/studentGroupId
+// is set, matching `role`.
+export interface Identity {
+  readonly role: UserRole;
+  readonly professorId: string | null;    // set iff role === 'professor'
+  readonly studentGroupId: string | null; // set iff role === 'student'
+}
 
 export type ViewByOption = 'room' | 'professor' | 'studentGroup';
 

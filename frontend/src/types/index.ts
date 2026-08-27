@@ -47,6 +47,7 @@ export type {
 
 export type {
   UserRole,
+  Identity,
   ViewByOption,
   ClassChipState,
   SimulationCardData,

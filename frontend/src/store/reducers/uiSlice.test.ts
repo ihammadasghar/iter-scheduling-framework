@@ -4,7 +4,6 @@ import uiReducer, {
   selectClass,
   deselectClass,
   toggleInspector,
-  setRole,
   setViewBy,
 } from './uiSlice';
 
@@ -16,7 +15,6 @@ describe('uiSlice', () => {
     const state = store.getState().ui;
     expect(state.selectedClassId).toBeNull();
     expect(state.inspectorOpen).toBe(false);
-    expect(state.role).toBe('user');
     expect(state.viewBy).toBe('room');
   });
 
@@ -47,19 +45,6 @@ describe('uiSlice', () => {
     store.dispatch(toggleInspector(false));
     expect(store.getState().ui.inspectorOpen).toBe(false);
     expect(store.getState().ui.selectedClassId).toBeNull();
-  });
-
-  it('setRole switches to admin', () => {
-    const store = makeStore();
-    store.dispatch(setRole('admin'));
-    expect(store.getState().ui.role).toBe('admin');
-  });
-
-  it('setRole switches back to user', () => {
-    const store = makeStore();
-    store.dispatch(setRole('admin'));
-    store.dispatch(setRole('user'));
-    expect(store.getState().ui.role).toBe('user');
   });
 
   it('setViewBy changes the view mode', () => {

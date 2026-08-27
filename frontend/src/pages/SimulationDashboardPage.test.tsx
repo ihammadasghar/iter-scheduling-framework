@@ -24,10 +24,13 @@ const makeStore = () =>
     reducer: {
       simulation: simulationReducer,
       ui: () => ({
-        role: 'user',
         selectedClassId: null,
         inspectorOpen: false,
         viewBy: 'room',
+      }),
+      identity: () => ({
+        identity: { role: 'admin' as const, professorId: null, studentGroupId: null },
+        hydrated: true,
       }),
       session: () => ({
         simulationId: null,

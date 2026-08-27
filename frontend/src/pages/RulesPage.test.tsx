@@ -12,6 +12,7 @@ import conflictReducer from '@/store/reducers/conflictSlice';
 import metricReducer from '@/store/reducers/metricSlice';
 import proposalReducer from '@/store/reducers/proposalSlice';
 import sessionReducer from '@/store/reducers/sessionSlice';
+import identityReducer from '@/store/reducers/identitySlice';
 import * as rulesService from '@/services/rulesService';
 
 vi.mock('@/services/rulesService', () => ({
@@ -52,6 +53,7 @@ const makeStore = (overrides: Record<string, unknown> = {}) =>
       metric: metricReducer,
       proposal: proposalReducer,
       session: sessionReducer,
+      identity: identityReducer,
     },
     preloadedState: {
       rules: {
@@ -62,6 +64,7 @@ const makeStore = (overrides: Record<string, unknown> = {}) =>
         error: null,
         ...overrides,
       },
+      identity: { identity: { role: 'admin' as const, professorId: null, studentGroupId: null }, hydrated: true },
     },
   });
 

@@ -3,24 +3,31 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import uiReducer, { setRole } from '@/store/reducers/uiSlice';
+import identityReducer, { setIdentity } from '@/store/reducers/identitySlice';
 import sessionReducer from '@/store/reducers/sessionSlice';
 import classReducer from '@/store/reducers/classSlice';
 import AdminGuard from './AdminGuard';
 import TopAppBar from './TopAppBar';
+import type { UserRole } from '@/types';
 
 // Minimal store for UI tests
-const makeStore = (role: 'user' | 'admin' = 'user') => {
+const makeStore = (role?: UserRole) => {
   const store = configureStore({
-    reducer: { ui: uiReducer, session: sessionReducer, class: classReducer },
+    reducer: { identity: identityReducer, session: sessionReducer, class: classReducer },
   });
-  if (role === 'admin') store.dispatch(setRole('admin'));
+  if (role !== undefined) {
+    store.dispatch(setIdentity({
+      role,
+      professorId: role === 'professor' ? 'PRF_SMITH' : null,
+      studentGroupId: role === 'student' ? 'GRP_BIO_Y1' : null,
+    }));
+  }
   return store;
 };
 
 const renderWithRouter = (
   ui: React.ReactElement,
-  { initialPath = '/', role = 'user' as 'user' | 'admin' } = {},
+  { initialPath = '/', role }: { initialPath?: string; role?: UserRole } = {},
 ) => {
   const store = makeStore(role);
   return {
@@ -44,16 +51,27 @@ describe('AdminGuard', () => {
     expect(screen.getByText('Admin content')).toBeInTheDocument();
   });
 
-  it('redirects to / when role is user', () => {
+  it('redirects to / when role is professor', () => {
     renderWithRouter(
       <Routes>
         <Route path="/admin/proposals" element={<AdminGuard><div>Admin</div></AdminGuard>} />
         <Route path="/" element={<div>Home</div>} />
       </Routes>,
-      { initialPath: '/admin/proposals', role: 'user' },
+      { initialPath: '/admin/proposals', role: 'professor' },
     );
     expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.queryByText('Admin')).not.toBeInTheDocument();
+  });
+
+  it('redirects to / when no identity has been chosen yet', () => {
+    renderWithRouter(
+      <Routes>
+        <Route path="/admin/proposals" element={<AdminGuard><div>Admin</div></AdminGuard>} />
+        <Route path="/" element={<div>Home</div>} />
+      </Routes>,
+      { initialPath: '/admin/proposals' },
+    );
+    expect(screen.getByText('Home')).toBeInTheDocument();
   });
 });
 
@@ -63,26 +81,37 @@ describe('TopAppBar', () => {
     expect(screen.getByText('UniSchedule')).toBeInTheDocument();
   });
 
-  it('shows "My Simulations" nav link in user view', () => {
-    renderWithRouter(<TopAppBar />);
+  it('shows "My Simulations" nav link for a professor', () => {
+    renderWithRouter(<TopAppBar />, { role: 'professor' });
     expect(screen.getByText('My Simulations')).toBeInTheDocument();
   });
 
-  it('does not show admin nav links in user view', () => {
-    renderWithRouter(<TopAppBar />);
+  it('shows "My Simulations" nav link for a student', () => {
+    renderWithRouter(<TopAppBar />, { role: 'student' });
+    expect(screen.getByText('My Simulations')).toBeInTheDocument();
+  });
+
+  it('does not show admin nav links for a professor', () => {
+    renderWithRouter(<TopAppBar />, { role: 'professor' });
     expect(screen.queryByText('Proposals')).not.toBeInTheDocument();
     expect(screen.queryByText('Rules')).not.toBeInTheDocument();
   });
 
-  it('shows admin nav links in admin view', () => {
+  it('shows admin nav links for an admin', () => {
     renderWithRouter(<TopAppBar />, { role: 'admin' });
     expect(screen.getByText('Proposals')).toBeInTheDocument();
     expect(screen.getByText('Rules')).toBeInTheDocument();
   });
 
-  it('does not show "My Simulations" in admin view', () => {
+  it('does not show "My Simulations" for an admin', () => {
     renderWithRouter(<TopAppBar />, { role: 'admin' });
     expect(screen.queryByText('My Simulations')).not.toBeInTheDocument();
+  });
+
+  it('shows no nav links when no identity has been chosen yet', () => {
+    renderWithRouter(<TopAppBar />);
+    expect(screen.queryByText('My Simulations')).not.toBeInTheDocument();
+    expect(screen.queryByText('Proposals')).not.toBeInTheDocument();
   });
 
   it('shows DEMO ONLY chip', () => {
@@ -90,33 +119,14 @@ describe('TopAppBar', () => {
     expect(screen.getByText('DEMO ONLY')).toBeInTheDocument();
   });
 
-  it('shows "Switch to Admin View" button in user view', () => {
-    renderWithRouter(<TopAppBar />);
-    expect(screen.getByRole('button', { name: /switch to admin view/i })).toBeInTheDocument();
+  it('shows a "Change Identity" button', () => {
+    renderWithRouter(<TopAppBar />, { role: 'professor' });
+    expect(screen.getByRole('button', { name: /change identity/i })).toBeInTheDocument();
   });
 
-  it('shows "Switch to User View" button in admin view', () => {
-    renderWithRouter(<TopAppBar />, { role: 'admin' });
-    expect(screen.getByRole('button', { name: /switch to user view/i })).toBeInTheDocument();
-  });
-
-  it('clicking Switch to Admin View opens confirmation dialog', () => {
-    renderWithRouter(<TopAppBar />);
-    fireEvent.click(screen.getByRole('button', { name: /switch to admin view/i }));
-    expect(screen.getByText(/changes you make here affect the published rules/i)).toBeInTheDocument();
-  });
-
-  it('clicking Cancel in dialog closes it without switching role', () => {
-    const { store } = renderWithRouter(<TopAppBar />);
-    fireEvent.click(screen.getByRole('button', { name: /switch to admin view/i }));
-    fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
-    expect(store.getState().ui.role).toBe('user');
-  });
-
-  it('clicking Continue as Admin dispatches setRole(admin)', () => {
-    const { store } = renderWithRouter(<TopAppBar />);
-    fireEvent.click(screen.getByRole('button', { name: /switch to admin view/i }));
-    fireEvent.click(screen.getByRole('button', { name: /continue as admin/i }));
-    expect(store.getState().ui.role).toBe('admin');
+  it('clicking "Change Identity" clears the stored identity', () => {
+    const { store } = renderWithRouter(<TopAppBar />, { role: 'admin' });
+    fireEvent.click(screen.getByRole('button', { name: /change identity/i }));
+    expect(store.getState().identity.identity).toBeNull();
   });
 });

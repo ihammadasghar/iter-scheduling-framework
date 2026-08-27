@@ -1,17 +1,17 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { UserRole, ViewByOption } from '@/types';
+import type { ViewByOption } from '@/types';
 
+// Ephemeral view/interaction state — intentionally NOT persisted, unlike
+// identitySlice.ts, which holds who's using the app.
 interface UiState {
   readonly selectedClassId: string | null;
   readonly inspectorOpen: boolean;
-  readonly role: UserRole;
   readonly viewBy: ViewByOption;
 }
 
 const initialState: UiState = {
   selectedClassId: null,
   inspectorOpen: false,
-  role: 'user',
   viewBy: 'room',
 };
 
@@ -33,9 +33,6 @@ const uiSlice = createSlice({
         state.selectedClassId = null;
       }
     },
-    setRole(state, action: PayloadAction<UserRole>) {
-      state.role = action.payload;
-    },
     setViewBy(state, action: PayloadAction<ViewByOption>) {
       state.viewBy = action.payload;
     },
@@ -46,7 +43,6 @@ export const {
   selectClass,
   deselectClass,
   toggleInspector,
-  setRole,
   setViewBy,
 } = uiSlice.actions;
 

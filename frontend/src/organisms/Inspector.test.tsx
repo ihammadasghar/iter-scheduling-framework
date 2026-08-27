@@ -61,7 +61,6 @@ const makeStore = (overrides: {
         error: null,
       },
       ui: {
-        role: 'user' as const,
         selectedClassId: overrides.selectedClassId ?? null,
         inspectorOpen: overrides.inspectorOpen ?? false,
         viewBy: 'room' as const,

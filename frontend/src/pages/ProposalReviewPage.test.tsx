@@ -13,6 +13,7 @@ import metricReducer from '@/store/reducers/metricSlice';
 import rulesReducer from '@/store/reducers/rulesSlice';
 import sessionReducer from '@/store/reducers/sessionSlice';
 import scheduleReducer from '@/store/reducers/scheduleSlice';
+import identityReducer from '@/store/reducers/identitySlice';
 import * as proposalService from '@/services/proposalService';
 
 // Must be defined inside vi.hoisted so the mock factories can reference it safely
@@ -79,6 +80,10 @@ const makeStore = () =>
       rules: rulesReducer,
       session: sessionReducer,
       schedule: scheduleReducer,
+      identity: identityReducer,
+    },
+    preloadedState: {
+      identity: { identity: { role: 'admin' as const, professorId: null, studentGroupId: null }, hydrated: true },
     },
   });
 

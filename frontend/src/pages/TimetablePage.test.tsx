@@ -12,6 +12,7 @@ import metricReducer from '@/store/reducers/metricSlice';
 import scheduleReducer from '@/store/reducers/scheduleSlice';
 import sessionReducer from '@/store/reducers/sessionSlice';
 import uiReducer from '@/store/reducers/uiSlice';
+import identityReducer from '@/store/reducers/identitySlice';
 import type { ConflictType } from '@/types';
 
 vi.mock('@/hooks/useHeartbeat', () => ({ useHeartbeat: vi.fn() }));
@@ -55,6 +56,7 @@ const rootReducer = combineReducers({
   schedule: scheduleReducer,
   session: sessionReducer,
   ui: uiReducer,
+  identity: identityReducer,
 });
 
 type RootState = ReturnType<typeof rootReducer>;
