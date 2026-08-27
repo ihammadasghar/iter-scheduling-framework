@@ -86,7 +86,7 @@ export default function OnboardingFlow(): React.ReactElement | null {
     >
       {step === 'role' ? (
         <>
-          <DialogTitle id="onboarding-title">Welcome — who&apos;s using UniSchedule?</DialogTitle>
+          <DialogTitle id="onboarding-title">Welcome — who&apos;s using ITER?</DialogTitle>
           <DialogContent>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               This tells us what to show you first. You can change this later from the top bar.

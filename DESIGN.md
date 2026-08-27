@@ -1,4 +1,4 @@
-# UI Design Document — University Scheduling System
+# UI Design Document — ITER (Interactive Timetable Evaluation & Repair) Scheduling Framework
 
 This document is the authoritative UI/UX specification for the frontend. It defines every screen, interaction model, state, and component mapping. It is written against the actual backend implementation — see [ONBOARDING.md](./ONBOARDING.md) for API details and [ONBOARDING.md#17-known-gaps--not-yet-implemented](./ONBOARDING.md#17-known-gaps--not-yet-implemented) for current backend gaps.
 
@@ -144,7 +144,7 @@ Since there is no authentication system, who's using the app is chosen once via 
 
 ### Onboarding & Identity
 
-On first load, a non-dismissable dialog asks **"who's using UniSchedule?"** — Professor, Student, or Scheduling Office (Admin). This is a demo-mode affordance in place of real authentication (see `docs/system-architecture.md` §3) — the choice is stored in the browser only, not on any server.
+On first load, a non-dismissable dialog asks **"who's using ITER?"** — Professor, Student, or Scheduling Office (Admin). This is a demo-mode affordance in place of real authentication (see `docs/system-architecture.md` §3) — the choice is stored in the browser only, not on any server.
 
 - Choosing **Professor** or **Student** asks a second question — which professor, or which student group — populated from the real roster (names, not IDs)
 - Choosing **Admin** needs no second step
@@ -217,9 +217,9 @@ The shell is the persistent frame that wraps every screen. It has two zones: the
 ### Top App Bar
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│  🗓 UniSchedule      [My Simulations]   [Switch to Admin View] Demo │
-└─────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│  🗓 ITER      [My Simulations]   [Switch to Admin View] Demo    │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 | Element | Behaviour |

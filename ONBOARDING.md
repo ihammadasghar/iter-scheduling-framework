@@ -1,6 +1,6 @@
-# Onboarding Guide — University Scheduling System
+# Onboarding Guide — ITER (Interactive Timetable Evaluation & Repair) Scheduling Framework
 
-Welcome to the **University Scheduling System**. This document is the single source of truth for understanding the architecture, codebase, and workflows. Read it top to bottom once; bookmark it for reference.
+Welcome to **ITER**, the Interactive Timetable Evaluation & Repair scheduling framework. This document is the single source of truth for understanding the architecture, codebase, and workflows. Read it top to bottom once; bookmark it for reference.
 
 ---
 
@@ -28,7 +28,7 @@ Welcome to the **University Scheduling System**. This document is the single sou
 
 ## 1. Project Overview
 
-The University Scheduling System is a **"Git-flow" decision support system** for academic timetable management.
+**ITER** is a **"Git-flow" decision support system** for academic timetable management.
 
 ### The Core Metaphor
 

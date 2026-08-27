@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  title: University Scheduling System API
+  title: ITER API
   description: API for managing human-in-the-loop university timetable simulations using a Git-backed, Graph-hydrated architecture.
   version: 1.0.0
 servers:

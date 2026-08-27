@@ -1,5 +1,5 @@
 # Graph Entity Relationship Diagram (ERD)
-*University Scheduling System - Ephemeral Compute Layer*
+*ITER - Ephemeral Compute Layer*
 
 ## 1. Overview
 While the primary "Source of Truth" is stored as a flat JSON file in GitHub, the calculation engine (Memgraph) requires a node-and-edge structure to efficiently execute Cypher queries. This document outlines the Graph ERD and the specific relationships mapped during the "Hydration" phase.

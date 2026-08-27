@@ -1,6 +1,6 @@
-# iter-scheduling-framework
+# ITER (Interactive Timetable Evaluation & Repair) Scheduling Framework
 
-> A **"Git-flow" decision support system** for university timetable management. Users branch off the official schedule to simulate changes, submit proposals as Pull Requests, and a CI pipeline validates them for hard constraint violations before an Admin merges them.
+> **ITER** is a **"Git-flow" decision support system** for university timetable management. Users branch off the official schedule to simulate changes, submit proposals as Pull Requests, and a CI pipeline validates them for hard constraint violations before an Admin merges them.
 
 ![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22-brightgreen)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)

@@ -1,4 +1,4 @@
-# Frontend Implementation Plan — University Scheduling System
+# Frontend Implementation Plan — ITER (Interactive Timetable Evaluation & Repair) Scheduling Framework
 
 > **Status:** All 18 tasks complete — all 8 screens from `DESIGN.md` are implemented and tested, plus Task 18's role-based onboarding and personal calendar. Backend Gaps 1–4 (§11) were closed separately; see `docs/superpowers/specs/2026-07-23-close-backend-gaps-design.md`.  
 > **Related docs:** [`DESIGN.md`](../DESIGN.md) · [`ONBOARDING.md`](../ONBOARDING.md) · [`AGENTS.md`](../AGENTS.md)  
@@ -294,7 +294,7 @@ Build the complete React + MUI + Redux Toolkit frontend for the university sched
   - Each page uses this as its outer wrapper
 - Create `src/organisms/TopAppBar.tsx`:
   - MUI `AppBar` with `position="sticky"`, height 64px
-  - Left side: logo icon (`CalendarMonth` MUI icon) + "UniSchedule" text, links to `/`
+  - Left side: logo icon (`CalendarMonth` MUI icon) + "ITER" text, links to `/`
   - Center/right nav links (conditional on `role`):
     - User view: "My Simulations" → `/`
     - Admin view: "Proposals" → `/admin/proposals`, "Rules" → `/admin/rules`

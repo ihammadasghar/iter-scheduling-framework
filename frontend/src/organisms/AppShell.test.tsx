@@ -78,7 +78,7 @@ describe('AdminGuard', () => {
 describe('TopAppBar', () => {
   it('renders logo text', () => {
     renderWithRouter(<TopAppBar />);
-    expect(screen.getByText('UniSchedule')).toBeInTheDocument();
+    expect(screen.getByText('ITER')).toBeInTheDocument();
   });
 
   it('shows "My Simulations" nav link for a professor', () => {

@@ -1,5 +1,5 @@
 # Sequence Diagram: Merge Request & CI Pipeline
-*University Scheduling System - "Blocked PR" Workflow*
+*ITER - "Blocked PR" Workflow*
 
 ## 1. Overview
 This sequence diagram maps the flow of data across the four primary actors in our system (Frontend UI, Express API, GitHub Storage, and Memgraph Compute) during the most complex user story: submitting a Simulation for review.

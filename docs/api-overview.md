@@ -1,5 +1,5 @@
 # API Overview & Architectural Decisions
-*University Scheduling System*
+*ITER (Interactive Timetable Evaluation & Repair) Scheduling Framework*
 
 ## 1. Overview
 The REST API serves as the orchestrator between the persistent storage layer (GitHub) and the ephemeral compute layer (Memgraph). It strictly follows RESTful principles, utilizing nouns for endpoints and standard HTTP methods for actions. 

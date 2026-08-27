@@ -97,7 +97,7 @@ export default function TopAppBar(): React.ReactElement {
             }}
           >
             <CalendarMonth fontSize="medium" />
-            UniSchedule
+            ITER
           </Typography>
         </Tooltip>
 
