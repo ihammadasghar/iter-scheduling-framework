@@ -62,7 +62,7 @@ export default function ProposalsDashboardPage(): React.ReactElement {
 
         <ProposalSection
           title="Ready for Review"
-          subtitle="Checked by the system — no scheduling conflicts found"
+          subtitle="Checked by the system — doesn't make the published schedule worse"
           proposals={proposals}
           status="ready"
         />

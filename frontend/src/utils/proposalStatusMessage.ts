@@ -20,7 +20,8 @@ export function proposalStatusMessage(status: ProposalStatus): ProposalStatusMes
       };
     case 'READY':
       return {
-        message: 'Your proposal is ready for review by the scheduling office ✓',
+        message:
+          "Your proposal is ready for review — it doesn't add any new scheduling conflicts to the published schedule ✓",
         severity: 'success',
       };
     case 'BLOCKED':
