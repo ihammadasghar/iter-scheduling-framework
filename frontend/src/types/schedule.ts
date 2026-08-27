@@ -46,10 +46,29 @@ export interface RawClass {
   readonly timeSlotIds: readonly string[];
 }
 
+export interface ExclusionDate {
+  readonly date: string; // "YYYY-MM-DD"
+  readonly reason: string;
+}
+
+// The semester's real calendar bounds and holidays — used to drive
+// week-navigation on the weekly calendar views (which day/entity is
+// excluded for a given real week, and where paging should stop).
+export interface ScheduleTimeline {
+  readonly semesterStartDate: string; // "YYYY-MM-DD"
+  readonly semesterEndDate: string; // "YYYY-MM-DD"
+  // Not a readonly array (unlike other list fields in this file) — this
+  // type is reused directly as Redux state (scheduleSlice's `metadata`),
+  // and an outer `readonly` array modifier here conflicts with Immer's
+  // WritableDraft mapping when assigned in a reducer.
+  readonly exclusionDates: ExclusionDate[];
+}
+
 export interface ScheduleMetadata {
   readonly semesterId: string;
   readonly semesterName: string;
   readonly academicYear: string;
+  readonly timeline: ScheduleTimeline;
 }
 
 // Everything in schedule.json except the classes themselves — the master

@@ -44,6 +44,7 @@ const makeStore = (
         courses: [],
         professors: [],
         timeSlots: [],
+        metadata: null,
         loading: false,
         error: null,
       },
@@ -59,7 +60,7 @@ const makeStoreWithRooms = (
     preloadedState: {
       class: { classes, total: classes.length, currentPage: 1, hasMore: false, loading: false, error: null },
       ui: { selectedClassId: null, inspectorOpen: false, viewBy: 'room' as const },
-      schedule: { rooms, studentGroups: [], courses: [], professors: [], timeSlots: [], loading: false, error: null },
+      schedule: { rooms, studentGroups: [], courses: [], professors: [], timeSlots: [], metadata: null, loading: false, error: null },
       conflict: { conflicts: [], loading: false, lastFetchedAt: null, error: null },
     },
   });
@@ -119,7 +120,7 @@ describe('TimetableGrid', () => {
         schedule: {
           rooms: [], studentGroups: [], courses: [], timeSlots: [],
           professors: [{ id: 'PRF_00001', name: 'Dr. Jane Smith', department: 'Biology' }],
-          loading: false, error: null,
+          metadata: null, loading: false, error: null,
         },
       },
     });
@@ -198,7 +199,7 @@ describe('TimetableGrid', () => {
       preloadedState: {
         class: { classes: [], total: 0, currentPage: 0, hasMore: true, loading: true, error: null },
         ui: { selectedClassId: null, inspectorOpen: false, viewBy: 'room' as const },
-        schedule: { rooms: [], studentGroups: [], courses: [], professors: [], timeSlots: [], loading: false, error: null },
+        schedule: { rooms: [], studentGroups: [], courses: [], professors: [], timeSlots: [], metadata: null, loading: false, error: null },
         conflict: { conflicts: [], loading: false, lastFetchedAt: null, error: null },
       },
     });
@@ -287,5 +288,55 @@ describe('TimetableGrid — density control', () => {
 
     await user.click(screen.getByRole('button', { name: /compact row height/i }));
     expect(header.parentElement).toHaveStyle({ minHeight: '44px' });
+  });
+
+  describe('excludedDays', () => {
+    const mondayClass: ScheduleClass = { ...sampleClass, id: 'CLS_MON', timeSlotIds: ['TS_MON_P1'] as unknown as readonly [string, ...string[]] };
+    const tuesdayClass: ScheduleClass = {
+      ...sampleClass, id: 'CLS_TUE', roomId: 'RM_102', timeSlotIds: ['TS_TUE_P1'] as unknown as readonly [string, ...string[]],
+    };
+    const TIME_SLOTS = [
+      { id: 'TS_MON_P1', day: 'Monday', name: 'Period 1', startTime: '08:30', endTime: '10:15' },
+      { id: 'TS_TUE_P1', day: 'Tuesday', name: 'Period 1', startTime: '08:30', endTime: '10:15' },
+    ];
+
+    const renderWithExcludedDays = (excludedDays: ReadonlySet<string>) => {
+      const store = configureStore({
+        reducer: { class: classReducer, ui: uiReducer, schedule: scheduleReducer, conflict: conflictReducer },
+        preloadedState: {
+          class: {
+            classes: [mondayClass, tuesdayClass], total: 2, currentPage: 1, hasMore: false, loading: false, error: null,
+          },
+          ui: { selectedClassId: null, inspectorOpen: false, viewBy: 'room' as const },
+          schedule: { rooms: [], studentGroups: [], courses: [], professors: [], timeSlots: TIME_SLOTS, metadata: null, loading: false, error: null },
+          conflict: { conflicts: [], loading: false, lastFetchedAt: null, error: null },
+        },
+      });
+      return render(
+        <Provider store={store}>
+          <MemoryRouter>
+            <TimetableGrid excludedDays={excludedDays} />
+          </MemoryRouter>
+        </Provider>,
+      );
+    };
+
+    it('renders both days\' columns when nothing is excluded', () => {
+      renderWithExcludedDays(new Set());
+      expect(screen.getByText('Mon P1')).toBeInTheDocument();
+      expect(screen.getByText('Tue P1')).toBeInTheDocument();
+    });
+
+    it('drops a class (and its column, if no other class occupies it) on an excluded day', () => {
+      renderWithExcludedDays(new Set(['Monday']));
+      expect(screen.queryByText('Mon P1')).not.toBeInTheDocument();
+      expect(screen.getByText('Tue P1')).toBeInTheDocument();
+    });
+
+    it('drops a resource row entirely when its only class falls on an excluded day', () => {
+      renderWithExcludedDays(new Set(['Monday']));
+      expect(screen.queryByText(/room 101/i)).not.toBeInTheDocument(); // CLS_MON's room
+      expect(screen.getByText(/room 102/i)).toBeInTheDocument(); // CLS_TUE's room
+    });
   });
 });

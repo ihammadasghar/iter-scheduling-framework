@@ -713,6 +713,29 @@ describe('SimulationService.getSchedule()', () => {
     expect(result.rooms).toEqual([{ id: 'RM_101', name: 'Room 101', capacity: 40, building: 'Building A' }]);
     expect(result.studentGroups).toEqual([{ id: 'GRP_BIO_Y1', name: 'Bio Year 1', size: 32 }]);
   });
+
+  it('reads schedule.json from the simulation branch to recover metadata', async () => {
+    await service.getSchedule(SIM_ID);
+
+    expect(github.readFile).toHaveBeenCalledWith(SIM_ID, 'schedule.json');
+  });
+
+  it('merges the branch schedule.json metadata into the graph export, not the graph\'s hardcoded {}', async () => {
+    const realMetadata = {
+      semesterId: 'FALL_2026',
+      timeline: { semesterStartDate: '2026-09-07', semesterEndDate: '2026-12-18', exclusionDates: [] },
+    };
+    (github.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(JSON.stringify({
+      metadata: realMetadata,
+      timeSlots: [], rooms: [], professors: [], studentGroups: [], courses: [], classes: [],
+    }));
+    // exportScheduleJson always hardcodes metadata: {} — FAKE_SCHEDULE_JSON above already
+    // reflects that, so this exercises the real (non-empty) branch metadata winning out.
+
+    const result = await service.getSchedule(SIM_ID);
+
+    expect(result.metadata).toEqual(realMetadata);
+  });
 });
 
 describe('SimulationService.getSuggestions()', () => {

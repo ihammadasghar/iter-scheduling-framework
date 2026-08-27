@@ -13,7 +13,7 @@ const makeStore = () =>
   configureStore({
     reducer: { schedule: scheduleReducer, class: classReducer },
     preloadedState: {
-      schedule: { rooms: [], studentGroups: [], courses: [], professors: [PROFESSOR], timeSlots: [], loading: false, error: null },
+      schedule: { rooms: [], studentGroups: [], courses: [], professors: [PROFESSOR], timeSlots: [], metadata: null, loading: false, error: null },
     },
   });
 

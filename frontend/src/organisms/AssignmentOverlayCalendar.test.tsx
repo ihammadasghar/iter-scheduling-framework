@@ -26,7 +26,7 @@ const makeStore = () =>
     preloadedState: {
       schedule: {
         rooms: [], studentGroups: [], professors: [], courses: [COURSE],
-        timeSlots: TIME_SLOTS, loading: false, error: null,
+        timeSlots: TIME_SLOTS, metadata: null, loading: false, error: null,
       },
     },
   });

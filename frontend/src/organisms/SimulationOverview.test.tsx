@@ -49,6 +49,7 @@ const makeStore = (overrides: {
         courses: [],
         professors: [],
         timeSlots: [],
+        metadata: null,
         loading: overrides.scheduleLoading ?? false,
         error: overrides.scheduleError ?? null,
       },

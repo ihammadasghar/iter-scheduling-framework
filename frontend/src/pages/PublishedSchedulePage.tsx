@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Box, Typography } from '@mui/material';
 import AppShell from '@/templates/AppShell';
 import BackButton from '@/atoms/BackButton';
@@ -7,9 +7,11 @@ import BrowseSchedulePanel from '@/organisms/BrowseSchedulePanel';
 import Inspector from '@/organisms/Inspector';
 import ViewBySelector from '@/molecules/ViewBySelector';
 import WorkspaceTabs, { type WorkspaceTabValue } from '@/molecules/WorkspaceTabs';
+import WeekNavigator from '@/molecules/WeekNavigator';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchPublishedClassesPage, resetClasses } from '@/store/reducers/classSlice';
 import { fetchPublishedScheduleThunk } from '@/store/reducers/scheduleSlice';
+import { initialWeekStart, excludedDaysForWeek } from '@/utils/weekNavigation';
 
 // Only Full Schedule and Browse apply here — this page has no simulation
 // session, so no conflicts/metrics for Overview, and no redundant "My
@@ -27,6 +29,19 @@ export default function PublishedSchedulePage(): React.ReactElement {
   const dispatch = useAppDispatch();
   const error = useAppSelector((s) => s.class.error);
   const [tab, setTab] = useState<WorkspaceTabValue>('grid');
+
+  const metadata = useAppSelector((s) => s.schedule.metadata);
+  const [weekStart, setWeekStart] = useState<string | null>(null);
+  useEffect(() => {
+    if (metadata !== null && weekStart === null) {
+      setWeekStart(initialWeekStart(metadata.timeline));
+    }
+  }, [metadata, weekStart]);
+  const excludedDays = useMemo(
+    () => (metadata && weekStart ? excludedDaysForWeek(weekStart, metadata.timeline) : new Map<string, string>()),
+    [metadata, weekStart],
+  );
+  const excludedDaySet = useMemo(() => new Set(excludedDays.keys()), [excludedDays]);
 
   useEffect(() => {
     dispatch(resetClasses());
@@ -74,6 +89,9 @@ export default function PublishedSchedulePage(): React.ReactElement {
             Published Schedule
           </Typography>
           {tab === 'grid' && <ViewBySelector />}
+          {metadata !== null && weekStart !== null && (
+            <WeekNavigator weekStart={weekStart} onWeekChange={setWeekStart} timeline={metadata.timeline} />
+          )}
           <Box sx={{ flex: 1 }} />
         </Box>
 
@@ -92,11 +110,11 @@ export default function PublishedSchedulePage(): React.ReactElement {
         <Box sx={{ flex: 1, overflow: 'hidden', position: 'relative', display: 'flex' }}>
           {tab === 'grid' ? (
             <>
-              <TimetableGrid />
+              <TimetableGrid excludedDays={excludedDaySet} />
               <Inspector />
             </>
           ) : (
-            <BrowseSchedulePanel />
+            <BrowseSchedulePanel excludedDays={excludedDays} />
           )}
         </Box>
       </Box>

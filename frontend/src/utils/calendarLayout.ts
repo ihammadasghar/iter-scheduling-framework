@@ -7,8 +7,10 @@ import type { RawTimeSlot, ScheduleClass, Identity, ViewByOption } from '@/types
 
 // Fixed reference order so day columns are always Mon→Sun regardless of
 // which days happen to appear in a given dataset's time slots (the mock
-// fixture only has Mon–Wed; other datasets may include Saturday).
-const DAY_REFERENCE_ORDER = [
+// fixture only has Mon–Wed; other datasets may include Saturday). Exported
+// so weekNavigation.ts can index into it by weekday offset without
+// redeclaring the same array a second time.
+export const DAY_REFERENCE_ORDER = [
   'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
 ];
 
@@ -23,6 +25,18 @@ export const deriveDayOrder = (timeSlots: readonly RawTimeSlot[]): string[] => {
   const present = new Set(timeSlots.map((ts) => ts.day));
   return DAY_REFERENCE_ORDER.filter((day) => present.has(day));
 };
+
+/**
+ * Drops any day present in excludedDays (this week's holidays, from
+ * weekNavigation.ts's excludedDaysForWeek) from a day-order list — the day
+ * column simply doesn't render that week, consistent with how dayOrder
+ * already varies per-dataset (only days actually present in timeSlots show
+ * up at all).
+ */
+export const filterExcludedDays = (
+  dayOrder: readonly string[],
+  excludedDays: ReadonlyMap<string, string>,
+): string[] => dayOrder.filter((day) => !excludedDays.has(day));
 
 export interface CalendarBounds {
   readonly minMinutes: number;

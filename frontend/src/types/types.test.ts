@@ -158,7 +158,12 @@ describe('types barrel export', () => {
 
   it('ScheduleJson holds all master data arrays', () => {
     const schedule: ScheduleJson = {
-      metadata: { semesterId: 'FALL_2026', semesterName: 'Fall 2026', academicYear: '2026-2027' },
+      metadata: {
+        semesterId: 'FALL_2026',
+        semesterName: 'Fall 2026',
+        academicYear: '2026-2027',
+        timeline: { semesterStartDate: '2026-09-07', semesterEndDate: '2026-12-18', exclusionDates: [] },
+      },
       timeSlots: [],
       rooms: [],
       professors: [],

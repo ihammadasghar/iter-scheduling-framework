@@ -62,6 +62,7 @@ const renderSection = (options: {
         studentGroups: roster.studentGroups ?? [],
         courses: [],
         timeSlots: [],
+        metadata: null,
         loading: false,
         error: null,
       },

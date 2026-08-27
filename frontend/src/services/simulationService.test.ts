@@ -163,6 +163,7 @@ describe('simulationService', () => {
         semesterId: 'SEM_2026_SP',
         semesterName: 'Spring 2026',
         academicYear: '2025-2026',
+        timeline: { semesterStartDate: '2026-01-12', semesterEndDate: '2026-05-01', exclusionDates: [] },
       },
       timeSlots: [
         { id: 'TS_MON_P1', day: 'Monday', name: 'Period 1', startTime: '08:00', endTime: '09:30' },

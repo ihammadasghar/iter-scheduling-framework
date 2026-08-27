@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk, type ActionReducerMapBuilder, type Draft } from '@reduxjs/toolkit';
 import { simulationService } from '@/services/simulationService';
 import { scheduleService } from '@/services/scheduleService';
-import type { RawRoom, RawStudentGroup, RawCourse, RawProfessor, RawTimeSlot, ApiError } from '@/types';
+import type { RawRoom, RawStudentGroup, RawCourse, RawProfessor, RawTimeSlot, ScheduleMetadata, ApiError } from '@/types';
 
 interface ScheduleState {
   readonly rooms: RawRoom[];
@@ -9,6 +9,9 @@ interface ScheduleState {
   readonly courses: RawCourse[];
   readonly professors: RawProfessor[];
   readonly timeSlots: RawTimeSlot[];
+  // The semester's timeline (bounds + holidays) — null until a roster has
+  // loaded. Powers week-navigation on the weekly calendar views.
+  readonly metadata: ScheduleMetadata | null;
   readonly loading: boolean;
   readonly error: string | null;
 }
@@ -19,6 +22,7 @@ const initialState: ScheduleState = {
   courses: [],
   professors: [],
   timeSlots: [],
+  metadata: null,
   loading: false,
   error: null,
 };
@@ -29,6 +33,7 @@ interface RosterPayload {
   readonly courses: RawCourse[];
   readonly professors: RawProfessor[];
   readonly timeSlots: RawTimeSlot[];
+  readonly metadata: ScheduleMetadata;
 }
 
 // The live/editable roster for a simulation session.
@@ -45,6 +50,7 @@ export const fetchScheduleThunk = createAsyncThunk<
       courses: [...result.courses],
       professors: [...result.professors],
       timeSlots: [...result.timeSlots],
+      metadata: result.metadata,
     };
   } catch (err) {
     return rejectWithValue(err as ApiError);
@@ -67,6 +73,7 @@ export const fetchPublishedScheduleThunk = createAsyncThunk<
       courses: [...result.courses],
       professors: [...result.professors],
       timeSlots: [...result.timeSlots],
+      metadata: result.metadata,
     };
   } catch (err) {
     return rejectWithValue(err as ApiError);
@@ -85,6 +92,7 @@ const handleFulfilled = (state: Draft<ScheduleState>, action: { payload: RosterP
   state.courses = action.payload.courses;
   state.professors = action.payload.professors;
   state.timeSlots = action.payload.timeSlots;
+  state.metadata = action.payload.metadata;
 };
 
 const handleRejected = (state: Draft<ScheduleState>, action: { payload?: ApiError }): void => {

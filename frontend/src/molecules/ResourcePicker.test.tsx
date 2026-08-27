@@ -24,6 +24,7 @@ const makeStore = () =>
         ],
         courses: [],
         timeSlots: [],
+        metadata: null,
         loading: false,
         error: null,
       },
