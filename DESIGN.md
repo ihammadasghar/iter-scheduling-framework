@@ -80,9 +80,9 @@ Concrete requirements that flow from this:
 
 ## 3. User Roles & Personas
 
-Since there is no authentication system, roles are toggled via a switch in the top navigation bar.
+Since there is no authentication system, who's using the app is chosen once via an onboarding flow shown on first load (see [Onboarding & Identity](#onboarding--identity) below), not a login.
 
-### User — Professor (Scheduling Requestor)
+### Professor (Scheduling Requestor)
 
 | Attribute | Detail |
 |---|---|
@@ -90,16 +90,35 @@ Since there is no authentication system, roles are toggled via a switch in the t
 | **Goal** | Make a specific timetable change (e.g. move one of their classes to a different room or time) and submit it without creating problems for anyone else |
 | **Mental model** | Thinks of the timetable as a calendar or spreadsheet; has no concept of version control, branches, or pull requests |
 | **Tech anxiety** | High — easily loses confidence if the UI behaves unexpectedly or shows unfamiliar terminology |
-| **Key screens** | Simulation Dashboard, Timetable Grid, Inspector, HUD, Submit Proposal Modal |
+| **Key screens** | Simulation Dashboard, My Schedule Calendar, Timetable Grid ("Full Schedule"), Inspector, HUD, Submit Proposal Modal |
 | **Key anxieties** | *"Will I accidentally break the whole schedule?"* / *"I don't know what half these buttons do"* / *"What does 'conflict' mean here?"* |
 | **Usage pattern** | Infrequent — may use the tool a handful of times per semester; cannot be expected to remember how it works between sessions |
 
 **Design implications for this persona:**
 - The Simulation Dashboard must make it obvious what to do first ("Create New Simulation" is the only prominent action)
 - Simulation IDs like `sim-alice-a1b2c3d4` must never appear in user-facing copy — use *"Your draft from 2 hours ago"* or a user-defined name
-- The Timetable Grid must show only classes relevant to the logged-in professor by default (filtered view), with an option to show all
+- Opening a simulation must default to **My Schedule** — a real weekly calendar of only this professor's own classes (see [§6.2a My Schedule Calendar](#62a-my-schedule-calendar)) — not the everyone-at-once grid; a "Full Schedule" tab is one click away for the bigger picture
 - Every action button must carry a text label describing the outcome, not just the action (e.g. *"Save draft to branch"* not just *"Commit"*)
 - Conflict messages must use real names: *"Dr. Smith is already teaching at this time"*, not `PROFESSOR_OVERLAP: PRF_SMITH`
+
+---
+
+### Student
+
+| Attribute | Detail |
+|---|---|
+| **Age / background** | University student; comfortable with everyday apps (calendar, email, messaging) but not scheduling software |
+| **Goal** | Check their student group's own weekly schedule for clashes or an overloaded day, and see whether a change under discussion would fix it |
+| **Mental model** | Thinks of the timetable as *"my week"* — a personal calendar, not an institutional grid |
+| **Tech anxiety** | Moderate — comfortable navigating apps, but has no reason to know scheduling jargon ("simulation," "proposal," "branch") going in |
+| **Key screens** | Simulation Dashboard, My Schedule Calendar, Timetable Grid ("Full Schedule"), Inspector |
+| **Key anxieties** | *"Is this actually my schedule or everyone's?"* / *"Did that change actually fix my clash?"* |
+| **Usage pattern** | Occasional — checks in when they've heard a change is being discussed, or notice a clash themselves |
+
+**Design implications for this persona:**
+- Onboarding must ask *which student group* they're in (not a professor identity) and use that to scope My Schedule
+- The same suggestion/manual-reschedule tools available to a professor must be available here — a student exploring "what if" is doing the same task, just from the other side of a class
+- Like the professor persona, a "Full Schedule" tab must stay one click away for the bigger-picture, all-groups/professors/rooms view
 
 ---
 
@@ -123,14 +142,15 @@ Since there is no authentication system, roles are toggled via a switch in the t
 
 ---
 
-### Role switching
+### Onboarding & Identity
 
-A toggle in the top app bar labelled **"Switch to Admin View"** switches the navigation and available screens. This is a demo-mode affordance — in a production system it would be replaced by real authentication.
+On first load, a non-dismissable dialog asks **"who's using UniSchedule?"** — Professor, Student, or Scheduling Office (Admin). This is a demo-mode affordance in place of real authentication (see `docs/system-architecture.md` §3) — the choice is stored in the browser only, not on any server.
 
-- Default state: **User View**
-- Toggle on: **Admin View** (shows Admin Proposal Dashboard and Rule Builder in nav; hides Simulation Dashboard)
-- The toggle carries a **"Demo only"** `Chip` to signal its temporary nature and prevent confusion
-- When switching to Admin View, show a brief confirmation: *"You are now viewing as Admin. Changes you make here affect the published rules."*
+- Choosing **Professor** or **Student** asks a second question — which professor, or which student group — populated from the real roster (names, not IDs)
+- Choosing **Admin** needs no second step
+- The choice is remembered across reloads; a **"Change Identity"** button in the top app bar (carrying a **"DEMO ONLY"** `Chip` alongside it) reopens the same dialog at any time
+- **Landing screen by role:** Professor/Student → Simulation Dashboard (unchanged); Admin → redirected straight to the Proposal Dashboard, since an admin has no simulations of their own
+- **Nav links by role:** Professor/Student see "My Simulations"; Admin sees "Proposals" and "Rules"
 
 ---
 
@@ -140,27 +160,37 @@ A toggle in the top app bar labelled **"Switch to Admin View"** switches the nav
 
 | ID | Screen | Role | Route |
 |---|---|---|---|
-| S1 | Simulation Dashboard | User | `/` |
-| S2 | Timetable Grid | User | `/simulations/:id` |
-| S3 | Contextual Inspector | User | Slide-in panel within S2 |
-| S4 | Metrics & Conflicts HUD | User | Persistent bar within S2 |
-| S5 | Submit Proposal Modal | User | Modal within S2 |
-| S6 | Admin Proposal Dashboard | Admin | `/admin/proposals` |
+| S0 | Onboarding Flow | Everyone (first load only) | Non-dismissable dialog over `/` |
+| S1 | Simulation Dashboard | Professor, Student | `/` (redirects Admin to S6) |
+| S2 | Timetable Grid | Professor, Student | `/simulations/:id` — **"My Schedule"** tab (default for Professor/Student) is [§6.2a](#62a-my-schedule-calendar); **"Full Schedule"** tab is the everyone-at-once grid below |
+| S3 | Contextual Inspector | Professor, Student | Slide-in panel within S2 — includes Smart Suggestions *and* [Manual Reschedule](#62a-my-schedule-calendar) |
+| S4 | Metrics & Conflicts HUD | Professor, Student | Persistent bar within S2 |
+| S5 | Submit Proposal Modal | Professor, Student | Modal within S2 |
+| S6 | Admin Proposal Dashboard | Admin | `/admin/proposals` (Admin's default landing route) |
 | S7 | Diff Review Screen | Admin | `/admin/proposals/:id` |
 | S8 | Rule Builder | Admin | `/admin/rules` |
 
 ### Navigation Map
 
 ```
+S0: Onboarding Flow (first load, or "Change Identity" in the top bar)
+├── Professor  → pick which professor →──┐
+├── Student    → pick which group    →──┤
+└── Admin      → (no second step)    →──┤
+                                          ▼
 App Shell (Top Bar)
-├── [User View]
+├── [Professor / Student]
 │   └── "My Simulations"  →  S1: Simulation Dashboard
 │       └── Click simulation  →  S2: Timetable Grid
-│           ├── Click class  →  S3: Contextual Inspector (slide-in)
+│           ├── "My Schedule" tab (default)   →  S2a: personal weekly calendar
+│           ├── "Full Schedule" tab           →  everyone's grid (by room/professor/group)
+│           ├── Click a class (either tab)    →  S3: Contextual Inspector (slide-in)
+│           │     ├── Smart Suggestions       →  apply a system-suggested slot
+│           │     └── "Or Choose It Yourself" →  manually pick room + day + period
 │           ├── Persistent   →  S4: Metrics & Conflicts HUD (bottom bar)
 │           └── "Submit Proposal"  →  S5: Submit Proposal Modal
 │
-└── [Admin View]  (toggled via top-bar switch)
+└── [Admin]  (lands here directly from onboarding/reload)
     ├── "Proposals"  →  S6: Admin Proposal Dashboard
     │   └── Click proposal  →  S7: Diff Review Screen
     └── "Rules"  →  S8: Rule Builder
@@ -266,9 +296,9 @@ Visible only on route `/simulations/:id`. Pinned to the bottom of the viewport a
 
 ---
 
-### 6.2 Timetable Grid
+### 6.2 Timetable Grid ("Full Schedule" tab)
 
-**Purpose:** The core editing workspace. Displays the schedule as a grid and lets users interact with individual classes.
+**Purpose:** The bigger-picture view — everyone's classes at once. Displays the schedule as a grid and lets users interact with individual classes. Reached via the **"Full Schedule"** tab within S2; Professor/Student land on [§6.2a My Schedule Calendar](#62a-my-schedule-calendar) by default instead, and switch here when they want to see beyond their own week.
 
 **Layout:**
 
@@ -312,6 +342,40 @@ Visible only on route `/simulations/:id`. Pinned to the bottom of the viewport a
 3. Clicking elsewhere on the grid (not a chip) deselects and closes the Inspector.
 
 **Pagination:** The API returns paginated classes (`?page=&limit=`). For the grid, all classes for the current simulation should be loaded eagerly in the background (sequential page fetches) and stored in Redux. A loading skeleton is shown until the first page arrives.
+
+---
+
+### 6.2a My Schedule Calendar
+
+**Purpose:** A Professor or Student's own week, as an actual calendar — the default tab within S2 for those two roles (Admin has no personal schedule, so their equivalent landing screen is S6). Answers "is *my* week okay?" at a glance, before ever looking at everyone else's classes.
+
+**Layout:**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ [My Schedule] [Full Schedule] [Overview]        View: (n/a here)   │
+├────────┬──────────────┬──────────────┬──────────────────────────────┤
+│        │   Monday     │   Tuesday    │   Wednesday                  │
+├────────┼──────────────┼──────────────┼──────────────────────────────┤
+│  8 AM  │ ┌──────────┐ │              │ ┌──────────┐                 │
+│        │ │ BIO101   │ │              │ │ BIO101   │                 │
+│  9 AM  │ │ Room 101 │ │              │ │ Room 102 │                 │
+│        │ └──────────┘ │              │ └──────────┘                 │
+│ 10 AM  │              │ ┌──────────┐ │                               │
+│        │              │ │ BIO201 ⚠️│ │                               │
+│ 11 AM  │              │ │ (overlap)│ │                               │
+└────────┴──────────────┴──────────────┴──────────────────────────────┘
+```
+
+**Axes:** Days across the top (only the days that actually appear in the schedule — not a fixed Mon–Fri, since a real dataset may include Saturday); time of day down the left, drawn to scale from the earliest to the latest time slot in the roster — not one column per period, as in the Full Schedule grid.
+
+**Filtering:** Shows only classes where `professorId` (Professor) or `studentGroupId` (Student) matches the signed-in identity. Two of the signed-in person's own classes that overlap in time render side by side in the same day column — exactly how the overlap would look wrong on a real calendar — rather than being hidden behind one another.
+
+**Interaction:** Identical to the Full Schedule grid — click a class block to open the Contextual Inspector (S3); click empty space to deselect. The same conflict styling (amber, ⚠️) applies when a class here is part of a scheduling conflict.
+
+**Empty state:** *"No classes are scheduled for you in this simulation yet."*
+
+**Manual Reschedule (within S3, alongside Smart Suggestions):** Below the existing "Smart Suggestions" list, an **"Or Choose It Yourself"** section lets the user pick a different Room, then a Day, then a Period — three dropdowns, no drag-and-drop, no free-text slot IDs, per this doc's non-technical-user mandate (§2). Choosing a day that can't fit a multi-period class's full length disables "Apply This Change" with an inline explanation, rather than silently truncating the class. Applying goes through the exact same PATCH/preview/refetch flow as applying a Smart Suggestion, so the before/after metric and score feedback looks identical either way.
 
 **"Save Changes" button:** Labelled "Save Changes" (not "Commit Draft" — avoid developer jargon). Triggers `POST /simulations/:id/commit`. A `Tooltip` on hover reads: *"Saves your current changes to your draft so they are not lost."* See the commit-gate flow in [Section 6.5](#65-submit-proposal-modal--commit-gate).
 
@@ -807,7 +871,8 @@ Error message examples:
 | `proposalSlice` | `{ proposals: Proposal[], current: ProposalDetail \| null, loading }` | S5, S6, S7 |
 | `rulesSlice` | `{ metrics: MetricRule[], constraints: Constraint[], loading }` | S8 |
 | `sessionSlice` | `{ simulationId: string \| null, lastBeat: number, expired: boolean }` | S2 (heartbeat timer), expiry modal |
-| `uiSlice` | `{ selectedClassId: string \| null, inspectorOpen: boolean, role: 'user' \| 'admin' }` | App shell, S2, S3 |
+| `uiSlice` | `{ selectedClassId: string \| null, inspectorOpen: boolean, viewBy }` | App shell, S2, S3 |
+| `identitySlice` | `{ identity: { role: 'professor'\|'student'\|'admin', professorId, studentGroupId } \| null, hydrated }` — persisted to `localStorage` | S0, App shell, S1, S2 (default tab), S6 guard |
 
 ### Key MUI Components by screen
 

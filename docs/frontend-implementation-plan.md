@@ -1,6 +1,6 @@
 # Frontend Implementation Plan — University Scheduling System
 
-> **Status:** All 17 tasks complete — all 8 screens from `DESIGN.md` are implemented and tested. Backend Gaps 1–4 (§11) were closed separately; see `docs/superpowers/specs/2026-07-23-close-backend-gaps-design.md`.  
+> **Status:** All 18 tasks complete — all 8 screens from `DESIGN.md` are implemented and tested, plus Task 18's role-based onboarding and personal calendar. Backend Gaps 1–4 (§11) were closed separately; see `docs/superpowers/specs/2026-07-23-close-backend-gaps-design.md`.  
 > **Related docs:** [`DESIGN.md`](../DESIGN.md) · [`ONBOARDING.md`](../ONBOARDING.md) · [`AGENTS.md`](../AGENTS.md)  
 > **Frontend location:** `frontend/` at repo root  
 
@@ -870,6 +870,34 @@ Build the complete React + MUI + Redux Toolkit frontend for the university sched
 
 ---
 
+### Task 18 — Role Onboarding & Personal Calendar
+
+**Description:** A first-load onboarding flow that asks who's using the app (Professor / Student / Admin, plus which professor or student group), and — for Professor/Student — a new default landing view inside a simulation: their own week as a real weekly calendar, with a manual reschedule option alongside the existing Smart Suggestions.
+
+**Technical details:**
+- `types/ui.ts`: `UserRole` becomes `'professor' | 'student' | 'admin'`; add `Identity { role, professorId, studentGroupId }`
+- New `store/reducers/identitySlice.ts` — `{ identity: Identity | null, hydrated }`, persisted to `localStorage` (`unisched_identity`), same `readStorage`/`writeStorage` pattern as `simulationSlice.ts`. `role` is removed from `uiSlice` entirely (it's intentionally ephemeral; identity isn't)
+- New `organisms/OnboardingFlow.tsx` — non-dismissable `Dialog` shown whenever `hydrated && identity === null`; role step, then (for Professor/Student) an identity step populated from `scheduleSlice`'s roster. Reopened at any time via a "Change Identity" button in `TopAppBar` (replacing the old admin/user switch)
+- New `pages/HomeRedirect.tsx` — resolves `/`: Admin → `<Navigate to="/admin/proposals">`; everyone else → the existing `SimulationDashboardPage`, unchanged
+- `store/reducers/scheduleSlice.ts` — fixed a latent bug: `timeSlots` was already present in both roster API responses but was being dropped before reaching Redux; now stored, since the calendar's geometry depends on it
+- New `utils/calendarLayout.ts` — pure day/time layout math (`timeToMinutes`, `deriveDayOrder`, `computeCalendarBounds`, `filterMine`, `layoutDay`'s collision-cluster lane assignment, `buildCalendarBlocks`, `computeContiguousSlotIds`)
+- `utils/conflictSummaries.ts` — `buildConflictSummaries` extracted out of `TimetableGrid.tsx` so the new calendar reuses the same conflict-labeling logic instead of a second copy
+- New `atoms/CalendarClassBlock.tsx` and `organisms/MyScheduleCalendar.tsx` — the actual weekly calendar (days as columns, time-of-day down the page, side-by-side lanes for overlapping classes), filtered to the signed-in identity's own classes
+- `molecules/WorkspaceTabs.tsx` — new `'myschedule'` tab (label "My Schedule"), default tab for Professor/Student in `pages/TimetablePage.tsx`; the existing `'grid'` tab is relabeled **"Full Schedule"** — same unfiltered `TimetableGrid`, unchanged behavior
+- `hooks/useApplySuggestion.ts` — `apply()`'s second parameter widened from `Suggestion` to `Pick<Suggestion, 'roomId'|'timeSlotIds'>` (a type-only change; the body already only read those two fields), so a manually-picked target reuses the exact same PATCH/preview/refetch flow as a smart suggestion
+- New `molecules/ManualRescheduleForm.tsx`, rendered in `organisms/Inspector.tsx` right after `SuggestionsList` — Room, then Day, then Period dropdowns (no drag-and-drop); preserves a multi-period class's length via `computeContiguousSlotIds`, disabling Apply with an inline explanation when the chosen day can't fit it
+- `organisms/AdminGuard.tsx` and `organisms/TopAppBar.tsx` — read `state.identity.identity?.role` instead of the removed `state.ui.role`
+
+**Acceptance criteria:**
+- Onboarding gates every route until an identity is chosen, and is skipped on reload once one has been (persisted)
+- Admin lands on `/admin/proposals`; Professor/Student land on the unchanged Simulation Dashboard
+- Opening a simulation as Professor/Student defaults to "My Schedule," filtered to that identity's own classes; "Full Schedule" is one tab away
+- Manual reschedule reuses `useApplySuggestion` — no parallel PATCH implementation
+- "Change Identity" in the top bar reopens onboarding with no page reload
+- No backend changes — this is entirely frontend, consistent with the existing "no auth system, roles hardcoded" scope decision (`docs/system-architecture.md` §3)
+
+---
+
 ## Dependency Map
 
 ```
@@ -890,6 +918,7 @@ Task 01 (Scaffolding)
                       └─ Task 14 (Rule Builder S8)
   └─ Task 16 (Global Error / Skeletons) — can start after Task 02
 Task 17 (Tests) — depends on all above tasks
+Task 18 (Role Onboarding & Personal Calendar) — depends on Task 06 (App Shell) and Task 08 (Grid S2)
 ```
 
 ---
