@@ -20,8 +20,11 @@ interface SuggestionCardProps {
 
 export const DeltaChip = ({ delta }: { delta: MetricDelta }): React.ReactElement => {
   const diff = delta.after - delta.before;
-  const improved = diff > 0;
-  const label = `${improved ? '+' : ''}${diff.toFixed(1)}${delta.unit} ${delta.name}`;
+  // 'lower_is_better' is the only direction that flips the comparison;
+  // 'higher_is_better' and an absent direction both keep today's default —
+  // see MetricDeltaTile.tsx's identical logic on the other MetricDelta path.
+  const improved = delta.direction === 'lower_is_better' ? diff < 0 : diff > 0;
+  const label = `${diff > 0 ? '+' : ''}${diff.toFixed(1)}${delta.unit} ${delta.name}`;
   return (
     <Chip
       label={label}

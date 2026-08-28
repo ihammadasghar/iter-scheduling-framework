@@ -22,6 +22,7 @@ export function buildMetricDeltas(
       before: before?.value ?? 0,
       after: after?.value ?? 0,
       unit: after?.unit ?? before?.unit ?? '',
+      direction: after?.direction ?? before?.direction,
     };
   });
 }

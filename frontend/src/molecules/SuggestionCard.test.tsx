@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import SuggestionCard from './SuggestionCard';
+import SuggestionCard, { DeltaChip } from './SuggestionCard';
 import scheduleReducer from '@/store/reducers/scheduleSlice';
-import type { ScheduleClass, Suggestion } from '@/types';
+import type { MetricDelta, ScheduleClass, Suggestion } from '@/types';
 
 const currentClass: ScheduleClass = {
   id: 'CLS_001',
@@ -83,5 +83,28 @@ describe('SuggestionCard', () => {
   it('falls back to "no time set" when the current class has no time slots', () => {
     renderCard({ currentClass: { ...currentClass, timeSlotIds: [] } });
     expect(screen.getByText(/currently: room 101 · no time set/i)).toBeInTheDocument();
+  });
+});
+
+describe('DeltaChip', () => {
+  // The second fixed instance of the MetricDeltaTile bug (see that file's
+  // test) — same shared MetricDelta type, same direction-aware fix.
+  const chipColor = (delta: MetricDelta): string => {
+    const { container } = render(<DeltaChip delta={delta} />);
+    return within(container).getByLabelText(/metric change/i).className;
+  };
+
+  it('colors a lower-is-better decrease as improved (green), not regressed', () => {
+    const decreaseClass = chipColor({ name: 'Avg Gap', before: 5, after: 2, unit: ' slots', direction: 'lower_is_better' });
+    const plainIncreaseClass = chipColor({ name: 'Room Utilization', before: 50, after: 70, unit: '%' });
+    expect(decreaseClass).toContain('colorSuccess');
+    expect(decreaseClass).toBe(plainIncreaseClass);
+  });
+
+  it('colors a lower-is-better increase as regressed (red), not improved', () => {
+    const increaseClass = chipColor({ name: 'Avg Gap', before: 2, after: 5, unit: ' slots', direction: 'lower_is_better' });
+    const plainDecreaseClass = chipColor({ name: 'Room Utilization', before: 70, after: 50, unit: '%' });
+    expect(increaseClass).toContain('colorError');
+    expect(increaseClass).toBe(plainDecreaseClass);
   });
 });

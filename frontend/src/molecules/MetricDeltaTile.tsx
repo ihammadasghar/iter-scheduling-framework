@@ -8,7 +8,11 @@ interface MetricDeltaTileProps {
 
 export default function MetricDeltaTile({ delta }: MetricDeltaTileProps): React.ReactElement {
   const changed = delta.before !== delta.after;
-  const improved = delta.after > delta.before;
+  // 'lower_is_better' is the only direction that flips the comparison;
+  // 'higher_is_better' and an absent direction both keep today's default.
+  const improved = delta.direction === 'lower_is_better'
+    ? delta.after < delta.before
+    : delta.after > delta.before;
   const afterColor = !changed ? 'text.primary' : improved ? 'success.main' : 'error.main';
 
   return (

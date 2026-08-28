@@ -51,7 +51,7 @@ const pickBiggestDelta = (
     const diff = Math.abs(a.value - b.value);
     if (diff > bestAbsDiff) {
       bestAbsDiff = diff;
-      best = { name: b.name, before: b.value, after: a.value, unit: b.unit };
+      best = { name: b.name, before: b.value, after: a.value, unit: b.unit, direction: b.direction };
     }
   }
 
