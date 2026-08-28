@@ -3,7 +3,7 @@ import { CiPipelineService } from './CiPipelineService.js';
 import type { IGitHubService } from '../interfaces/IGitHubService.js';
 import type { IGraphService } from '../interfaces/IGraphService.js';
 import type { IRulesService } from '../interfaces/IRulesService.js';
-import type { Conflict, WeightedScoreResult } from '../types/domain.js';
+import type { Conflict, Constraint, WeightedScoreResult } from '../types/domain.js';
 
 const FAKE_CONFLICT: Conflict = {
   id: 'ROOM_DOUBLE_BOOK_CLS_001_CLS_002',
@@ -49,6 +49,8 @@ const isBaselineRunId = (runId: string): boolean => runId.startsWith('check-main
 interface GraphMockOptions {
   readonly baselineConflicts?: readonly Conflict[];
   readonly candidateConflicts?: readonly Conflict[];
+  readonly baselineConstraintViolations?: readonly Conflict[];
+  readonly candidateConstraintViolations?: readonly Conflict[];
   readonly baselineScore?: WeightedScoreResult;
   readonly candidateScore?: WeightedScoreResult;
 }
@@ -56,6 +58,8 @@ interface GraphMockOptions {
 const makeGraph = ({
   baselineConflicts = [],
   candidateConflicts = [],
+  baselineConstraintViolations = [],
+  candidateConstraintViolations = [],
   baselineScore = { score: 0, breakdown: [] },
   candidateScore = { score: 0, breakdown: [] },
 }: GraphMockOptions = {}): IGraphService => ({
@@ -70,18 +74,31 @@ const makeGraph = ({
   queryConflicts: vi.fn().mockImplementation(async (runId: string) =>
     isBaselineRunId(runId) ? baselineConflicts : candidateConflicts,
   ),
+  queryConstraintViolations: vi.fn().mockImplementation(async (runId: string) =>
+    isBaselineRunId(runId) ? baselineConstraintViolations : candidateConstraintViolations,
+  ),
   evaluateMetrics: vi.fn().mockResolvedValue([]),
   scoreTimetable: vi.fn().mockImplementation(async (runId: string) =>
     isBaselineRunId(runId) ? baselineScore : candidateScore,
   ),
 });
 
-const makeRules = (): IRulesService => ({
+const CONSECUTIVE_LIMIT_CONSTRAINT: Constraint = {
+  id: 'constraint-1',
+  name: 'No back-to-back overload',
+  target: 'Professor',
+  violationCondition: 'consecutive_limit',
+  limit: 3,
+};
+
+const makeRules = (constraints: readonly Constraint[] = []): IRulesService => ({
   listMetrics: vi.fn().mockResolvedValue([]),
   createMetric: vi.fn(),
+  updateMetric: vi.fn(),
   deleteMetric: vi.fn().mockResolvedValue(undefined),
-  listConstraints: vi.fn().mockResolvedValue([]),
+  listConstraints: vi.fn().mockResolvedValue(constraints),
   createConstraint: vi.fn(),
+  updateConstraint: vi.fn(),
   deleteConstraint: vi.fn().mockResolvedValue(undefined),
 });
 
@@ -224,6 +241,44 @@ describe('CiPipelineService.run()', () => {
     const result = await service.run(PARAMS);
 
     expect(result.status).toBe('READY');
+  });
+
+  it('returns BLOCKED when only a policy constraint violation is present (no structural conflict)', async () => {
+    const violation: Conflict = {
+      id: 'CONSECUTIVE_LIMIT_EXCEEDED_constraint-1_CLS_001_CLS_004',
+      type: 'CONSECUTIVE_LIMIT_EXCEEDED',
+      classIds: ['CLS_001', 'CLS_004'],
+      message: "Professor 'Dr. Smith' teaches more than 3 consecutive periods",
+    };
+    graph = makeGraph({ baselineConstraintViolations: [], candidateConstraintViolations: [violation] });
+    rules = makeRules([CONSECUTIVE_LIMIT_CONSTRAINT]);
+    service = new CiPipelineService(github, graph, rules);
+
+    const result = await service.run(PARAMS);
+
+    expect(result.status).toBe('BLOCKED');
+    expect(result.conflicts).toEqual([violation]);
+  });
+
+  it('passes only policy-relevant constraints (consecutive_limit/gap_limit) to queryConstraintViolations, filtering out structural ones', async () => {
+    const structuralConstraint: Constraint = {
+      id: 'constraint-2',
+      name: 'No room double-booking',
+      target: 'Room',
+      violationCondition: 'room_double_book',
+    };
+    rules = makeRules([structuralConstraint, CONSECUTIVE_LIMIT_CONSTRAINT]);
+    service = new CiPipelineService(github, graph, rules);
+
+    await service.run(PARAMS);
+
+    const calls = (graph.queryConstraintViolations as ReturnType<typeof vi.fn>).mock.calls as [
+      string,
+      readonly Constraint[],
+    ][];
+    for (const [, constraints] of calls) {
+      expect(constraints).toEqual([CONSECUTIVE_LIMIT_CONSTRAINT]);
+    }
   });
 
   it('returns BLOCKED when the only conflict is a room-capacity overrun and main has none', async () => {

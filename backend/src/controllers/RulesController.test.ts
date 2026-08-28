@@ -7,9 +7,11 @@ import type { MetricRule, Constraint } from '../types/domain.js';
 const makeRulesService = (): IRulesService => ({
   listMetrics: vi.fn().mockResolvedValue([]),
   createMetric: vi.fn(),
+  updateMetric: vi.fn(),
   deleteMetric: vi.fn().mockResolvedValue(undefined),
   listConstraints: vi.fn().mockResolvedValue([]),
   createConstraint: vi.fn(),
+  updateConstraint: vi.fn(),
   deleteConstraint: vi.fn().mockResolvedValue(undefined),
 });
 
@@ -94,6 +96,31 @@ describe('RulesController', () => {
     });
   });
 
+  describe('updateMetric()', () => {
+    it('updates via the service with the metricId param and req.body, returns 200', async () => {
+      (service.updateMetric as ReturnType<typeof vi.fn>).mockResolvedValue(FAKE_METRIC);
+      const req = {
+        params: { metricId: 'metric-1' },
+        body: { name: 'Class Count', target: 'Class', condition: 'count', threshold: 5, weight: 1 },
+      } as unknown as Request;
+
+      await controller.updateMetric(req, res, next);
+
+      expect(service.updateMetric).toHaveBeenCalledWith('metric-1', req.body);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(FAKE_METRIC);
+    });
+
+    it('calls next(err) when the service throws', async () => {
+      const err = new Error('not found');
+      (service.updateMetric as ReturnType<typeof vi.fn>).mockRejectedValue(err);
+
+      await controller.updateMetric({ params: { metricId: 'nope' }, body: {} } as unknown as Request, res, next);
+
+      expect(next).toHaveBeenCalledWith(err);
+    });
+  });
+
   describe('deleteMetric()', () => {
     it('deletes via the service with the metricId param and returns 204', async () => {
       const req = { params: { metricId: 'metric-1' } } as unknown as Request;
@@ -152,6 +179,35 @@ describe('RulesController', () => {
       (service.createConstraint as ReturnType<typeof vi.fn>).mockRejectedValue(err);
 
       await controller.createConstraint({ body: {} } as Request, res, next);
+
+      expect(next).toHaveBeenCalledWith(err);
+    });
+  });
+
+  describe('updateConstraint()', () => {
+    it('updates via the service with the constraintId param and req.body, returns 200', async () => {
+      (service.updateConstraint as ReturnType<typeof vi.fn>).mockResolvedValue(FAKE_CONSTRAINT);
+      const req = {
+        params: { constraintId: 'constraint-1' },
+        body: { name: 'No Overlaps', target: 'Class', violationCondition: 'overlap' },
+      } as unknown as Request;
+
+      await controller.updateConstraint(req, res, next);
+
+      expect(service.updateConstraint).toHaveBeenCalledWith('constraint-1', req.body);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(FAKE_CONSTRAINT);
+    });
+
+    it('calls next(err) when the service throws', async () => {
+      const err = new Error('not found');
+      (service.updateConstraint as ReturnType<typeof vi.fn>).mockRejectedValue(err);
+
+      await controller.updateConstraint(
+        { params: { constraintId: 'nope' }, body: {} } as unknown as Request,
+        res,
+        next,
+      );
 
       expect(next).toHaveBeenCalledWith(err);
     });

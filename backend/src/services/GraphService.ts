@@ -2,11 +2,13 @@ import neo4j from 'neo4j-driver';
 import { ApiError } from '../types/ApiError.js';
 import { parseScheduleJson, buildHydrationBatches, stringifyScheduleJson } from '../utils/ScheduleHydrator.js';
 import { translateRule } from '../utils/MetricRuleTranslator.js';
+import { translateConstraint } from '../utils/ConstraintTranslator.js';
 import type { IMemgraphClient } from '../clients/IMemgraphClient.js';
 import type { IGraphService } from '../interfaces/IGraphService.js';
 import type {
   ScheduleClass,
   Conflict,
+  Constraint,
   MetricResult,
   MetricRule,
   Suggestion,
@@ -379,6 +381,27 @@ export class GraphService implements IGraphService {
     ];
   }
 
+  // Institution-authored policy constraints (consecutive_limit/gap_limit) —
+  // distinct from the 4 always-on structural checks in queryConflicts above,
+  // which this method does not touch. Sequential for...of, matching
+  // evaluateMetrics()'s style rather than queryConflicts()'s Promise.all,
+  // since the constraint list is typically small.
+  async queryConstraintViolations(
+    simulationId: string,
+    constraints: readonly Constraint[],
+  ): Promise<readonly Conflict[]> {
+    const branchId = simulationId;
+    const violations: Conflict[] = [];
+
+    for (const constraint of constraints) {
+      const { cypher } = translateConstraint(constraint);
+      const rows = await this.client.run<ConflictRow>(cypher, { branchId, limit: constraint.limit });
+      violations.push(...rows.map((row) => toConstraintViolation(row, constraint)));
+    }
+
+    return violations;
+  }
+
   async evaluateMetrics(simulationId: string, rules: readonly MetricRule[]): Promise<readonly MetricResult[]> {
     const branchId = simulationId;
     const results: MetricResult[] = [];
@@ -388,7 +411,7 @@ export class GraphService implements IGraphService {
       const rows = await this.client.run<{ value: unknown }>(cypher, { branchId });
       const raw = rows[0]?.['value'];
       const value = raw !== undefined && raw !== null ? Number(raw) : 0;
-      results.push({ name: rule.name, value, unit });
+      results.push({ name: rule.name, value, unit, ...(rule.direction !== undefined ? { direction: rule.direction } : {}) });
     }
 
     return results;
@@ -407,9 +430,20 @@ export class GraphService implements IGraphService {
       // measured relative to the threshold's own magnitude (floored at 1 to
       // avoid dividing by zero for a threshold of 0).
       const denom = Math.max(Math.abs(rule.threshold), 1);
+      // When a direction is set, this is a one-sided preference rather than
+      // a two-sided target: full score at or beyond the "good" side of the
+      // threshold, decaying only when the value moves toward the "bad"
+      // side. `Math.max(0, ...)` on each directional branch is what makes
+      // it one-sided — a value already past the good side contributes 0 to
+      // `deviation`, whereas the undirected fallback keeps today's exact
+      // symmetric distance-from-threshold formula unchanged.
+      const deviation =
+        rule.direction === 'higher_is_better' ? Math.max(0, rule.threshold - result.value)
+        : rule.direction === 'lower_is_better' ? Math.max(0, result.value - rule.threshold)
+        : Math.abs(result.value - rule.threshold);
       const normalizedScore = Math.max(
         0,
-        Math.min(100, 100 * (1 - Math.abs(result.value - rule.threshold) / denom)),
+        Math.min(100, 100 * (1 - deviation / denom)),
       );
       return {
         name: rule.name,
@@ -418,6 +452,7 @@ export class GraphService implements IGraphService {
         weight: rule.weight,
         threshold: rule.threshold,
         normalizedScore: Math.round(normalizedScore * 100) / 100,
+        ...(rule.direction !== undefined ? { direction: rule.direction } : {}),
       };
     });
 
@@ -484,6 +519,40 @@ const toCapacityConflict = (row: CapacityConflictRow): Conflict => ({
   classIds: [row.classId, row.classId],
   message: `Class ${row.classId} assigned to room '${row.roomName}' (capacity ${row.capacity}) but group '${row.groupName}' has ${row.size} students`,
 });
+
+// A policy-constraint violation (consecutive_limit/gap_limit) reuses the
+// same 3-column row shape (classId1, classId2, resourceName) as the 4
+// structural checks above — see ConstraintTranslator.ts — so it can reuse
+// the same ConflictRow interface rather than a second row type.
+const POLICY_VIOLATION_TYPE: Readonly<Record<string, Conflict['type']>> = {
+  consecutive_limit: 'CONSECUTIVE_LIMIT_EXCEEDED',
+  gap_limit: 'GAP_LIMIT_EXCEEDED',
+};
+
+const toConstraintViolation = (row: ConflictRow, constraint: Constraint): Conflict => {
+  const type = POLICY_VIOLATION_TYPE[constraint.violationCondition];
+  if (!type) {
+    throw ApiError.badRequest(`Unsupported policy constraint: violationCondition='${constraint.violationCondition}'`);
+  }
+  return {
+    id: `${type}_${constraint.id}_${row.classId1}_${row.classId2}`,
+    type,
+    classIds: [row.classId1, row.classId2],
+    message: buildConstraintViolationMessage(type, constraint, row),
+  };
+};
+
+const buildConstraintViolationMessage = (
+  type: Conflict['type'],
+  constraint: Constraint,
+  row: ConflictRow,
+): string => {
+  const { classId1, classId2, resourceName } = row;
+  if (type === 'CONSECUTIVE_LIMIT_EXCEEDED') {
+    return `Professor '${resourceName}' teaches more than ${constraint.limit} consecutive periods (classes ${classId1}–${classId2})`;
+  }
+  return `Gap between professor '${resourceName}''s classes ${classId1} and ${classId2} exceeds the institution limit of ${constraint.limit} slots`;
+};
 
 // ── Suggestion helpers ────────────────────────────────────────────────────────
 

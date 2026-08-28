@@ -68,7 +68,18 @@ export interface RoomAvailability {
 
 export interface Conflict {
   readonly id: string;
-  readonly type: 'ROOM_DOUBLE_BOOK' | 'PROFESSOR_OVERLAP' | 'GROUP_OVERLAP' | 'ROOM_CAPACITY_EXCEEDED';
+  readonly type:
+    | 'ROOM_DOUBLE_BOOK'
+    | 'PROFESSOR_OVERLAP'
+    | 'GROUP_OVERLAP'
+    | 'ROOM_CAPACITY_EXCEEDED'
+    // Policy constraints (institution-authored via the Rule Builder,
+    // evaluated by GraphService.queryConstraintViolations) rather than the
+    // 4 hardcoded structural checks above (queryConflicts). Both kinds
+    // share this same Conflict shape so downstream code — CI decisioning,
+    // the proposal review UI — doesn't need a second violation model.
+    | 'CONSECUTIVE_LIMIT_EXCEEDED'
+    | 'GAP_LIMIT_EXCEEDED';
   readonly classIds: readonly [string, string];
   readonly message: string;
 }
@@ -77,6 +88,7 @@ export interface MetricResult {
   readonly name: string;
   readonly value: number;
   readonly unit: string;
+  readonly direction?: MetricDirection;
 }
 
 export interface Proposal {
@@ -101,6 +113,12 @@ export interface RebaseResult {
   readonly baseScheduleVersion: string;
 }
 
+// Whether a metric's value should be pushed up or down toward its
+// threshold — absent for a genuinely two-sided target (e.g. "close to this
+// exact count"), where scoreTimetable() falls back to today's symmetric
+// distance-from-threshold scoring. See GraphService.scoreTimetable.
+export type MetricDirection = 'higher_is_better' | 'lower_is_better';
+
 export interface MetricRule {
   readonly id: string;
   readonly name: string;
@@ -108,6 +126,7 @@ export interface MetricRule {
   readonly condition: string;
   readonly threshold: number;
   readonly weight: number;
+  readonly direction?: MetricDirection;
 }
 
 export interface CreateMetricRuleParams {
@@ -116,6 +135,7 @@ export interface CreateMetricRuleParams {
   readonly condition: string;
   readonly threshold: number;
   readonly weight: number;
+  readonly direction?: MetricDirection;
 }
 
 export interface Constraint {
@@ -123,12 +143,17 @@ export interface Constraint {
   readonly name: string;
   readonly target: string;
   readonly violationCondition: string;
+  // Required and must be a positive integer when violationCondition is
+  // 'consecutive_limit' or 'gap_limit'; absent for the other 4 conditions.
+  // See RulesService.createConstraint for the validation that enforces this.
+  readonly limit?: number;
 }
 
 export interface CreateConstraintParams {
   readonly name: string;
   readonly target: string;
   readonly violationCondition: string;
+  readonly limit?: number;
 }
 
 // A single metric rule's contribution to the composite score: how close its
@@ -140,6 +165,7 @@ export interface MetricScoreBreakdown {
   readonly weight: number;
   readonly threshold: number;
   readonly normalizedScore: number;
+  readonly direction?: MetricDirection;
 }
 
 // The institution-defined weighted composite score for a timetable (0–100),

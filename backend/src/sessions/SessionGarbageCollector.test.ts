@@ -24,6 +24,7 @@ const makeGraph = (): IGraphService => ({
   getRoomAvailability: vi.fn().mockResolvedValue([]),
   queryConflicts: vi.fn().mockResolvedValue([]),
   evaluateMetrics: vi.fn().mockResolvedValue([]),
+  queryConstraintViolations: vi.fn().mockResolvedValue([]),
   scoreTimetable: vi.fn().mockResolvedValue({ score: 0, breakdown: [] }),
 });
 

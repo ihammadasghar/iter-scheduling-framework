@@ -4,7 +4,7 @@ import type { IGitHubService } from '../interfaces/IGitHubService.js';
 import type { IGraphService } from '../interfaces/IGraphService.js';
 import type { ICiPipelineService } from '../interfaces/ICiPipelineService.js';
 import type { IRulesService } from '../interfaces/IRulesService.js';
-import type { Conflict } from '../types/domain.js';
+import type { Conflict, Constraint } from '../types/domain.js';
 import type { RawClass, ScheduleJson } from '../types/scheduleJson.js';
 
 const FAKE_CONFLICT: Conflict = {
@@ -76,6 +76,8 @@ const makeGraph = (
     baselineScore?: WeightedScoreResultLike;
     candidateConflicts?: readonly Conflict[];
     candidateScore?: WeightedScoreResultLike;
+    baselineConstraintViolations?: readonly Conflict[];
+    candidateConstraintViolations?: readonly Conflict[];
   } = {},
 ): IGraphService => {
   const {
@@ -83,6 +85,8 @@ const makeGraph = (
     baselineScore = FAKE_SCORE,
     candidateConflicts = [],
     candidateScore = FAKE_SCORE,
+    baselineConstraintViolations = [],
+    candidateConstraintViolations = [],
   } = overrides;
 
   return {
@@ -96,6 +100,9 @@ const makeGraph = (
     getRoomAvailability: vi.fn().mockResolvedValue([]),
     queryConflicts: vi.fn().mockImplementation(async (runId: string) =>
       isBaselineRunId(runId) ? baselineConflicts : candidateConflicts,
+    ),
+    queryConstraintViolations: vi.fn().mockImplementation(async (runId: string) =>
+      isBaselineRunId(runId) ? baselineConstraintViolations : candidateConstraintViolations,
     ),
     evaluateMetrics: vi.fn().mockResolvedValue([]),
     scoreTimetable: vi.fn().mockImplementation(async (runId: string) =>
@@ -134,14 +141,24 @@ const makeCi = (conflicts: readonly Conflict[] = []): ICiPipelineService => ({
   }),
 });
 
-const makeRules = (): IRulesService => ({
+const makeRules = (constraints: readonly Constraint[] = []): IRulesService => ({
   listMetrics: vi.fn().mockResolvedValue([]),
   createMetric: vi.fn(),
+  updateMetric: vi.fn(),
   deleteMetric: vi.fn().mockResolvedValue(undefined),
-  listConstraints: vi.fn().mockResolvedValue([]),
+  listConstraints: vi.fn().mockResolvedValue(constraints),
   createConstraint: vi.fn(),
+  updateConstraint: vi.fn(),
   deleteConstraint: vi.fn().mockResolvedValue(undefined),
 });
+
+const CONSECUTIVE_LIMIT_CONSTRAINT: Constraint = {
+  id: 'constraint-1',
+  name: 'No back-to-back overload',
+  target: 'Professor',
+  violationCondition: 'consecutive_limit',
+  limit: 3,
+};
 
 describe('ProposalService.submit()', () => {
   const VALID_PARAMS = {
@@ -463,6 +480,49 @@ describe('ProposalService.submit() — improvement gate', () => {
       message: expect.stringContaining('1 conflict vs 1'),
     });
   });
+
+  it('blocks submission when the candidate introduces a policy constraint violation baseline does not have', async () => {
+    const violation: Conflict = {
+      id: 'CONSECUTIVE_LIMIT_EXCEEDED_constraint-1_CLS_001_CLS_004',
+      type: 'CONSECUTIVE_LIMIT_EXCEEDED',
+      classIds: ['CLS_001', 'CLS_004'],
+      message: "Professor 'Dr. Smith' teaches more than 3 consecutive periods",
+    };
+    const graph = makeGraph({
+      baselineConflicts: [],
+      candidateConflicts: [],
+      baselineConstraintViolations: [],
+      candidateConstraintViolations: [violation],
+    });
+    rules = makeRules([CONSECUTIVE_LIMIT_CONSTRAINT]);
+    const service = new ProposalService(github, graph, ci, rules);
+
+    await expect(service.submit(VALID_PARAMS)).rejects.toMatchObject({ statusCode: 409 });
+    expect(github.createPullRequest).not.toHaveBeenCalled();
+  });
+
+  it('does not block submission over a policy constraint violation baseline already has (symmetric check)', async () => {
+    const violation: Conflict = {
+      id: 'CONSECUTIVE_LIMIT_EXCEEDED_constraint-1_CLS_001_CLS_004',
+      type: 'CONSECUTIVE_LIMIT_EXCEEDED',
+      classIds: ['CLS_001', 'CLS_004'],
+      message: "Professor 'Dr. Smith' teaches more than 3 consecutive periods",
+    };
+    const graph = makeGraph({
+      baselineConflicts: [],
+      candidateConflicts: [],
+      baselineConstraintViolations: [violation],
+      candidateConstraintViolations: [violation],
+      baselineScore: { score: 10, breakdown: [] },
+      candidateScore: { score: 20, breakdown: [] },
+    });
+    rules = makeRules([CONSECUTIVE_LIMIT_CONSTRAINT]);
+    const service = new ProposalService(github, graph, ci, rules);
+
+    await service.submit(VALID_PARAMS);
+
+    expect(github.createPullRequest).toHaveBeenCalledOnce();
+  });
 });
 
 describe('ProposalService.list()', () => {
@@ -698,6 +758,27 @@ describe('ProposalService.get()', () => {
     expect(detail.comparison.candidateConflicts).toEqual([FAKE_CONFLICT]);
     expect(detail.comparison.conflictDelta.added).toEqual([FAKE_CONFLICT]);
     expect(detail.comparison.conflictDelta.resolved).toEqual([BASELINE_CONFLICT]);
+  });
+
+  it('includes policy constraint violations alongside structural conflicts in the comparison', async () => {
+    const violation: Conflict = {
+      id: 'GAP_LIMIT_EXCEEDED_constraint-2_CLS_001_CLS_005',
+      type: 'GAP_LIMIT_EXCEEDED',
+      classIds: ['CLS_001', 'CLS_005'],
+      message: "Gap between professor 'Dr. Jones''s classes exceeds the institution limit of 2 slots",
+    };
+    graph = makeGraph({
+      baselineConflicts: [],
+      candidateConflicts: [],
+      candidateConstraintViolations: [violation],
+    });
+    rules = makeRules([CONSECUTIVE_LIMIT_CONSTRAINT]);
+    service = new ProposalService(github, graph, makeCi(), rules);
+
+    const detail = await service.get('42');
+
+    expect(detail.comparison.candidateConflicts).toEqual([violation]);
+    expect(detail.comparison.conflictDelta.added).toEqual([violation]);
   });
 });
 

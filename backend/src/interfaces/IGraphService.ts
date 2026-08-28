@@ -4,6 +4,7 @@
 import type {
   ScheduleClass,
   Conflict,
+  Constraint,
   MetricResult,
   MetricRule,
   Suggestion,
@@ -21,6 +22,13 @@ export interface IGraphService {
   getSuggestions(simulationId: string, classId: string): Promise<readonly Suggestion[]>;
   getRoomAvailability(simulationId: string, classId: string): Promise<readonly RoomAvailability[]>;
   queryConflicts(simulationId: string): Promise<readonly Conflict[]>;
+  // Institution-authored policy constraints (consecutive_limit/gap_limit),
+  // evaluated separately from the always-on structural checks in
+  // queryConflicts — see ConstraintTranslator.ts.
+  queryConstraintViolations(
+    simulationId: string,
+    constraints: readonly Constraint[],
+  ): Promise<readonly Conflict[]>;
   evaluateMetrics(simulationId: string, rules: readonly MetricRule[]): Promise<readonly MetricResult[]>;
   scoreTimetable(simulationId: string, rules: readonly MetricRule[]): Promise<WeightedScoreResult>;
 }

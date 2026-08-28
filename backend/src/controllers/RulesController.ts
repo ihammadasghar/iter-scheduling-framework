@@ -22,6 +22,15 @@ export class RulesController {
     }
   }
 
+  async updateMetric(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const metric = await this.service.updateMetric(req.params['metricId'] as string, req.body);
+      res.status(200).json(metric);
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async deleteMetric(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       await this.service.deleteMetric(req.params['metricId'] as string);
@@ -44,6 +53,15 @@ export class RulesController {
     try {
       const constraint = await this.service.createConstraint(req.body);
       res.status(201).json(constraint);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async updateConstraint(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const constraint = await this.service.updateConstraint(req.params['constraintId'] as string, req.body);
+      res.status(200).json(constraint);
     } catch (err) {
       next(err);
     }

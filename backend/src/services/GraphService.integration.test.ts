@@ -21,7 +21,7 @@ import { MemgraphClient } from '../clients/MemgraphClient.js';
 import { GraphService } from './GraphService.js';
 import { ensureIndexes } from '../utils/schemaSetup.js';
 import type { ScheduleJson } from '../types/scheduleJson.js';
-import type { MetricRule } from '../types/domain.js';
+import type { MetricRule, Constraint } from '../types/domain.js';
 
 const uri = process.env['MEMGRAPH_URI'] ?? 'bolt://localhost:7687';
 
@@ -181,5 +181,116 @@ describe('GraphService (integration, real Memgraph)', () => {
     const [result] = await graph.evaluateMetrics(branchId, [rule]);
 
     expect(result?.value).toBe(0);
+  });
+
+  // Policy constraints (consecutive_limit/gap_limit) — real proof that
+  // ConstraintTranslator's Cypher, run through GraphService, both fires on a
+  // genuine violation and reports the actual violating professor/classIds,
+  // and stays silent when the same shape of schedule is within the limit.
+  // Three same-day, chronologically-linked slots (:NEXT chain TS1 -> TS2 ->
+  // TS3), all taught by the same professor.
+  const THREE_CONSECUTIVE_SCHEDULE = baseSchedule({
+    timeSlots: [
+      { id: 'TS1', day: 'Monday', name: 'P1', startTime: '09:00', endTime: '10:00' },
+      { id: 'TS2', day: 'Monday', name: 'P2', startTime: '10:00', endTime: '11:00' },
+      { id: 'TS3', day: 'Monday', name: 'P3', startTime: '11:00', endTime: '12:00' },
+    ],
+    rooms: [{ id: 'RM1', name: 'Room 1', capacity: 100, building: 'A' }],
+    professors: [{ id: 'PR1', name: 'Prof A', department: 'CS' }],
+    studentGroups: [{ id: 'SG1', name: 'Group A', size: 10 }],
+    courses: [{ id: 'CR1', code: 'CS101', name: 'Intro', department: 'CS' }],
+    classes: [
+      {
+        id: 'CL1', courseId: 'CR1', title: 'Intro', professorId: 'PR1',
+        studentGroupId: 'SG1', roomId: 'RM1', timeSlotIds: ['TS1'],
+      },
+      {
+        id: 'CL2', courseId: 'CR1', title: 'Intro', professorId: 'PR1',
+        studentGroupId: 'SG1', roomId: 'RM1', timeSlotIds: ['TS2'],
+      },
+      {
+        id: 'CL3', courseId: 'CR1', title: 'Intro', professorId: 'PR1',
+        studentGroupId: 'SG1', roomId: 'RM1', timeSlotIds: ['TS3'],
+      },
+    ],
+  });
+
+  it('consecutive_limit: fires on a professor with 3 same-day consecutive classes when the limit is 2', async () => {
+    const branchId = nextBranchId();
+    const constraint: Constraint = {
+      id: 'constraint-cl', name: 'No overload', target: 'Professor', violationCondition: 'consecutive_limit', limit: 2,
+    };
+
+    await graph.hydrate(branchId, JSON.stringify(THREE_CONSECUTIVE_SCHEDULE));
+    const violations = await graph.queryConstraintViolations(branchId, [constraint]);
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.type).toBe('CONSECUTIVE_LIMIT_EXCEEDED');
+    expect(violations[0]?.classIds).toEqual(['CL1', 'CL3']);
+    expect(violations[0]?.message).toContain('Prof A');
+  });
+
+  it('consecutive_limit: does not fire when 3 consecutive classes are within the limit', async () => {
+    const branchId = nextBranchId();
+    const constraint: Constraint = {
+      id: 'constraint-cl', name: 'No overload', target: 'Professor', violationCondition: 'consecutive_limit', limit: 3,
+    };
+
+    await graph.hydrate(branchId, JSON.stringify(THREE_CONSECUTIVE_SCHEDULE));
+    const violations = await graph.queryConstraintViolations(branchId, [constraint]);
+
+    expect(violations).toEqual([]);
+  });
+
+  // Four same-day slots; the professor teaches only the first and last
+  // (TS1, TS4), leaving a real 2-slot idle gap (TS2, TS3) between them.
+  const GAPPED_SCHEDULE = baseSchedule({
+    timeSlots: [
+      { id: 'TS1', day: 'Monday', name: 'P1', startTime: '09:00', endTime: '10:00' },
+      { id: 'TS2', day: 'Monday', name: 'P2', startTime: '10:00', endTime: '11:00' },
+      { id: 'TS3', day: 'Monday', name: 'P3', startTime: '11:00', endTime: '12:00' },
+      { id: 'TS4', day: 'Monday', name: 'P4', startTime: '12:00', endTime: '13:00' },
+    ],
+    rooms: [{ id: 'RM1', name: 'Room 1', capacity: 100, building: 'A' }],
+    professors: [{ id: 'PR1', name: 'Prof A', department: 'CS' }],
+    studentGroups: [{ id: 'SG1', name: 'Group A', size: 10 }],
+    courses: [{ id: 'CR1', code: 'CS101', name: 'Intro', department: 'CS' }],
+    classes: [
+      {
+        id: 'CL1', courseId: 'CR1', title: 'Intro', professorId: 'PR1',
+        studentGroupId: 'SG1', roomId: 'RM1', timeSlotIds: ['TS1'],
+      },
+      {
+        id: 'CL2', courseId: 'CR1', title: 'Intro', professorId: 'PR1',
+        studentGroupId: 'SG1', roomId: 'RM1', timeSlotIds: ['TS4'],
+      },
+    ],
+  });
+
+  it('gap_limit: fires on a professor with a 2-slot gap when the limit is 1', async () => {
+    const branchId = nextBranchId();
+    const constraint: Constraint = {
+      id: 'constraint-gl', name: 'No long gaps', target: 'Professor', violationCondition: 'gap_limit', limit: 1,
+    };
+
+    await graph.hydrate(branchId, JSON.stringify(GAPPED_SCHEDULE));
+    const violations = await graph.queryConstraintViolations(branchId, [constraint]);
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.type).toBe('GAP_LIMIT_EXCEEDED');
+    expect(violations[0]?.classIds).toEqual(['CL1', 'CL2']);
+    expect(violations[0]?.message).toContain('Prof A');
+  });
+
+  it('gap_limit: does not fire when the gap is within the limit', async () => {
+    const branchId = nextBranchId();
+    const constraint: Constraint = {
+      id: 'constraint-gl', name: 'No long gaps', target: 'Professor', violationCondition: 'gap_limit', limit: 3,
+    };
+
+    await graph.hydrate(branchId, JSON.stringify(GAPPED_SCHEDULE));
+    const violations = await graph.queryConstraintViolations(branchId, [constraint]);
+
+    expect(violations).toEqual([]);
   });
 });

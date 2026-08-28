@@ -8,8 +8,10 @@ import type {
 export interface IRulesService {
   listMetrics(): Promise<readonly MetricRule[]>;
   createMetric(params: CreateMetricRuleParams): Promise<MetricRule>;
+  updateMetric(metricId: string, params: CreateMetricRuleParams): Promise<MetricRule>;
   deleteMetric(metricId: string): Promise<void>;
   listConstraints(): Promise<readonly Constraint[]>;
   createConstraint(params: CreateConstraintParams): Promise<Constraint>;
+  updateConstraint(constraintId: string, params: CreateConstraintParams): Promise<Constraint>;
   deleteConstraint(constraintId: string): Promise<void>;
 }

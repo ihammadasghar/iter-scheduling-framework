@@ -6,7 +6,7 @@
 // CiPipelineService.run for the two call sites.
 import type { IGitHubService } from '../interfaces/IGitHubService.js';
 import type { IGraphService } from '../interfaces/IGraphService.js';
-import type { Conflict, MetricRule, WeightedScoreResult } from '../types/domain.js';
+import type { Conflict, Constraint, MetricRule, WeightedScoreResult } from '../types/domain.js';
 
 const SCHEDULE_JSON_PATH = 'schedule.json';
 
@@ -16,22 +16,29 @@ export interface ConflictsAndScore {
 }
 
 // Hydrates `branch`'s current schedule.json into a scratch graph session
-// just long enough to read its conflicts and weighted score, then tears the
-// session down.
+// just long enough to read its conflicts (both the 4 always-on structural
+// checks and any institution-authored policy constraints) and weighted
+// score, then tears the session down. `constraints` is checked against this
+// same branch as `metricRules`/queryConflicts, so baseline and candidate
+// stay an apples-to-apples comparison in isProposalAcceptable below —
+// otherwise a policy constraint authored after `main` already (invisibly)
+// violates it would permanently block every unrelated future proposal.
 export async function computeConflictsAndScore(
   github: IGitHubService,
   graph: IGraphService,
   branch: string,
   metricRules: readonly MetricRule[],
+  constraints: readonly Constraint[] = [],
 ): Promise<ConflictsAndScore> {
   const runId = `check-${branch}-${Date.now()}`;
   const scheduleJson = await github.readFile(branch, SCHEDULE_JSON_PATH);
 
   try {
     await graph.hydrate(runId, scheduleJson);
-    const conflicts = await graph.queryConflicts(runId);
+    const structuralConflicts = await graph.queryConflicts(runId);
+    const constraintViolations = await graph.queryConstraintViolations(runId, constraints);
     const score = await graph.scoreTimetable(runId, metricRules);
-    return { conflicts, score };
+    return { conflicts: [...structuralConflicts, ...constraintViolations], score };
   } finally {
     await graph.flush(runId);
   }

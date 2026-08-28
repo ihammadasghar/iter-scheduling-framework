@@ -3,6 +3,7 @@ import type { IGraphService } from '../interfaces/IGraphService.js';
 import type { IRulesService } from '../interfaces/IRulesService.js';
 import type { ICiPipelineService, RunCiParams } from '../interfaces/ICiPipelineService.js';
 import { computeConflictsAndScore, isProposalAcceptable } from '../utils/ProposalGate.js';
+import { isPolicyConstraint } from '../utils/ConstraintTranslator.js';
 import type { CiResult, Conflict, WeightedScoreResult } from '../types/domain.js';
 
 const SCHEDULE_JSON_PATH = 'schedule.json';
@@ -18,6 +19,13 @@ export class CiPipelineService implements ICiPipelineService {
   async run(params: RunCiParams): Promise<CiResult> {
     const { proposalId, simulationId } = params;
     const metricRules = await this.rules.listMetrics();
+    // Only consecutive_limit/gap_limit are wired up as CI-gating policy
+    // constraints (see ConstraintTranslator.ts) — the other 4
+    // violationCondition values describe physical impossibilities already
+    // covered unconditionally by queryConflicts's structural checks.
+    const policyConstraints = (await this.rules.listConstraints()).filter((c) =>
+      isPolicyConstraint(c.violationCondition),
+    );
 
     // Re-evaluated against *current* main every run (not just whatever was
     // true when the PR was opened) — CI can be re-triggered later by a
@@ -25,7 +33,13 @@ export class CiPipelineService implements ICiPipelineService {
     // with the candidate hydrate below for the same reason ProposalService
     // keeps its baseline/candidate hydrates sequential: concurrent scratch
     // hydrates against Memgraph have tripped real concurrent-write failures.
-    const baseline = await computeConflictsAndScore(this.github, this.graph, SOURCE_BRANCH, metricRules);
+    const baseline = await computeConflictsAndScore(
+      this.github,
+      this.graph,
+      SOURCE_BRANCH,
+      metricRules,
+      policyConstraints,
+    );
 
     const ciRunId = `ci-${proposalId}-${Date.now()}`;
     const scheduleJson = await this.github.readFile(simulationId, SCHEDULE_JSON_PATH);
@@ -34,7 +48,9 @@ export class CiPipelineService implements ICiPipelineService {
     let score: WeightedScoreResult = { score: 0, breakdown: [] };
     try {
       await this.graph.hydrate(ciRunId, scheduleJson);
-      conflicts = await this.graph.queryConflicts(ciRunId);
+      const structuralConflicts = await this.graph.queryConflicts(ciRunId);
+      const constraintViolations = await this.graph.queryConstraintViolations(ciRunId, policyConstraints);
+      conflicts = [...structuralConflicts, ...constraintViolations];
       score = await this.graph.scoreTimetable(ciRunId, metricRules);
     } finally {
       await this.graph.flush(ciRunId);

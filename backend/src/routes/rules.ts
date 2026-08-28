@@ -11,6 +11,9 @@ export function createRulesRouter(controller: RulesController): IRouter {
   // POST /rules/metrics — create a new metric rule
   router.post('/metrics', (req, res, next) => controller.createMetric(req, res, next));
 
+  // PUT /rules/metrics/:metricId — update an existing metric rule
+  router.put('/metrics/:metricId', (req, res, next) => controller.updateMetric(req, res, next));
+
   // DELETE /rules/metrics/:metricId — remove a metric rule
   router.delete('/metrics/:metricId', (req, res, next) => controller.deleteMetric(req, res, next));
 
@@ -19,6 +22,9 @@ export function createRulesRouter(controller: RulesController): IRouter {
 
   // POST /rules/constraints — create a new hard constraint
   router.post('/constraints', (req, res, next) => controller.createConstraint(req, res, next));
+
+  // PUT /rules/constraints/:constraintId — update an existing hard constraint
+  router.put('/constraints/:constraintId', (req, res, next) => controller.updateConstraint(req, res, next));
 
   // DELETE /rules/constraints/:constraintId — remove a hard constraint
   router.delete('/constraints/:constraintId', (req, res, next) =>

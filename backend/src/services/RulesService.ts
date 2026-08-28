@@ -1,5 +1,7 @@
 import { randomUUID } from 'crypto';
 import { ApiError } from '../types/ApiError.js';
+import { isPolicyConstraint } from '../utils/ConstraintTranslator.js';
+import { validateMetricParams, validateConstraintParams } from '../utils/rulesValidation.js';
 import type { IGitHubService } from '../interfaces/IGitHubService.js';
 import type { IRulesService } from '../interfaces/IRulesService.js';
 import type {
@@ -22,14 +24,8 @@ export class RulesService implements IRulesService {
   }
 
   async createMetric(params: CreateMetricRuleParams): Promise<MetricRule> {
-    const { name, target, condition, threshold, weight } = params;
-    if (!name || name.trim() === '') throw ApiError.badRequest('name is required');
-    if (!target || target.trim() === '') throw ApiError.badRequest('target is required');
-    if (!condition || condition.trim() === '') throw ApiError.badRequest('condition is required');
-    if (!Number.isFinite(threshold)) throw ApiError.badRequest('threshold must be a finite number');
-    if (!Number.isFinite(weight) || weight <= 0) {
-      throw ApiError.badRequest('weight must be a positive finite number');
-    }
+    validateMetricParams(params);
+    const { name, target, condition, threshold, weight, direction } = params;
 
     const { rules, sha } = await this.readRules();
     const metric: MetricRule = {
@@ -39,6 +35,7 @@ export class RulesService implements IRulesService {
       condition,
       threshold,
       weight,
+      ...(direction !== undefined ? { direction } : {}),
     };
 
     await this.writeRules(
@@ -48,6 +45,35 @@ export class RulesService implements IRulesService {
     );
 
     return metric;
+  }
+
+  async updateMetric(metricId: string, params: CreateMetricRuleParams): Promise<MetricRule> {
+    validateMetricParams(params);
+    const { name, target, condition, threshold, weight, direction } = params;
+
+    const { rules, sha } = await this.readRules();
+    const index = rules.metrics.findIndex((m) => m.id === metricId);
+    if (index === -1) throw ApiError.notFound(`Metric rule "${metricId}" not found`);
+
+    const updated: MetricRule = {
+      id: metricId,
+      name,
+      target,
+      condition,
+      threshold,
+      weight,
+      ...(direction !== undefined ? { direction } : {}),
+    };
+    const metrics = [...rules.metrics];
+    metrics[index] = updated;
+
+    await this.writeRules(
+      { ...rules, metrics },
+      `chore(rules): update metric rule "${name}"`,
+      sha,
+    );
+
+    return updated;
   }
 
   async deleteMetric(metricId: string): Promise<void> {
@@ -70,12 +96,9 @@ export class RulesService implements IRulesService {
   }
 
   async createConstraint(params: CreateConstraintParams): Promise<Constraint> {
-    const { name, target, violationCondition } = params;
-    if (!name || name.trim() === '') throw ApiError.badRequest('name is required');
-    if (!target || target.trim() === '') throw ApiError.badRequest('target is required');
-    if (!violationCondition || violationCondition.trim() === '') {
-      throw ApiError.badRequest('violationCondition is required');
-    }
+    validateConstraintParams(params);
+    const { name, target, violationCondition, limit } = params;
+    const needsLimit = isPolicyConstraint(violationCondition);
 
     const { rules, sha } = await this.readRules();
     const constraint: Constraint = {
@@ -83,6 +106,7 @@ export class RulesService implements IRulesService {
       name,
       target,
       violationCondition,
+      ...(needsLimit ? { limit } : {}),
     };
 
     await this.writeRules(
@@ -92,6 +116,34 @@ export class RulesService implements IRulesService {
     );
 
     return constraint;
+  }
+
+  async updateConstraint(constraintId: string, params: CreateConstraintParams): Promise<Constraint> {
+    validateConstraintParams(params);
+    const { name, target, violationCondition, limit } = params;
+    const needsLimit = isPolicyConstraint(violationCondition);
+
+    const { rules, sha } = await this.readRules();
+    const index = rules.constraints.findIndex((c) => c.id === constraintId);
+    if (index === -1) throw ApiError.notFound(`Constraint "${constraintId}" not found`);
+
+    const updated: Constraint = {
+      id: constraintId,
+      name,
+      target,
+      violationCondition,
+      ...(needsLimit ? { limit } : {}),
+    };
+    const constraints = [...rules.constraints];
+    constraints[index] = updated;
+
+    await this.writeRules(
+      { ...rules, constraints },
+      `chore(rules): update constraint "${name}"`,
+      sha,
+    );
+
+    return updated;
   }
 
   async deleteConstraint(constraintId: string): Promise<void> {
@@ -110,7 +162,39 @@ export class RulesService implements IRulesService {
 
   private async readRules(): Promise<{ rules: RulesJson; sha: string }> {
     const { content, sha } = await this.github.readFileWithSha(SOURCE_BRANCH, RULES_JSON_PATH);
-    return { rules: parseRulesJson(content), sha };
+    const rules = parseRulesJson(content);
+    this.validateRulesJsonEntries(rules);
+    return { rules, sha };
+  }
+
+  // parseRulesJson() above only guards against invalid JSON — it doesn't
+  // check that each entry is actually a rule the system recognizes. Without
+  // this, a malformed rules.json entry (bad target/condition pair, an
+  // unknown violationCondition, a limit on a condition that doesn't take
+  // one) would sit undetected until someone tried to evaluate against it —
+  // translateRule()/translateConstraint() throwing deep inside a CI run or
+  // proposal score, long after the point of failure. Reuses the exact same
+  // validators create/update use, so anything that would be rejected on
+  // write is now also rejected on read — every entry that's already valid
+  // today stays valid, only genuinely malformed ones are caught, and
+  // earlier, right where the bad data actually is.
+  private validateRulesJsonEntries(rules: RulesJson): void {
+    rules.metrics.forEach((metric, index) => {
+      try {
+        validateMetricParams(metric);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        throw ApiError.badRequest(`rules.json metrics[${index}] (id=${metric.id}): ${message}`);
+      }
+    });
+    rules.constraints.forEach((constraint, index) => {
+      try {
+        validateConstraintParams(constraint);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        throw ApiError.badRequest(`rules.json constraints[${index}] (id=${constraint.id}): ${message}`);
+      }
+    });
   }
 
   // expectedSha ties this write to the exact version of rules.json that was

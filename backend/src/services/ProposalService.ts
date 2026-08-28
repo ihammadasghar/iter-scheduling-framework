@@ -8,12 +8,14 @@ import { parseScheduleJson } from '../utils/ScheduleHydrator.js';
 import { diffConflictsById, diffSchedules } from '../utils/ScheduleDiffer.js';
 import { computeConflictsAndScore, isProposalAcceptable } from '../utils/ProposalGate.js';
 import type { ConflictsAndScore } from '../utils/ProposalGate.js';
+import { isPolicyConstraint } from '../utils/ConstraintTranslator.js';
 import type {
   Proposal,
   ProposalDetail,
   CreateProposalParams,
   ScheduleComparison,
   MetricRule,
+  Constraint,
 } from '../types/domain.js';
 
 const CI_LABEL_READY = 'ci:ready';
@@ -157,6 +159,7 @@ export class ProposalService implements IProposalService {
   // PR behind.
   private async assertImprovesOnPublished(simulationId: string): Promise<void> {
     const metricRules = await this.rulesService.listMetrics();
+    const policyConstraints = await this.listPolicyConstraints();
 
     // Sequential, not Promise.all: each side hydrates a scratch branch into
     // the shared graph store and tears it down before the next begins.
@@ -164,8 +167,8 @@ export class ProposalService implements IProposalService {
     // Memgraph and was observed to trip real (non-mocked) concurrent-write
     // failures under parallel test load — every other caller of
     // hydrate/flush in this codebase is likewise strictly one-at-a-time.
-    const baseline = await this.computeConflictsAndScore(SOURCE_BRANCH, metricRules);
-    const candidate = await this.computeConflictsAndScore(simulationId, metricRules);
+    const baseline = await this.computeConflictsAndScore(SOURCE_BRANCH, metricRules, policyConstraints);
+    const candidate = await this.computeConflictsAndScore(simulationId, metricRules, policyConstraints);
 
     if (isProposalAcceptable(baseline, candidate)) {
       return;
@@ -185,8 +188,18 @@ export class ProposalService implements IProposalService {
   private async computeConflictsAndScore(
     branch: string,
     metricRules: readonly MetricRule[],
+    constraints: readonly Constraint[] = [],
   ): Promise<ConflictsAndScore> {
-    return computeConflictsAndScore(this.github, this.graph, branch, metricRules);
+    return computeConflictsAndScore(this.github, this.graph, branch, metricRules, constraints);
+  }
+
+  // Only consecutive_limit/gap_limit are wired up as CI-gating policy
+  // constraints (see ConstraintTranslator.ts) — the other 4
+  // violationCondition values describe physical impossibilities already
+  // covered unconditionally by queryConflicts's structural checks.
+  private async listPolicyConstraints(): Promise<readonly Constraint[]> {
+    const constraints = await this.rulesService.listConstraints();
+    return constraints.filter((c) => isPolicyConstraint(c.violationCondition));
   }
 
   // Builds the full main-vs-candidate comparison shown on the proposal review
@@ -196,9 +209,10 @@ export class ProposalService implements IProposalService {
   // list. Reuses computeConflictsAndScore's sequential hydrate/flush pattern.
   private async computeScheduleComparison(candidateBranch: string): Promise<ScheduleComparison> {
     const metricRules = await this.rulesService.listMetrics();
+    const policyConstraints = await this.listPolicyConstraints();
 
-    const baseline = await this.computeConflictsAndScore(SOURCE_BRANCH, metricRules);
-    const candidate = await this.computeConflictsAndScore(candidateBranch, metricRules);
+    const baseline = await this.computeConflictsAndScore(SOURCE_BRANCH, metricRules, policyConstraints);
+    const candidate = await this.computeConflictsAndScore(candidateBranch, metricRules, policyConstraints);
 
     // Plain GitHub file reads, not Memgraph writes — safe to parallelize,
     // unlike the hydrate calls above.

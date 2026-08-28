@@ -475,6 +475,100 @@ describe('GraphService', () => {
     });
   });
 
+  // ── queryConstraintViolations ─────────────────────────────────────────────
+
+  describe('queryConstraintViolations()', () => {
+    const CONSECUTIVE_CONSTRAINT = {
+      id: 'constraint-1', name: 'No back-to-back overload', target: 'Professor',
+      violationCondition: 'consecutive_limit', limit: 3,
+    };
+    const GAP_CONSTRAINT = {
+      id: 'constraint-2', name: 'No long gaps', target: 'Professor',
+      violationCondition: 'gap_limit', limit: 2,
+    };
+    const CONSECUTIVE_ROW = { classId1: 'CLS_001', classId2: 'CLS_004', resourceName: 'Dr. Smith' };
+    const GAP_ROW = { classId1: 'CLS_001', classId2: 'CLS_005', resourceName: 'Dr. Jones' };
+
+    it('returns an empty array when given no constraints', async () => {
+      const result = await service.queryConstraintViolations(BRANCH_ID, []);
+      expect(result).toEqual([]);
+      expect(mockClient.run).not.toHaveBeenCalled();
+    });
+
+    it('calls client.run once per constraint', async () => {
+      mockClient = {
+        run: vi.fn()
+          .mockResolvedValueOnce([])
+          .mockResolvedValueOnce([]),
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+
+      await service.queryConstraintViolations(BRANCH_ID, [CONSECUTIVE_CONSTRAINT, GAP_CONSTRAINT]);
+
+      expect(mockClient.run).toHaveBeenCalledTimes(2);
+    });
+
+    it('passes branchId and the constraint limit in params', async () => {
+      mockClient = { run: vi.fn().mockResolvedValue([]), close: vi.fn() };
+      service = new GraphService(mockClient);
+
+      await service.queryConstraintViolations(BRANCH_ID, [CONSECUTIVE_CONSTRAINT]);
+
+      const calls = (mockClient.run as ReturnType<typeof vi.fn>).mock.calls as Array<
+        [string, Record<string, unknown>]
+      >;
+      expect(calls[0]![1]).toMatchObject({ branchId: BRANCH_ID, limit: 3 });
+    });
+
+    it('maps a consecutive_limit violation row to a CONSECUTIVE_LIMIT_EXCEEDED Conflict', async () => {
+      mockClient = { run: vi.fn().mockResolvedValueOnce([CONSECUTIVE_ROW]), close: vi.fn() };
+      service = new GraphService(mockClient);
+
+      const result = await service.queryConstraintViolations(BRANCH_ID, [CONSECUTIVE_CONSTRAINT]);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        type: 'CONSECUTIVE_LIMIT_EXCEEDED',
+        classIds: ['CLS_001', 'CLS_004'],
+      });
+      expect(result[0]!.message).toContain('Dr. Smith');
+      expect(result[0]!.message).toContain('3');
+    });
+
+    it('maps a gap_limit violation row to a GAP_LIMIT_EXCEEDED Conflict', async () => {
+      mockClient = { run: vi.fn().mockResolvedValueOnce([GAP_ROW]), close: vi.fn() };
+      service = new GraphService(mockClient);
+
+      const result = await service.queryConstraintViolations(BRANCH_ID, [GAP_CONSTRAINT]);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        type: 'GAP_LIMIT_EXCEEDED',
+        classIds: ['CLS_001', 'CLS_005'],
+      });
+      expect(result[0]!.message).toContain('Dr. Jones');
+      expect(result[0]!.message).toContain('2');
+    });
+
+    it('returns violations from multiple constraints in a single flat array', async () => {
+      mockClient = {
+        run: vi.fn()
+          .mockResolvedValueOnce([CONSECUTIVE_ROW])
+          .mockResolvedValueOnce([GAP_ROW]),
+        close: vi.fn(),
+      };
+      service = new GraphService(mockClient);
+
+      const result = await service.queryConstraintViolations(BRANCH_ID, [CONSECUTIVE_CONSTRAINT, GAP_CONSTRAINT]);
+
+      expect(result).toHaveLength(2);
+      const types = result.map((c) => c.type);
+      expect(types).toContain('CONSECUTIVE_LIMIT_EXCEEDED');
+      expect(types).toContain('GAP_LIMIT_EXCEEDED');
+    });
+  });
+
   // ── evaluateMetrics ───────────────────────────────────────────────────────
 
   describe('evaluateMetrics()', () => {
@@ -543,6 +637,19 @@ describe('GraphService', () => {
       const result = await service.evaluateMetrics(BRANCH_ID, [CLASS_COUNT_RULE]);
 
       expect(result[0]?.value).toBe(0);
+    });
+
+    it('carries the rule\'s direction through to the MetricResult when set', async () => {
+      const gapRule = {
+        id: 'mr-4', name: 'Avg Gap', target: 'Professor', condition: 'avg_gap_length',
+        threshold: 2, weight: 1, direction: 'lower_is_better' as const,
+      };
+      mockClient = { run: vi.fn().mockResolvedValue([{ value: 3 }]), close: vi.fn() };
+      service = new GraphService(mockClient);
+
+      const result = await service.evaluateMetrics(BRANCH_ID, [gapRule]);
+
+      expect(result[0]?.direction).toBe('lower_is_better');
     });
 
     // room_consistency's Cypher has no zero-guard of its own (see
@@ -677,6 +784,91 @@ describe('GraphService', () => {
       const result = await service.scoreTimetable(BRANCH_ID, [rule]);
 
       expect(result.breakdown[0]).toMatchObject({ name: 'Room Utilization', weight: 2, threshold: 5 });
+    });
+
+    // ── direction-aware scoring ────────────────────────────────────────────
+
+    it('lower_is_better: scores 100 at or below the threshold (the good side)', async () => {
+      mockClient = { run: vi.fn().mockResolvedValue([{ value: 3 }]), close: vi.fn() };
+      service = new GraphService(mockClient);
+      const rule = {
+        id: 'mr-1', name: 'Avg Gap', target: 'Professor', condition: 'avg_gap_length',
+        threshold: 5, weight: 1, direction: 'lower_is_better' as const,
+      };
+
+      const result = await service.scoreTimetable(BRANCH_ID, [rule]);
+
+      expect(result.breakdown[0]?.normalizedScore).toBe(100);
+    });
+
+    it('lower_is_better: decays only when the value overshoots past the threshold', async () => {
+      mockClient = { run: vi.fn().mockResolvedValue([{ value: 8 }]), close: vi.fn() };
+      service = new GraphService(mockClient);
+      const rule = {
+        id: 'mr-1', name: 'Avg Gap', target: 'Professor', condition: 'avg_gap_length',
+        threshold: 5, weight: 1, direction: 'lower_is_better' as const,
+      };
+
+      const result = await service.scoreTimetable(BRANCH_ID, [rule]);
+
+      // deviation = 8 - 5 = 3, denom = max(5,1) = 5 -> 100 * (1 - 3/5) = 40
+      expect(result.breakdown[0]?.normalizedScore).toBe(40);
+    });
+
+    it('higher_is_better: scores 100 at or above the threshold (the good side)', async () => {
+      mockClient = { run: vi.fn().mockResolvedValue([{ value: 90 }]), close: vi.fn() };
+      service = new GraphService(mockClient);
+      const rule = {
+        id: 'mr-1', name: 'Room Utilization', target: 'Room', condition: 'utilization',
+        threshold: 80, weight: 1, direction: 'higher_is_better' as const,
+      };
+
+      const result = await service.scoreTimetable(BRANCH_ID, [rule]);
+
+      expect(result.breakdown[0]?.normalizedScore).toBe(100);
+    });
+
+    it('higher_is_better: decays only when the value falls short of the threshold', async () => {
+      mockClient = { run: vi.fn().mockResolvedValue([{ value: 60 }]), close: vi.fn() };
+      service = new GraphService(mockClient);
+      const rule = {
+        id: 'mr-1', name: 'Room Utilization', target: 'Room', condition: 'utilization',
+        threshold: 80, weight: 1, direction: 'higher_is_better' as const,
+      };
+
+      const result = await service.scoreTimetable(BRANCH_ID, [rule]);
+
+      // deviation = 80 - 60 = 20, denom = max(80,1) = 80 -> 100 * (1 - 20/80) = 75
+      expect(result.breakdown[0]?.normalizedScore).toBe(75);
+    });
+
+    it('regression: a rule with no direction keeps scoring symmetrically on both sides of the threshold', async () => {
+      const rule = { id: 'mr-1', name: 'Class Count', target: 'Class', condition: 'count', threshold: 10, weight: 1 };
+
+      mockClient = { run: vi.fn().mockResolvedValue([{ value: 8 }]), close: vi.fn() }; // undershoot by 2
+      service = new GraphService(mockClient);
+      const under = await service.scoreTimetable(BRANCH_ID, [rule]);
+
+      mockClient = { run: vi.fn().mockResolvedValue([{ value: 12 }]), close: vi.fn() }; // overshoot by 2
+      service = new GraphService(mockClient);
+      const over = await service.scoreTimetable(BRANCH_ID, [rule]);
+
+      expect(under.breakdown[0]?.normalizedScore).toBe(80);
+      expect(over.breakdown[0]?.normalizedScore).toBe(80);
+      expect(under.breakdown[0]?.direction).toBeUndefined();
+    });
+
+    it('carries direction through to the breakdown when set', async () => {
+      mockClient = { run: vi.fn().mockResolvedValue([{ value: 3 }]), close: vi.fn() };
+      service = new GraphService(mockClient);
+      const rule = {
+        id: 'mr-1', name: 'Avg Gap', target: 'Professor', condition: 'avg_gap_length',
+        threshold: 5, weight: 1, direction: 'lower_is_better' as const,
+      };
+
+      const result = await service.scoreTimetable(BRANCH_ID, [rule]);
+
+      expect(result.breakdown[0]?.direction).toBe('lower_is_better');
     });
   });
 

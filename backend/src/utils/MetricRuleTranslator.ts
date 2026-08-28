@@ -152,3 +152,12 @@ export function translateRule(rule: MetricRule): TranslatedMetric {
   }
   return translated;
 }
+
+// Single source of truth for "is this target/condition pair one the system
+// recognizes" — derived from the same TRANSLATION_MAP translateRule() uses,
+// rather than a second hardcoded list. Used by RulesService's validation
+// (rulesValidation.ts) so a rule that would fail here can be rejected at
+// create/update/read time instead of only lazily, here, at evaluation time.
+export function isSupportedMetric(target: string, condition: string): boolean {
+  return TRANSLATION_MAP.has(`${target}:${condition}`);
+}
