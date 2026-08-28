@@ -1,16 +1,19 @@
 import { Box, Card, CardContent, CardActions, IconButton, Tooltip, Typography } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { getTargetLabel, getViolationConditionLabel } from '@/utils/ruleLabels';
+import EditIcon from '@mui/icons-material/Edit';
+import { getTargetLabel, describeViolationCondition } from '@/utils/ruleLabels';
 import type { Constraint } from '@/types';
 
 interface ConstraintRuleCardProps {
   readonly rule: Constraint;
+  readonly onEdit: (rule: Constraint) => void;
   readonly onDelete: (id: string) => void;
   readonly disabled?: boolean;
 }
 
 export default function ConstraintRuleCard({
   rule,
+  onEdit,
   onDelete,
   disabled = false,
 }: ConstraintRuleCardProps): React.ReactElement {
@@ -24,10 +27,22 @@ export default function ConstraintRuleCard({
           Applies to: {getTargetLabel(rule.target)}
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Blocks when: {getViolationConditionLabel(rule.violationCondition)}
+          Blocks when: {describeViolationCondition(rule.violationCondition, rule.limit)}
         </Typography>
       </CardContent>
       <CardActions sx={{ justifyContent: 'flex-end', pt: 0 }}>
+        <Tooltip title="Edit this constraint">
+          <Box component="span">
+            <IconButton
+              aria-label={`Edit constraint: ${rule.name}`}
+              size="small"
+              onClick={() => onEdit(rule)}
+              disabled={disabled}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Box>
+        </Tooltip>
         <Tooltip title="Delete this rule">
           <Box component="span">
             <IconButton

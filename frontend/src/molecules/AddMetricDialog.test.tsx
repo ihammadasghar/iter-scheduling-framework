@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import AddMetricDialog from './AddMetricDialog';
+import type { MetricRule } from '@/types';
 import rulesReducer from '@/store/reducers/rulesSlice';
 import uiReducer from '@/store/reducers/uiSlice';
 import simulationReducer from '@/store/reducers/simulationSlice';
@@ -17,6 +18,7 @@ vi.mock('@/services/rulesService', () => ({
   rulesService: {
     getMetricRules: vi.fn().mockResolvedValue([]),
     createMetricRule: vi.fn(),
+    updateMetricRule: vi.fn(),
     deleteMetricRule: vi.fn(),
     getConstraints: vi.fn().mockResolvedValue([]),
     createConstraint: vi.fn(),
@@ -37,6 +39,23 @@ const renderDialog = (onSuccess = vi.fn(), onClose = vi.fn()) =>
   render(
     <Provider store={makeStore()}>
       <AddMetricDialog open onClose={onClose} onSuccess={onSuccess} />
+    </Provider>,
+  );
+
+const EXISTING_RULE: MetricRule = {
+  id: 'metric-1',
+  name: 'Idle Gap',
+  target: 'Professor',
+  condition: 'avg_gap_length',
+  threshold: 2,
+  weight: 3,
+  direction: 'lower_is_better',
+};
+
+const renderEditDialog = (existingRule: MetricRule, onSuccess = vi.fn(), onClose = vi.fn()) =>
+  render(
+    <Provider store={makeStore()}>
+      <AddMetricDialog open onClose={onClose} onSuccess={onSuccess} existingRule={existingRule} />
     </Provider>,
   );
 
@@ -113,5 +132,100 @@ describe('AddMetricDialog', () => {
         expect.objectContaining({ target: 'Class', weight: 3 }),
       ),
     );
+  });
+
+  it('pre-fills "Lower is better" when Professor / avg_gap_length is selected', async () => {
+    renderDialog();
+
+    fireEvent.mouseDown(screen.getByLabelText(/what to measure/i));
+    await waitFor(() => screen.getByRole('option', { name: /lecturers/i }));
+    fireEvent.click(screen.getByRole('option', { name: /lecturers/i }));
+
+    fireEvent.mouseDown(screen.getByLabelText(/how to measure it/i));
+    await waitFor(() => screen.getByRole('option', { name: /average idle gap/i }));
+    fireEvent.click(screen.getByRole('option', { name: /average idle gap/i }));
+
+    expect(screen.getByLabelText(/^direction/i)).toHaveTextContent('Lower is better');
+  });
+
+  it('lets the user override the pre-filled direction, and submits the override', async () => {
+    vi.mocked(rulesService.rulesService.createMetricRule).mockResolvedValueOnce({
+      id: 'new', name: 'Gap', target: 'Professor', condition: 'avg_gap_length', threshold: 2, weight: 1,
+      direction: 'higher_is_better',
+    });
+    renderDialog();
+
+    fireEvent.change(screen.getByLabelText(/^name/i), { target: { value: 'Gap' } });
+
+    fireEvent.mouseDown(screen.getByLabelText(/what to measure/i));
+    await waitFor(() => screen.getByRole('option', { name: /lecturers/i }));
+    fireEvent.click(screen.getByRole('option', { name: /lecturers/i }));
+
+    fireEvent.mouseDown(screen.getByLabelText(/how to measure it/i));
+    await waitFor(() => screen.getByRole('option', { name: /average idle gap/i }));
+    fireEvent.click(screen.getByRole('option', { name: /average idle gap/i }));
+
+    // Pre-filled to "Lower is better" — override it to "Higher is better".
+    fireEvent.mouseDown(screen.getByLabelText(/^direction/i));
+    await waitFor(() => screen.getByRole('option', { name: /^higher is better/i }));
+    fireEvent.click(screen.getByRole('option', { name: /^higher is better/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /add this metric/i }));
+
+    await waitFor(() =>
+      expect(rulesService.rulesService.createMetricRule).toHaveBeenCalledWith(
+        expect.objectContaining({ direction: 'higher_is_better' }),
+      ),
+    );
+  });
+
+  it('omits direction from the submitted payload when left as "No preference"', async () => {
+    vi.mocked(rulesService.rulesService.createMetricRule).mockResolvedValueOnce({
+      id: 'new', name: 'Test', target: 'Class', condition: 'count', threshold: 5, weight: 1,
+    });
+    renderDialog();
+
+    fireEvent.change(screen.getByLabelText(/^name/i), { target: { value: 'My Rule' } });
+    fireEvent.mouseDown(screen.getByLabelText(/how to measure it/i));
+    await waitFor(() => screen.getByRole('option', { name: /total number/i }));
+    fireEvent.click(screen.getByRole('option', { name: /total number/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /add this metric/i }));
+
+    await waitFor(() => expect(rulesService.rulesService.createMetricRule).toHaveBeenCalled());
+    const payload = vi.mocked(rulesService.rulesService.createMetricRule).mock.calls[0]![0];
+    expect('direction' in payload).toBe(false);
+  });
+
+  describe('edit mode (existingRule set)', () => {
+    it('pre-fills every field from the existing rule and shows the Edit title', () => {
+      renderEditDialog(EXISTING_RULE);
+
+      expect(screen.getByRole('heading', { name: /edit metric rule/i })).toBeInTheDocument();
+      expect(screen.getByLabelText(/^name/i)).toHaveValue('Idle Gap');
+      expect(screen.getByLabelText(/^weight/i)).toHaveValue(3);
+      expect(screen.getByLabelText(/target value/i)).toHaveValue(2);
+      expect(screen.getByLabelText(/^direction/i)).toHaveTextContent('Lower is better');
+      expect(screen.getByRole('button', { name: /save changes/i })).toBeInTheDocument();
+    });
+
+    it('submits via updateMetricRule with the existing id and the edited payload, not createMetricRule', async () => {
+      vi.mocked(rulesService.rulesService.updateMetricRule).mockResolvedValueOnce({
+        ...EXISTING_RULE,
+        weight: 5,
+      });
+      const onSuccess = vi.fn();
+      renderEditDialog(EXISTING_RULE, onSuccess);
+
+      fireEvent.change(screen.getByLabelText(/^weight/i), { target: { value: '5' } });
+      fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
+
+      await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+      expect(rulesService.rulesService.updateMetricRule).toHaveBeenCalledWith(
+        'metric-1',
+        expect.objectContaining({ name: 'Idle Gap', weight: 5, direction: 'lower_is_better' }),
+      );
+      expect(rulesService.rulesService.createMetricRule).not.toHaveBeenCalled();
+    });
   });
 });

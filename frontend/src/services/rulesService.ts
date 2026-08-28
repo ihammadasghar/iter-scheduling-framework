@@ -20,6 +20,12 @@ export const rulesService = {
       .then((r) => r.data);
   },
 
+  updateMetricRule(id: string, params: CreateMetricRuleRequest): Promise<MetricRule> {
+    return apiClient
+      .put<MetricRule>(`/rules/metrics/${id}`, params)
+      .then((r) => r.data);
+  },
+
   deleteMetricRule(id: string): Promise<void> {
     return apiClient
       .delete<void>(`/rules/metrics/${id}`)
@@ -36,6 +42,12 @@ export const rulesService = {
   createConstraint(params: CreateConstraintRequest): Promise<Constraint> {
     return apiClient
       .post<Constraint>('/rules/constraints', params)
+      .then((r) => r.data);
+  },
+
+  updateConstraint(id: string, params: CreateConstraintRequest): Promise<Constraint> {
+    return apiClient
+      .put<Constraint>(`/rules/constraints/${id}`, params)
       .then((r) => r.data);
   },
 

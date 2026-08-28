@@ -50,6 +50,18 @@ export const createMetricRuleThunk = createAsyncThunk<
   }
 });
 
+export const updateMetricRuleThunk = createAsyncThunk<
+  MetricRule,
+  { id: string; params: CreateMetricRuleRequest },
+  { rejectValue: ApiError }
+>('rules/updateMetric', async ({ id, params }, { rejectWithValue }) => {
+  try {
+    return await rulesService.updateMetricRule(id, params);
+  } catch (err) {
+    return rejectWithValue(err as ApiError);
+  }
+});
+
 export const deleteMetricRuleThunk = createAsyncThunk<
   string,
   string,
@@ -82,6 +94,18 @@ export const createConstraintThunk = createAsyncThunk<
 >('rules/createConstraint', async (params, { rejectWithValue }) => {
   try {
     return await rulesService.createConstraint(params);
+  } catch (err) {
+    return rejectWithValue(err as ApiError);
+  }
+});
+
+export const updateConstraintThunk = createAsyncThunk<
+  Constraint,
+  { id: string; params: CreateConstraintRequest },
+  { rejectValue: ApiError }
+>('rules/updateConstraint', async ({ id, params }, { rejectWithValue }) => {
+  try {
+    return await rulesService.updateConstraint(id, params);
   } catch (err) {
     return rejectWithValue(err as ApiError);
   }
@@ -143,6 +167,14 @@ const rulesSlice = createSlice({
           state.error = action.payload?.message ?? 'Failed to create metric rule';
         }
       })
+      .addCase(updateMetricRuleThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        state.metrics = state.metrics.map((m) => (m.id === action.payload.id ? action.payload : m));
+      })
+      .addCase(updateMetricRuleThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload?.message ?? 'Failed to update metric rule';
+      })
       .addCase(deleteMetricRuleThunk.fulfilled, (state, action) => {
         state.metrics = state.metrics.filter((m) => m.id !== action.payload);
       })
@@ -171,6 +203,12 @@ const rulesSlice = createSlice({
       })
       .addCase(createConstraintThunk.rejected, (state, action) => {
         state.error = action.payload?.message ?? 'Failed to create constraint';
+      })
+      .addCase(updateConstraintThunk.fulfilled, (state, action) => {
+        state.constraints = state.constraints.map((c) => (c.id === action.payload.id ? action.payload : c));
+      })
+      .addCase(updateConstraintThunk.rejected, (state, action) => {
+        state.error = action.payload?.message ?? 'Failed to update constraint';
       })
       .addCase(deleteConstraintThunk.fulfilled, (state, action) => {
         state.constraints = state.constraints.filter((c) => c.id !== action.payload);

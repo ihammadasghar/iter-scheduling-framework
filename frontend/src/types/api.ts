@@ -1,5 +1,7 @@
 // API request and response shapes for all backend endpoints.
 
+import type { MetricDirection } from './domain';
+
 // --- Generic ---
 
 export interface PaginatedResponse<T> {
@@ -50,10 +52,12 @@ export interface CreateMetricRuleRequest {
   readonly condition: string;
   readonly threshold: number;
   readonly weight: number;
+  readonly direction?: MetricDirection;
 }
 
 export interface CreateConstraintRequest {
   readonly name: string;
   readonly target: string;
   readonly violationCondition: string;
+  readonly limit?: number;
 }

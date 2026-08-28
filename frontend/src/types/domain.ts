@@ -28,7 +28,12 @@ export type ConflictType =
   | 'ROOM_DOUBLE_BOOK'
   | 'PROFESSOR_OVERLAP'
   | 'GROUP_OVERLAP'
-  | 'ROOM_CAPACITY_EXCEEDED';
+  | 'ROOM_CAPACITY_EXCEEDED'
+  // Policy constraints (institution-authored via the Rule Builder) rather
+  // than the 4 structural checks above — see groupConflictsByType's
+  // isPolicyViolation for how the UI tells the two kinds apart.
+  | 'CONSECUTIVE_LIMIT_EXCEEDED'
+  | 'GAP_LIMIT_EXCEEDED';
 
 export interface Conflict {
   readonly id: string;
@@ -41,6 +46,7 @@ export interface MetricResult {
   readonly name: string;
   readonly value: number;
   readonly unit: string;
+  readonly direction?: MetricDirection;
 }
 
 export interface Suggestion {
@@ -71,6 +77,10 @@ export interface Proposal {
   readonly description?: string;
 }
 
+// Mirrors backend/src/types/domain.ts's MetricDirection — see its comment
+// for why it's optional (absent = a two-sided target, symmetric scoring).
+export type MetricDirection = 'higher_is_better' | 'lower_is_better';
+
 export interface MetricRule {
   readonly id: string;
   readonly name: string;
@@ -78,6 +88,7 @@ export interface MetricRule {
   readonly condition: string;
   readonly threshold: number;
   readonly weight: number;
+  readonly direction?: MetricDirection;
 }
 
 export interface Constraint {
@@ -85,6 +96,9 @@ export interface Constraint {
   readonly name: string;
   readonly target: string;
   readonly violationCondition: string;
+  // Required and a positive integer when violationCondition is
+  // 'consecutive_limit' or 'gap_limit'; absent otherwise.
+  readonly limit?: number;
 }
 
 // A single metric rule's contribution to the composite score: how close its
@@ -96,6 +110,7 @@ export interface MetricScoreBreakdown {
   readonly weight: number;
   readonly threshold: number;
   readonly normalizedScore: number;
+  readonly direction?: MetricDirection;
 }
 
 // The institution-defined weighted composite score for a timetable (0–100),

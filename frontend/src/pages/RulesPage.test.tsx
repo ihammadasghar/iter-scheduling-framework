@@ -19,9 +19,11 @@ vi.mock('@/services/rulesService', () => ({
   rulesService: {
     getMetricRules: vi.fn().mockResolvedValue([]),
     createMetricRule: vi.fn(),
+    updateMetricRule: vi.fn(),
     deleteMetricRule: vi.fn(),
     getConstraints: vi.fn().mockResolvedValue([]),
     createConstraint: vi.fn(),
+    updateConstraint: vi.fn(),
     deleteConstraint: vi.fn(),
   },
 }));
@@ -159,5 +161,42 @@ describe('RulesPage', () => {
     expect(
       screen.getByRole('button', { name: /delete constraint: no room double booking/i }),
     ).toBeInTheDocument();
+  });
+
+  it('opens the Edit Metric dialog pre-filled when a metric card\'s edit icon is clicked', () => {
+    renderPage({ metrics: [fakeMetric] });
+    fireEvent.click(screen.getByRole('button', { name: /edit metric rule: max daily load/i }));
+
+    expect(screen.getByRole('heading', { name: /edit metric rule/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/^name/i)).toHaveValue('Max daily load');
+  });
+
+  it('updates the metric card in place after a successful edit, without adding a row', async () => {
+    // The page refetches on mount (fetchMetricRulesThunk); without this the
+    // default empty-array mock would overwrite the preloaded fakeMetric
+    // before the awaited assertions below run.
+    vi.mocked(rulesService.rulesService.getMetricRules).mockResolvedValueOnce([fakeMetric]);
+    vi.mocked(rulesService.rulesService.updateMetricRule).mockResolvedValueOnce({
+      ...fakeMetric,
+      name: 'Max daily load (revised)',
+    });
+    renderPage({ metrics: [fakeMetric] });
+
+    fireEvent.click(screen.getByRole('button', { name: /edit metric rule: max daily load/i }));
+    fireEvent.change(screen.getByLabelText(/^name/i), { target: { value: 'Max daily load (revised)' } });
+    fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
+
+    await waitFor(() => expect(screen.getByText('Max daily load (revised)')).toBeInTheDocument());
+    expect(screen.queryByText('Max daily load')).not.toBeInTheDocument();
+    expect(screen.getAllByText(/maximum classes any lecturer/i)).toHaveLength(1);
+    await waitFor(() => expect(screen.getByText(/metric rule updated/i)).toBeInTheDocument());
+  });
+
+  it('opens the Edit Constraint dialog pre-filled when a constraint card\'s edit icon is clicked', () => {
+    renderPage({ constraints: [fakeConstraint] });
+    fireEvent.click(screen.getByRole('button', { name: /edit constraint: no room double booking/i }));
+
+    expect(screen.getByRole('heading', { name: /edit hard constraint/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/^name/i)).toHaveValue('No room double booking');
   });
 });

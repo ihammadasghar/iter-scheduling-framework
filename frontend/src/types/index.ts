@@ -7,6 +7,7 @@ export type {
   ConflictType,
   Conflict,
   MetricResult,
+  MetricDirection,
   Suggestion,
   RoomAvailability,
   ProposalStatus,

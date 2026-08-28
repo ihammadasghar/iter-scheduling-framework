@@ -7,6 +7,8 @@
 // are sent verbatim as the `target` field of a metric rule, and evaluation
 // 400s if they don't match one of the backend's `target:condition` pairs.
 
+import type { MetricDirection } from '@/types';
+
 export type RuleTarget = 'Class' | 'Professor' | 'Room' | 'StudentGroup';
 export type RuleCondition =
   | 'count'
@@ -79,14 +81,73 @@ export const getConditionLabel = (condition: string): string =>
 export const getConditionsByTarget = (target: string): readonly ConditionOption[] =>
   CONDITIONS_BY_TARGET[target] ?? [];
 
+// Sensible default direction per condition, used to pre-fill (but never
+// silently overwrite) AddMetricDialog's direction control. `count` and
+// avg_classes_per_day` are deliberately absent — an institution wants a
+// value *close to* a specific count/average, not simply "more" or "less"
+// of it, so they keep the symmetric distance-from-threshold scoring as
+// their sensible default too. Mirrors the "Lower is better"/etc. comments
+// in the backend's MetricRuleTranslator.ts.
+const DIRECTION_BY_CONDITION: Partial<Record<RuleCondition, MetricDirection>> = {
+  max_classes_per_day: 'lower_is_better',
+  back_to_back_ratio: 'lower_is_better',
+  avg_gap_length: 'lower_is_better',
+  utilization: 'higher_is_better',
+  room_consistency: 'higher_is_better',
+  free_day_ratio: 'higher_is_better',
+};
+
+export const getDefaultDirection = (condition: string): MetricDirection | undefined =>
+  DIRECTION_BY_CONDITION[condition as RuleCondition];
+
+const DIRECTION_LABELS: Record<MetricDirection, string> = {
+  higher_is_better: 'Higher is better',
+  lower_is_better: 'Lower is better',
+};
+
+export const getDirectionLabel = (direction: MetricDirection): string =>
+  DIRECTION_LABELS[direction];
+
 export const getViolationConditionLabel = (violationCondition: string): string =>
   VIOLATION_CONDITION_LABELS[violationCondition] ?? violationCondition;
+
+// The 2 violationCondition values that are institution-parameterized policy
+// constraints — the only ones that take a numeric `limit` — as opposed to
+// the other 4, which describe physical impossibilities (double-booking,
+// capacity) and are never parameterized. Mirrors the backend's
+// ConstraintTranslator.isPolicyConstraint.
+const LIMIT_VIOLATION_CONDITIONS = new Set(['consecutive_limit', 'gap_limit']);
+
+export const needsLimit = (violationCondition: string): boolean =>
+  LIMIT_VIOLATION_CONDITIONS.has(violationCondition);
+
+// Like getViolationConditionLabel, but folds in the constraint's limit for
+// the 2 conditions that have one, e.g. "more than 3 consecutive periods"
+// instead of the generic "Lecturer teaches more than allowed consecutive
+// periods". Falls back to the plain label when limit is absent (e.g. the
+// dropdown option list, which has no constraint instance to read a limit
+// from) or the condition isn't limit-based.
+export const describeViolationCondition = (violationCondition: string, limit?: number): string => {
+  if (limit === undefined) return getViolationConditionLabel(violationCondition);
+  if (violationCondition === 'consecutive_limit') {
+    return `more than ${limit} consecutive period${limit === 1 ? '' : 's'}`;
+  }
+  if (violationCondition === 'gap_limit') {
+    return `gap greater than ${limit} period${limit === 1 ? '' : 's'}`;
+  }
+  return getViolationConditionLabel(violationCondition);
+};
 
 export const TARGET_OPTIONS: readonly { value: RuleTarget; label: string }[] = [
   { value: 'Class', label: 'Classes' },
   { value: 'Professor', label: 'Lecturers' },
   { value: 'Room', label: 'Rooms' },
   { value: 'StudentGroup', label: 'Student Groups' },
+];
+
+export const DIRECTION_OPTIONS: readonly { value: MetricDirection; label: string }[] = [
+  { value: 'higher_is_better', label: 'Higher is better' },
+  { value: 'lower_is_better', label: 'Lower is better' },
 ];
 
 export const VIOLATION_CONDITION_OPTIONS: readonly { value: string; label: string }[] = [

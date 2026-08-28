@@ -1,5 +1,5 @@
 // Frontend-only types — UI state shapes not part of the backend domain.
-import type { MetricResult, Simulation } from './domain';
+import type { MetricDirection, MetricResult, Simulation } from './domain';
 
 export type UserRole = 'professor' | 'student' | 'admin';
 
@@ -54,4 +54,5 @@ export interface MetricDelta {
   readonly before: number;
   readonly after: number;
   readonly unit: string;
+  readonly direction?: MetricDirection;
 }

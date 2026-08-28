@@ -26,6 +26,7 @@ import {
   deleteMetricRuleThunk,
   deleteConstraintThunk,
 } from '@/store/reducers/rulesSlice';
+import type { MetricRule, Constraint } from '@/types';
 
 type DeleteTarget = { kind: 'metric' | 'constraint'; id: string; name: string } | null;
 
@@ -35,6 +36,8 @@ export default function RulesPage(): React.ReactElement {
 
   const [addMetricOpen, setAddMetricOpen] = useState(false);
   const [addConstraintOpen, setAddConstraintOpen] = useState(false);
+  const [editMetricTarget, setEditMetricTarget] = useState<MetricRule | null>(null);
+  const [editConstraintTarget, setEditConstraintTarget] = useState<Constraint | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string }>({
     open: false,
@@ -91,6 +94,7 @@ export default function RulesPage(): React.ReactElement {
         <MetricRuleCard
           key={rule.id}
           rule={rule}
+          onEdit={setEditMetricTarget}
           onDelete={(id) =>
             setDeleteTarget({ kind: 'metric', id, name: rule.name })
           }
@@ -132,6 +136,7 @@ export default function RulesPage(): React.ReactElement {
         <ConstraintRuleCard
           key={rule.id}
           rule={rule}
+          onEdit={setEditConstraintTarget}
           onDelete={(id) =>
             setDeleteTarget({ kind: 'constraint', id, name: rule.name })
           }
@@ -156,16 +161,25 @@ export default function RulesPage(): React.ReactElement {
 
         <TwoColumnLayout left={metricSection} right={constraintSection} />
 
-        {/* Add dialogs */}
+        {/* Add/Edit dialogs — one instance of each shared between create and
+            edit; existingRule is set only for the edit flow. */}
         <AddMetricDialog
-          open={addMetricOpen}
-          onClose={() => setAddMetricOpen(false)}
-          onSuccess={() => showSnackbar('Metric rule added')}
+          open={addMetricOpen || editMetricTarget !== null}
+          onClose={() => {
+            setAddMetricOpen(false);
+            setEditMetricTarget(null);
+          }}
+          onSuccess={() => showSnackbar(editMetricTarget ? 'Metric rule updated' : 'Metric rule added')}
+          existingRule={editMetricTarget ?? undefined}
         />
         <AddConstraintDialog
-          open={addConstraintOpen}
-          onClose={() => setAddConstraintOpen(false)}
-          onSuccess={() => showSnackbar('Constraint added')}
+          open={addConstraintOpen || editConstraintTarget !== null}
+          onClose={() => {
+            setAddConstraintOpen(false);
+            setEditConstraintTarget(null);
+          }}
+          onSuccess={() => showSnackbar(editConstraintTarget ? 'Constraint updated' : 'Constraint added')}
+          existingRule={editConstraintTarget ?? undefined}
         />
 
         {/* Delete confirmation */}

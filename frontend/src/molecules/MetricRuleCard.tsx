@@ -1,16 +1,19 @@
 import { Box, Card, CardContent, CardActions, IconButton, Tooltip, Typography } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { getTargetLabel, getConditionLabel } from '@/utils/ruleLabels';
+import EditIcon from '@mui/icons-material/Edit';
+import { getTargetLabel, getConditionLabel, getDirectionLabel } from '@/utils/ruleLabels';
 import type { MetricRule } from '@/types';
 
 interface MetricRuleCardProps {
   readonly rule: MetricRule;
+  readonly onEdit: (rule: MetricRule) => void;
   readonly onDelete: (id: string) => void;
   readonly disabled?: boolean;
 }
 
 export default function MetricRuleCard({
   rule,
+  onEdit,
   onDelete,
   disabled = false,
 }: MetricRuleCardProps): React.ReactElement {
@@ -29,11 +32,28 @@ export default function MetricRuleCard({
         <Typography variant="body2" color="text.secondary">
           Target value: {rule.threshold}
         </Typography>
+        {rule.direction && (
+          <Typography variant="body2" color="text.secondary">
+            Direction: {getDirectionLabel(rule.direction)}
+          </Typography>
+        )}
         <Typography variant="body2" color="text.secondary">
           Weight: {rule.weight}
         </Typography>
       </CardContent>
       <CardActions sx={{ justifyContent: 'flex-end', pt: 0 }}>
+        <Tooltip title="Edit this rule">
+          <Box component="span">
+            <IconButton
+              aria-label={`Edit metric rule: ${rule.name}`}
+              size="small"
+              onClick={() => onEdit(rule)}
+              disabled={disabled}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Box>
+        </Tooltip>
         <Tooltip title="Delete this rule">
           <Box component="span">
             <IconButton
