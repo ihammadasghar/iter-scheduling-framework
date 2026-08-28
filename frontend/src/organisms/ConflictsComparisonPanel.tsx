@@ -1,7 +1,7 @@
 import { Alert, Box, List, ListItem, ListItemText, Stack, Typography } from '@mui/material';
 import HealthSummaryTile from '@/molecules/HealthSummaryTile';
 import ConflictBreakdownChart from '@/molecules/ConflictBreakdownChart';
-import { groupConflictsByType } from '@/utils/groupConflictsByType';
+import { groupConflictsByType, isPolicyViolation } from '@/utils/groupConflictsByType';
 import type { Conflict, ConflictDelta } from '@/types';
 
 interface ConflictsComparisonPanelProps {
@@ -24,7 +24,9 @@ function ConflictList({ title, conflicts }: ConflictListProps): React.ReactEleme
       <List dense disablePadding>
         {conflicts.map((c) => (
           <ListItem key={c.id} disablePadding>
-            <ListItemText primary={c.message} />
+            <ListItemText
+              primary={isPolicyViolation(c.type) ? `Institution rule violated: ${c.message}` : c.message}
+            />
           </ListItem>
         ))}
       </List>

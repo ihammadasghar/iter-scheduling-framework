@@ -11,11 +11,19 @@ interface ConflictBreakdownChartProps {
 // Validated categorical palette (see docs/superpowers/specs/2026-07-24-simulation-overview-visualizations-design.md).
 // ROOM_CAPACITY_EXCEEDED's rose slot was added after that spec landed — re-validated
 // via the dataviz skill's validate_palette.js (adjacent-pairs, light mode): all pass.
+// CONSECUTIVE_LIMIT_EXCEEDED/GAP_LIMIT_EXCEEDED's green/red slots (from the
+// skill's reference palette) were added the same way, appended in this fixed
+// adjacent order — validate_palette.js reports a CVD WARN on the green↔red
+// pair (6-8 band), legal because this chart already carries visible direct
+// labels (the x-axis band label under every bar), same mitigation the skill
+// requires for a WARN.
 const BAR_COLORS: Readonly<Record<ConflictType, string>> = {
   ROOM_DOUBLE_BOOK: '#2f6fc4',
   PROFESSOR_OVERLAP: '#b35c00',
   GROUP_OVERLAP: '#5b3a9e',
   ROOM_CAPACITY_EXCEEDED: '#a13d6f',
+  CONSECUTIVE_LIMIT_EXCEEDED: '#008300',
+  GAP_LIMIT_EXCEEDED: '#e34948',
 };
 
 export default function ConflictBreakdownChart({

@@ -17,6 +17,10 @@ export const getConflictMessage = (type: ConflictType, resourceName: string): st
       return `${resourceName} students are in two classes at once`;
     case 'ROOM_CAPACITY_EXCEEDED':
       return `${resourceName} exceeds the room's capacity`;
+    case 'CONSECUTIVE_LIMIT_EXCEEDED':
+      return `${resourceName} teaches too many consecutive periods`;
+    case 'GAP_LIMIT_EXCEEDED':
+      return `${resourceName} has an excessive gap between classes`;
   }
 };
 
@@ -42,6 +46,12 @@ export const resolveConflictResourceName = (
       return names.groupName(cls.studentGroupId);
     case 'ROOM_CAPACITY_EXCEEDED':
       return `${names.groupName(cls.studentGroupId)} in ${names.roomName(cls.roomId)}`;
+    case 'CONSECUTIVE_LIMIT_EXCEEDED':
+    case 'GAP_LIMIT_EXCEEDED':
+      // Both policy constraints are professor-scoped: the same professor
+      // teaches classIds[0] and classIds[1], so it doesn't matter which one
+      // "self" resolves to here (same as the ROOM_DOUBLE_BOOK-style cases).
+      return names.professorName(cls.professorId);
   }
 };
 

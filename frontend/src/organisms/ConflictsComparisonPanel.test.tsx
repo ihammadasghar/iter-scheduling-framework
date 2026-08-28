@@ -17,6 +17,13 @@ const RESOLVED_CONFLICT: Conflict = {
   message: 'Dr. Smith is double-booked between CLS_003 and CLS_004.',
 };
 
+const POLICY_VIOLATION: Conflict = {
+  id: 'CONSECUTIVE_LIMIT_EXCEEDED_constraint-1_CLS_005_CLS_007',
+  type: 'CONSECUTIVE_LIMIT_EXCEEDED',
+  classIds: ['CLS_005', 'CLS_007'],
+  message: "Professor 'Dr. Jones' teaches more than 3 consecutive periods (classes CLS_005–CLS_007)",
+};
+
 describe('ConflictsComparisonPanel', () => {
   it('renders both baseline and candidate health tiles with no delta banner when nothing changed', () => {
     render(
@@ -66,5 +73,20 @@ describe('ConflictsComparisonPanel', () => {
     );
     expect(screen.getByText('Newly Introduced Conflicts (1)')).toBeInTheDocument();
     expect(screen.getByText('Resolved Conflicts (1)')).toBeInTheDocument();
+  });
+
+  it('labels a policy constraint violation as an institution rule, distinct from structural conflicts', () => {
+    render(
+      <ConflictsComparisonPanel
+        baselineConflicts={[]}
+        candidateConflicts={[CONFLICT, POLICY_VIOLATION]}
+        conflictDelta={{ added: [CONFLICT, POLICY_VIOLATION], resolved: [] }}
+      />,
+    );
+
+    expect(screen.getByText(`Institution rule violated: ${POLICY_VIOLATION.message}`)).toBeInTheDocument();
+    // The structural conflict renders its plain message, with no prefix.
+    expect(screen.getByText(CONFLICT.message)).toBeInTheDocument();
+    expect(screen.queryByText(`Institution rule violated: ${CONFLICT.message}`)).not.toBeInTheDocument();
   });
 });
