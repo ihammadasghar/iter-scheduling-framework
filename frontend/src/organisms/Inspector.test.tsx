@@ -143,14 +143,12 @@ describe('Inspector', () => {
     expect(screen.getByText(/monday period 1/i)).toBeInTheDocument();
   });
 
-  it('does not fetch or render suggestions when simId is omitted (read-only mode)', async () => {
+  it('never fetches or renders Smart Suggestions — that now lives in the Edit Assignment dialog', async () => {
     const { simulationService } = await import('@/services/simulationService');
-    render_(
-      { inspectorOpen: true, selectedClassId: 'CLS_001', classes: [sampleClass] },
-      null,
-    );
+    render_({ inspectorOpen: true, selectedClassId: 'CLS_001', classes: [sampleClass] });
     expect(simulationService.getClassSuggestions).not.toHaveBeenCalled();
-    // Class details still render — only the suggestions section is skipped
+    expect(screen.queryByText('Smart Suggestions')).not.toBeInTheDocument();
+    // Class details still render regardless
     expect(screen.getByText('Biology 101 — Section A')).toBeInTheDocument();
   });
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
-  FormControl, IconButton, InputLabel, MenuItem, Select, Stack, Typography,
+  Divider, FormControl, IconButton, InputLabel, MenuItem, Select, Stack, Typography,
 } from '@mui/material';
 import type { SelectChangeEvent } from '@mui/material';
 import { Close } from '@mui/icons-material';
@@ -10,6 +10,7 @@ import { useApplySuggestion } from '@/hooks/useApplySuggestion';
 import { useScheduleNames } from '@/hooks/useScheduleNames';
 import { DeltaChip, ScoreDeltaChip } from '@/molecules/SuggestionCard';
 import AssignmentOverlayCalendar from '@/organisms/AssignmentOverlayCalendar';
+import SuggestionsList from '@/organisms/SuggestionsList';
 import { deriveDayOrder, computeContiguousSlotIds, timeToMinutes } from '@/utils/calendarLayout';
 import { buildOverlayBlocks } from '@/utils/overlayLayout';
 import { formatTimeSlotFull } from '@/utils/scheduleFormatters';
@@ -341,6 +342,9 @@ export default function EditAssignmentDialog({
               This time clashes with an existing class for {clashes.join(', ')}.
             </Alert>
           )}
+
+          <Divider />
+          <SuggestionsList simId={simId} classId={classId} currentClass={currentClass} />
 
           {appliedSummary && (
             <Alert severity="success">

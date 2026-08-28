@@ -1,9 +1,8 @@
-import { Box, Divider, IconButton, Tooltip, Typography } from '@mui/material';
+import { Box, IconButton, Tooltip, Typography } from '@mui/material';
 import { Close } from '@mui/icons-material';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { deselectClass, toggleInspector } from '@/store/reducers/uiSlice';
 import ClassDetailSection from '@/molecules/ClassDetailSection';
-import SuggestionsList from '@/organisms/SuggestionsList';
 import InspectorSkeleton from '@/organisms/InspectorSkeleton';
 import { useScheduleNames } from '@/hooks/useScheduleNames';
 
@@ -98,20 +97,12 @@ export default function Inspector({ simId }: InspectorProps): React.ReactElement
         {inspectorOpen && selectedClass === undefined && <InspectorSkeleton />}
 
         {selectedClass !== undefined && (
-          <>
-            <ClassDetailSection
-              classItem={selectedClass}
-              conflicts={conflicts}
-              classes={classes}
-              simId={simId}
-            />
-            {simId !== undefined && (
-              <>
-                <Divider sx={{ my: 1 }} />
-                <SuggestionsList simId={simId} classId={selectedClass.id} currentClass={selectedClass} />
-              </>
-            )}
-          </>
+          <ClassDetailSection
+            classItem={selectedClass}
+            conflicts={conflicts}
+            classes={classes}
+            simId={simId}
+          />
         )}
       </Box>
     </Box>

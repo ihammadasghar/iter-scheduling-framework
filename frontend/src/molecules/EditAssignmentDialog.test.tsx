@@ -11,7 +11,7 @@ import scoreReducer from '@/store/reducers/scoreSlice';
 import scheduleReducer from '@/store/reducers/scheduleSlice';
 import * as simulationService from '@/services/simulationService';
 import type {
-  RawProfessor, RawRoom, RawStudentGroup, RawTimeSlot, ScheduleClass,
+  RawProfessor, RawRoom, RawStudentGroup, RawTimeSlot, ScheduleClass, Suggestion,
 } from '@/types';
 
 vi.mock('@/services/simulationService', () => ({
@@ -21,6 +21,7 @@ vi.mock('@/services/simulationService', () => ({
     getConflicts: vi.fn().mockResolvedValue([]),
     getMetrics: vi.fn().mockResolvedValue([]),
     getScore: vi.fn().mockResolvedValue({ score: 0, breakdown: [] }),
+    getClassSuggestions: vi.fn().mockResolvedValue([]),
   },
 }));
 
@@ -298,5 +299,42 @@ describe('EditAssignmentDialog', () => {
 
     expect(onClose).toHaveBeenCalled();
     expect(simulationService.simulationService.updateClass).not.toHaveBeenCalled();
+  });
+
+  // Smart Suggestions used to live in the Inspector's Class Details panel —
+  // it now renders inside this dialog, alongside the manual controls.
+  describe('Smart Suggestions', () => {
+    const SUGGESTION: Suggestion = { roomId: 'RM_102', timeSlotIds: ['TS_TUE_P1'], conflictFree: true };
+
+    it('fetches and renders suggestions for the class being edited', async () => {
+      vi.mocked(simulationService.simulationService.getClassSuggestions).mockResolvedValue([SUGGESTION]);
+      renderDialog();
+
+      expect(await screen.findByText('Smart Suggestions')).toBeInTheDocument();
+      expect(simulationService.simulationService.getClassSuggestions).toHaveBeenCalledWith(SIM_ID, CLASS_ID);
+      expect(await screen.findByRole('button', { name: /move biology 101 to room 102/i })).toBeInTheDocument();
+    });
+
+    it('applying a suggestion card commits it independently of the manual controls', async () => {
+      vi.mocked(simulationService.simulationService.getClassSuggestions).mockResolvedValue([SUGGESTION]);
+      vi.mocked(simulationService.simulationService.previewClassUpdate).mockResolvedValue({
+        metrics: [], score: { score: 0, breakdown: [] },
+      });
+      vi.mocked(simulationService.simulationService.updateClass).mockResolvedValue({
+        ...currentClass, roomId: SUGGESTION.roomId, timeSlotIds: [...SUGGESTION.timeSlotIds],
+      });
+      const user = userEvent.setup();
+      renderDialog();
+
+      await user.click(await screen.findByRole('button', { name: /move biology 101 to room 102/i }));
+
+      await waitFor(() => {
+        expect(simulationService.simulationService.updateClass).toHaveBeenCalledWith(
+          SIM_ID, CLASS_ID,
+          { roomId: 'RM_102', timeSlotIds: ['TS_TUE_P1'] },
+        );
+      });
+      expect(await screen.findByText(/moved to room 102/i)).toBeInTheDocument();
+    });
   });
 });
