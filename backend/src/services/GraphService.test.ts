@@ -749,7 +749,7 @@ describe('GraphService', () => {
       expect(result.every((s) => s.conflictFree)).toBe(true);
     });
 
-    it('includes all three constraint checks in the Cypher (HELD_IN, TAUGHT_BY, ATTENDED_BY)', async () => {
+    it('includes all four constraint checks in the Cypher (HELD_IN, TAUGHT_BY, ATTENDED_BY, capacity)', async () => {
       mockClient = { run: vi.fn().mockResolvedValue([]), close: vi.fn() };
       service = new GraphService(mockClient);
 
@@ -759,6 +759,17 @@ describe('GraphService', () => {
       expect(cypher).toContain('HELD_IN');
       expect(cypher).toContain('TAUGHT_BY');
       expect(cypher).toContain('ATTENDED_BY');
+      expect(cypher).toContain('g.size <= r.capacity');
+    });
+
+    it('joins the class to its own student group to check room capacity', async () => {
+      mockClient = { run: vi.fn().mockResolvedValue([]), close: vi.fn() };
+      service = new GraphService(mockClient);
+
+      await service.getSuggestions(BRANCH_ID, CLASS_ID);
+
+      const [cypher] = (mockClient.run as ReturnType<typeof vi.fn>).mock.calls[0] as [string];
+      expect(cypher).toContain('(cls:Class {id: $classId, branchId: $branchId})-[:ATTENDED_BY]->(g:StudentGroup');
     });
   });
 

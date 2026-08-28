@@ -276,18 +276,18 @@ export class GraphService implements IGraphService {
     const branchId = simulationId;
 
     const cypher = `
-      MATCH (cls:Class {id: $classId, branchId: $branchId})
+      MATCH (cls:Class {id: $classId, branchId: $branchId})-[:ATTENDED_BY]->(g:StudentGroup {branchId: $branchId})
       MATCH (r:Room {branchId: $branchId}), (t:TimeSlot {branchId: $branchId})
       OPTIONAL MATCH (roomOcc:Class {branchId: $branchId})-[:HELD_IN]->(r)
         WHERE (roomOcc)-[:SCHEDULED_AT]->(t) AND roomOcc.id <> cls.id
-      WITH cls, r, t, count(roomOcc) AS roomConflicts
+      WITH cls, g, r, t, count(roomOcc) AS roomConflicts
       OPTIONAL MATCH (profOcc:Class {branchId: $branchId})-[:TAUGHT_BY]->(:Professor {id: cls.professorId, branchId: $branchId})
         WHERE (profOcc)-[:SCHEDULED_AT]->(t) AND profOcc.id <> cls.id
-      WITH cls, r, t, roomConflicts, count(profOcc) AS profConflicts
+      WITH cls, g, r, t, roomConflicts, count(profOcc) AS profConflicts
       OPTIONAL MATCH (groupOcc:Class {branchId: $branchId})-[:ATTENDED_BY]->(:StudentGroup {id: cls.studentGroupId, branchId: $branchId})
         WHERE (groupOcc)-[:SCHEDULED_AT]->(t) AND groupOcc.id <> cls.id
-      WITH r, t, roomConflicts, profConflicts, count(groupOcc) AS groupConflicts
-      WHERE roomConflicts = 0 AND profConflicts = 0 AND groupConflicts = 0
+      WITH g, r, t, roomConflicts, profConflicts, count(groupOcc) AS groupConflicts
+      WHERE roomConflicts = 0 AND profConflicts = 0 AND groupConflicts = 0 AND g.size <= r.capacity
       WITH r, collect(DISTINCT t.id) AS timeSlotIds
       RETURN r.id AS roomId, timeSlotIds
       ORDER BY r.id

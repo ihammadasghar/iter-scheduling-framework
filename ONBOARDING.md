@@ -609,8 +609,8 @@ GET /simulations/:id/classes/:classId/suggestions
 ```
 
 - Queries all `(Room, TimeSlot)` combinations.
-- Filters out any combination where the room, professor, or student group of this class already has another class scheduled.
-- Returns only conflict-free options.
+- Filters out any combination where the room, professor, or student group of this class already has another class scheduled, or where the room's capacity is smaller than the class's student group.
+- Returns only conflict-free options (all four conflict types: `ROOM_DOUBLE_BOOK`, `PROFESSOR_OVERLAP`, `GROUP_OVERLAP`, `ROOM_CAPACITY_EXCEEDED`).
 
 ### 7.5 Commit to Branch
 
