@@ -686,9 +686,7 @@ Parsing strategy:
 
 ### 6.8 Rule Builder
 
-**Purpose:** Admin configuration screen for creating and deleting metric rules and hard constraints that are stored in `rules.json` on `main`.
-
-> ⚠️ **This screen depends entirely on the `RulesService` backend implementation, which currently returns `501 Not Implemented` for all endpoints.** The UI can be built but will not function until the backend is completed. See [Section 11](#11-backend-gaps-required-for-full-ui).
+**Purpose:** Admin configuration screen for creating, editing, and deleting metric rules and hard constraints that are stored in `rules.json` on `main`.
 
 **Layout:**
 
@@ -738,21 +736,50 @@ Parsing strategy:
 └──────────────────────────────────────┘
 ```
 
-**Supported target/condition combinations** (driven by backend's `MetricRuleTranslator`).  
-Labels are human-readable — the underlying `target:condition` key is never shown to the Admin:
+**Supported target/condition combinations** — the source of truth is
+`backend/src/utils/MetricRuleTranslator.ts`'s `TRANSLATION_MAP` (also
+exported as `isSupportedMetric()`, used to validate a metric rule at
+create/update/read time); the plain-English labels below come from
+`frontend/src/utils/ruleLabels.ts`. The underlying `target:condition` key is
+never shown to the Admin:
 
-| "What to measure" (Target) | "How to measure it" (Condition) | Plain label shown in dropdown |
+| "What to measure" (Target) | "How to measure it" (Condition) | Plain label shown in dropdown | Direction default |
+|---|---|---|---|
+| Classes | count | Total number of classes | — |
+| Lecturers | avg_classes_per_day | Average classes per lecturer per day | — |
+| Lecturers | max_classes_per_day | Maximum classes any lecturer teaches in one day | Lower is better |
+| Lecturers | back_to_back_ratio | Share of a lecturer's classes scheduled back-to-back | Lower is better |
+| Lecturers | room_consistency | Share of a lecturer's classes held in their most-used room | Higher is better |
+| Lecturers | avg_gap_length | Average idle gap between a lecturer's classes | Lower is better |
+| Rooms | utilization | Percentage of rooms in use | Higher is better |
+| Student Groups | free_day_ratio | Share of student groups with at least one free day | Higher is better |
+
+The "How to measure it" dropdown is filtered based on the selected "What to measure". Every option in both dropdowns has a `Tooltip` with a one-sentence plain English explanation. Each metric rule also carries an optional **Direction** (`higher_is_better` / `lower_is_better`), used to score which side of the threshold is an improvement; the Add/Edit dialog pre-fills a sensible default per condition (above) but the Admin can override it, and it can be left unset ("No preference") for conditions like `count` where neither direction is inherently better.
+
+**Hard constraint `violationCondition` catalog** — source of truth is
+`backend/src/utils/ConstraintTranslator.ts`'s `KNOWN_VIOLATION_CONDITIONS`.
+Two of the six are institution-parameterized ("policy" constraints) and take
+a numeric `limit`; the other four describe physical impossibilities and are
+always on, unparameterized:
+
+| `violationCondition` | Plain label shown in dropdown | Takes a `limit`? |
 |---|---|---|
-| Classes | count | Total number of classes |
-| Lecturers | avg_classes_per_day | Average classes per lecturer per day |
-| Lecturers | max_classes_per_day | Maximum classes any lecturer teaches in one day |
-| Rooms | utilization | Percentage of rooms in use |
+| professor_overlap | Lecturer teaches two classes at the same time | No |
+| room_double_book | Room booked for two classes at the same time | No |
+| group_overlap | Student group in two classes at once | No |
+| room_capacity_exceeded | Room assigned to a class smaller than the group it holds | No |
+| consecutive_limit | Lecturer teaches more than allowed consecutive periods | Yes (positive integer) |
+| gap_limit | Gap between a lecturer's classes exceeds the allowed maximum | Yes (positive integer) |
 
-The "How to measure it" dropdown is filtered based on the selected "What to measure" — selecting "Classes" shows only "Total number of classes". Every option in both dropdowns has a `Tooltip` with a one-sentence plain English explanation.
+**Edit action:**
+1. Click edit icon on a metric/constraint card → same Add dialog opens, pre-filled with that rule's current values (`existingRule` prop)
+2. Change one or more fields, click "Save Changes"
+3. `PUT /rules/metrics/:metricId` or `PUT /rules/constraints/:constraintId` (full-resource replacement, same validation as create)
+4. On success: card updates in place (same id, no reorder); show snackbar
 
 **Delete action:**
 1. Click trash icon → confirm `Dialog`
-2. `DELETE /rules/metrics/:metricId`
+2. `DELETE /rules/metrics/:metricId` or `DELETE /rules/constraints/:constraintId`
 3. On success: remove card from list; show snackbar
 
 **Key components:**
@@ -760,11 +787,12 @@ The "How to measure it" dropdown is filtered based on the selected "What to meas
 | Component | MUI | Notes |
 |---|---|---|
 | Two-column layout | `Grid` container | Metrics left, Constraints right |
-| Rule card | `Card` | Name, target, condition, threshold, delete icon |
-| Add button | `Button` variant="outlined" | Opens `Dialog` with the rule builder form |
+| Rule card | `Card` | Name, target, condition, threshold, edit icon, delete icon |
+| Add button | `Button` variant="outlined" | Opens `Dialog` with the rule builder form, in create mode |
 | Target select | `Select` | Drives available condition options |
 | Condition select | `Select` | Options filtered by selected target |
 | Threshold input | `TextField` type="number" | Min 0; validated before submit |
+| Direction select | `Select` | Optional; pre-filled per condition, overridable |
 
 ---
 
@@ -905,12 +933,14 @@ Error message examples:
 | `GET` | `/proposals` | S6 | On page load; refresh button | ✅ (READY only) |
 | `GET` | `/proposals/:id` | S7 | On navigation to S7 | ✅ |
 | `POST` | `/proposals/:id/merge` | S7 | "Approve & Merge" button | ✅ |
-| `GET` | `/rules/metrics` | S8 | On page load | ⚠️ 501 |
-| `POST` | `/rules/metrics` | S8 | "Add Rule" form submit | ⚠️ 501 |
-| `DELETE` | `/rules/metrics/:id` | S8 | Delete icon | ⚠️ 501 |
-| `GET` | `/rules/constraints` | S8 | On page load | ⚠️ 501 |
-| `POST` | `/rules/constraints` | S8 | "Add Constraint" form submit | ⚠️ 501 |
-| `DELETE` | `/rules/constraints/:id` | S8 | Delete icon | ⚠️ 501 |
+| `GET` | `/rules/metrics` | S8 | On page load | ✅ |
+| `POST` | `/rules/metrics` | S8 | "Add Rule" form submit | ✅ |
+| `PUT` | `/rules/metrics/:id` | S8 | Edit icon → "Save Changes" | ✅ |
+| `DELETE` | `/rules/metrics/:id` | S8 | Delete icon | ✅ |
+| `GET` | `/rules/constraints` | S8 | On page load | ✅ |
+| `POST` | `/rules/constraints` | S8 | "Add Constraint" form submit | ✅ |
+| `PUT` | `/rules/constraints/:id` | S8 | Edit icon → "Save Changes" | ✅ |
+| `DELETE` | `/rules/constraints/:id` | S8 | Delete icon | ✅ |
 | `GET` | `/proposals?status=blocked` | S6 | On page load (BLOCKED section) | ❌ Missing |
 | `POST` | `/proposals/:id/reject` | S7 | "Reject" button | ❌ Missing |
 | `DELETE` | `/simulations/:id` | S1 | "Delete" button on simulation card | ❌ Missing |
@@ -921,21 +951,38 @@ Error message examples:
 
 The following backend work must be completed before the affected screens can be fully functional.
 
-### Gap 1 — `RulesService` (blocks S8: Rule Builder entirely)
+### Gap 1 — `RulesService` — ✅ Resolved
 
-**All 6 methods in `RulesService.ts` throw `501 Not Implemented`.**
+**`RulesService.ts` is fully implemented** (all 8 methods: list/create/
+update/delete for both metrics and constraints — no stubs remain).
 
-Required endpoints to implement:
+Live endpoints:
 - `GET /rules/metrics` — read `rules.json` from `main` and return the `metrics` array
 - `POST /rules/metrics` — append a new metric rule to `rules.json` on `main`
+- `PUT /rules/metrics/:metricId` — replace an existing metric rule in place
 - `DELETE /rules/metrics/:metricId` — remove a metric rule from `rules.json` on `main`
 - `GET /rules/constraints` — read the `constraints` array from `rules.json`
 - `POST /rules/constraints` — append a new constraint
+- `PUT /rules/constraints/:constraintId` — replace an existing constraint in place
 - `DELETE /rules/constraints/:constraintId` — remove a constraint
 
-All read/write operations go through `GitHubService.readFile` / `writeFile` on the `main` branch.
+All read/write operations go through `GitHubService.readFile` / `writeFile` on
+the `main` branch. Two behaviors worth calling out, since they're not
+obvious from "CRUD now works":
+- **Optimistic concurrency:** every write passes the SHA from the exact
+  `rules.json` read that preceded it as `expectedSha`; if the file changed
+  in between, the write is rejected with a 409 instead of silently
+  clobbering a concurrent edit.
+- **Catalog-aware schema validation:** create, update, and every read all
+  route through the same shared validators (`rulesValidation.ts`), which
+  check not just field presence/type but that a metric's `target:condition`
+  pair and a constraint's `violationCondition` are values the system
+  actually recognizes (see the catalogs in [§6.8](#68-rule-builder)). A
+  malformed `rules.json` entry is now rejected at read time with a clear
+  error, not just lazily when someone tries to evaluate against it.
 
-**UI impact:** The Rule Builder screen (S8) can be built with mock data, but all interactions will fail until this is implemented.
+**UI impact:** none remaining — the Rule Builder screen (S8) is fully
+functional end-to-end.
 
 ---
 
