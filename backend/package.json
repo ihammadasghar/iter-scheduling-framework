@@ -13,6 +13,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:e2e": "vitest run --config vitest.e2e.config.ts",
     "generate:mock-data": "tsx src/scripts/generate-large-schedule.ts",
+    "import:iscte": "tsx src/scripts/importIsteDataset.ts",
     "lint": "tsc --noEmit",
     "benchmark": "tsx src/scripts/benchmark.ts"
   },
@@ -20,7 +21,9 @@
     "node": ">=20.0.0"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   },
   "dependencies": {
     "@octokit/rest": "^22.0.1",
@@ -44,6 +47,7 @@
     "supertest": "^7.2.2",
     "tsx": "^4.23.12",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.8",
+    "xlsx": "^0.18.5"
   }
 }

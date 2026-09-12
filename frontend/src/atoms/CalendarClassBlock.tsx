@@ -58,6 +58,11 @@ export default function CalendarClassBlock({
   const leftPct = widthPct * block.laneIndex;
 
   const label = names.courseCode(classItem.courseId);
+  // A second line (room, or "No room" for ISCTE-style unscheduled classes —
+  // see docs/iscte-dataset.md) so wayfinding info is visible without a
+  // hover, whenever the block is tall enough to fit it without crowding.
+  const roomLabel = names.roomName(classItem.roomId) || 'No room';
+  const showRoomLine = height >= 50;
   const tooltipTitle = isConflicted && conflictSummary !== undefined
     ? `${conflictSummary} — click for details`
     : buildTooltip(classItem, names);
@@ -105,6 +110,14 @@ export default function CalendarClassBlock({
         <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {label}
         </Box>
+        {showRoomLine && (
+          <Box
+            component="span"
+            sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.65rem', fontWeight: 400, opacity: 0.85 }}
+          >
+            {roomLabel}
+          </Box>
+        )}
       </Box>
     </Tooltip>
   );

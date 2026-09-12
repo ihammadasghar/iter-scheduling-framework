@@ -1,5 +1,6 @@
 import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
+import { pathToFileURL } from 'url';
 import type {
   ScheduleJson,
   RawRoom,
@@ -276,6 +277,8 @@ function main(): void {
   );
 }
 
-if (require.main === module) {
+// require.main === module doesn't apply under NodeNext ESM output; compare
+// the entry-point URL instead (see importIsteDataset.ts for the same fix).
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   main();
 }

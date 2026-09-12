@@ -92,6 +92,16 @@ export class GitHubService implements IGitHubService {
       throw ApiError.badRequest(`Path "${path}" is not a file`);
     }
 
+    // The Contents API only inlines base64 `content` for files <= ~1MB;
+    // above that it still returns `sha`/`size` but `content` comes back as
+    // "" (encoding: "none") — decoding that yields an empty string, not
+    // truncated JSON, which is why the failure downstream is "invalid JSON"
+    // rather than a fetch error. Fall back to the Git Blob API, which
+    // supports up to 100MB, whenever content wasn't inlined.
+    if (!data.content) {
+      return { content: await this.readBlobBySha(data.sha), sha: data.sha };
+    }
+
     return {
       content: Buffer.from(data.content, 'base64').toString('utf-8'),
       sha: data.sha,

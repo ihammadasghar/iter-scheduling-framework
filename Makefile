@@ -1,4 +1,4 @@
-.PHONY: install setup-github dev test test-e2e lint build clean help
+.PHONY: install setup-github setup-github-iscte use-mock-repo use-iscte-repo dev test test-e2e lint build clean help
 
 # Resolve pnpm — try known install locations, fall back to plain 'pnpm' (relies on PATH)
 PNPM := $(firstword $(wildcard $(HOME)/.local/share/pnpm/pnpm $(HOME)/.pnpm/pnpm /usr/local/bin/pnpm /usr/bin/pnpm) pnpm)
@@ -18,7 +18,16 @@ install: ## Install dependencies for backend and frontend
 	$(PNPM) --dir frontend install
 
 setup-github: ## Create/reuse a real GitHub repo with large mock data, link backend/.env to it
-	./scripts/setup-github-repo.sh
+	./scripts/setup-github-repo.sh --source=mock
+
+setup-github-iscte: ## Create/reuse a real GitHub repo with the ISCTE dataset, link backend/.env to it
+	./scripts/setup-github-repo.sh --source=iscte
+
+use-mock-repo: ## Switch backend/.env to the mock-data GitHub repo (run setup-github first)
+	./scripts/switch-github-repo.sh mock
+
+use-iscte-repo: ## Switch backend/.env to the ISCTE-data GitHub repo (run setup-github-iscte first)
+	./scripts/switch-github-repo.sh iscte
 
 # ─────────────────────────────────────────────────────────────
 # Development

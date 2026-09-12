@@ -125,6 +125,26 @@ describe('GitHubService', () => {
     });
   });
 
+  it('readFile falls back to the Git Blob API when the Contents API omits content (files > ~1MB)', async () => {
+    // Above ~1MB, GitHub's Contents API returns content: "" / encoding:
+    // "none" even though sha/size are still populated — only the Blob API
+    // (up to 100MB) can fetch the actual bytes.
+    const rawContent = JSON.stringify({ classes: new Array(50_000).fill({ id: 'CLS' }) });
+    mock.rest.repos.getContent.mockResolvedValue({
+      data: { type: 'file', content: '', encoding: 'none', sha: 'big-sha', size: 2_000_000 },
+    });
+    mock.rest.git.getBlob.mockResolvedValue({
+      data: { content: Buffer.from(rawContent, 'utf-8').toString('base64'), encoding: 'base64' },
+    });
+
+    const result = await service.readFile('main', 'schedule.json');
+
+    expect(result).toBe(rawContent);
+    expect(mock.rest.git.getBlob).toHaveBeenCalledWith({
+      owner: OWNER, repo: REPO, file_sha: 'big-sha',
+    });
+  });
+
   // ── readFileWithSha ─────────────────────────────────────────────────────────
 
   it('readFileWithSha decodes content and returns the blob SHA', async () => {

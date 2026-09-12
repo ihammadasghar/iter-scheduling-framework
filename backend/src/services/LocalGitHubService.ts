@@ -193,9 +193,26 @@ export class LocalGitHubService implements IGitHubService {
   }
 }
 
+// MOCK_FIXTURE_SET picks which fixture pair backs GITHUB_PROVIDER=mock.
+// 'mock' (default) is the small hand-written fixture unit tests assume the
+// exact shape of; 'iscte' swaps in the real ISCTE 2022/23 dataset (see
+// docs/iscte-dataset.md) for developing/demoing against real data. Unset
+// stays byte-identical to before this toggle existed.
+const FIXTURE_SETS: Readonly<Record<string, { schedule: string; rules: string }>> = {
+  mock: { schedule: 'mock-schedule.json', rules: 'mock-rules.json' },
+  iscte: { schedule: 'iscte-schedule.json', rules: 'iscte-rules.json' },
+};
+
 export function loadDefaultFixtures(): Readonly<Record<string, string>> {
-  const scheduleJson = readFileSync(join(__dirname, '../fixtures/mock-schedule.json'), 'utf-8');
-  const rulesJson = readFileSync(join(__dirname, '../fixtures/mock-rules.json'), 'utf-8');
+  const requested = process.env['MOCK_FIXTURE_SET'] ?? 'mock';
+  const fixtureSet = FIXTURE_SETS[requested];
+  if (!fixtureSet) {
+    throw new Error(
+      `Unknown MOCK_FIXTURE_SET '${requested}' — expected one of: ${Object.keys(FIXTURE_SETS).join(', ')}`,
+    );
+  }
+  const scheduleJson = readFileSync(join(__dirname, `../fixtures/${fixtureSet.schedule}`), 'utf-8');
+  const rulesJson = readFileSync(join(__dirname, `../fixtures/${fixtureSet.rules}`), 'utf-8');
   return {
     'schedule.json': scheduleJson,
     'rules.json': rulesJson,

@@ -46,6 +46,20 @@ By default (`GITHUB_PROVIDER=mock` in `.env.example`), the backend never talks t
 1. Create a GitHub repository containing `schedule.json` and `rules.json` on `main` — see [ONBOARDING.md §5 — Data Models](./ONBOARDING.md#5-data-models) for the schema.
 2. In `backend/.env`, set `GITHUB_PROVIDER=github` and fill in `GITHUB_TOKEN` (a PAT with `repo` scope), `GITHUB_OWNER`, and `GITHUB_REPO`.
 
+`make setup-github` does all of this for you (creates/reuses the repo, generates and pushes the data, updates `backend/.env`) using the `gh` CLI.
+
+### Developing against real data
+
+Two ways to run against ISCTE-IUL's real 2022/23 schedule (~4,900 classes across 131 rooms) instead of synthetic data — see [docs/iscte-dataset.md](./docs/iscte-dataset.md) for what the data is, its known gaps (no professor field, sparse room assignment), and how it was converted:
+
+- **Mock mode** (in-memory, no GitHub): set `MOCK_FIXTURE_SET=iscte` alongside `GITHUB_PROVIDER=mock` in `backend/.env`.
+- **Real GitHub repo, with a real branch/PR flow**: `make setup-github-iscte` creates/reuses a dedicated repo (`iter-scheduling-iscte-data`) and pushes the converted data to it, separate from the mock-data repo `make setup-github` uses. Once both repos exist, flip `backend/.env` between them anytime with:
+  ```bash
+  make use-mock-repo   # -> iter-scheduling-data (or whatever you named it)
+  make use-iscte-repo  # -> iter-scheduling-iscte-data
+  ```
+  Each just rewrites `GITHUB_REPO` in `backend/.env` — restart the backend afterward to pick up the change.
+
 ---
 
 ## Prerequisites
