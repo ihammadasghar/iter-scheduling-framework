@@ -39,12 +39,12 @@ const renderFlow = (store: ReturnType<typeof makeStore>) =>
 describe('OnboardingFlow', () => {
   it('renders nothing once identity has not yet been checked (hydrated=false)', () => {
     renderFlow(makeStore({ hydrated: false }));
-    expect(screen.queryByText(/who's using unischedule/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/who's using iter/i)).not.toBeInTheDocument();
   });
 
   it('shows the role step once hydrated with no identity', () => {
     renderFlow(makeStore());
-    expect(screen.getByText(/who's using unischedule/i)).toBeInTheDocument();
+    expect(screen.getByText(/who's using iter/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^professor\b/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^student\b/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /scheduling office/i })).toBeInTheDocument();
@@ -110,7 +110,7 @@ describe('OnboardingFlow', () => {
     renderFlow(makeStore());
     await user.click(screen.getByRole('button', { name: /^professor\b/i }));
     await user.click(screen.getByRole('button', { name: /back/i }));
-    expect(screen.getByText(/who's using unischedule/i)).toBeInTheDocument();
+    expect(screen.getByText(/who's using iter/i)).toBeInTheDocument();
   });
 
   it('renders nothing once an identity has been chosen', () => {
@@ -122,6 +122,6 @@ describe('OnboardingFlow', () => {
       },
     });
     renderFlow(store);
-    expect(screen.queryByText(/who's using unischedule/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/who's using iter/i)).not.toBeInTheDocument();
   });
 });
