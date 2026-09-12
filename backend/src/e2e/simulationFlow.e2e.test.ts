@@ -25,6 +25,7 @@ describe('simulation flow (e2e, mock GitHub + real Memgraph)', () => {
       .expect(201);
 
     const simulationId = createRes.body.id as string;
+    const baseScheduleVersion = createRes.body.baseScheduleVersion as string;
     expect(simulationId).toMatch(/^sim-e2e-test-/);
 
     // 2. Confirm the seeded classes are visible
@@ -63,7 +64,7 @@ describe('simulation flow (e2e, mock GitHub + real Memgraph)', () => {
     // 7. Submit as a proposal — runs the CI pipeline against the mock GitHub branch
     const proposalRes = await request(app)
       .post('/api/v1/proposals')
-      .send({ simulationId, description: 'Resolved the Room 101 double-booking' })
+      .send({ simulationId, description: 'Resolved the Room 101 double-booking', baseScheduleVersion })
       .expect(201);
     expect(proposalRes.body.status).toBe('READY');
     const proposalId = proposalRes.body.id as string;

@@ -58,6 +58,7 @@ describe('scoring + CI-blocked/fixed proposal loop (e2e, mock GitHub + real Memg
       .send({ userId: 'e2e-scoring' })
       .expect(201);
     const simulationId = createRes.body.id as string;
+    const baseScheduleVersion = createRes.body.baseScheduleVersion as string;
     expect(simulationId).toMatch(/^sim-e2e-scoring-/);
 
     // 2. RQ2 score for the seeded fixture, computed from mock-rules.json against
@@ -161,7 +162,7 @@ describe('scoring + CI-blocked/fixed proposal loop (e2e, mock GitHub + real Memg
     //    metric score above changed even though conflicts didn't.
     const blockedProposalRes = await request(app)
       .post('/api/v1/proposals')
-      .send({ simulationId, description: 'Still has the Room 101 double-booking' })
+      .send({ simulationId, description: 'Still has the Room 101 double-booking', baseScheduleVersion })
       .expect(201);
     expect(blockedProposalRes.body.status).toBe('BLOCKED');
     const blockedProposalId = blockedProposalRes.body.id as string;
@@ -236,7 +237,7 @@ describe('scoring + CI-blocked/fixed proposal loop (e2e, mock GitHub + real Memg
     //     branch (see top-of-file note); this one should be READY
     const readyProposalRes = await request(app)
       .post('/api/v1/proposals')
-      .send({ simulationId, description: 'Resolved the Room 101 double-booking' })
+      .send({ simulationId, description: 'Resolved the Room 101 double-booking', baseScheduleVersion })
       .expect(201);
     expect(readyProposalRes.body.status).toBe('READY');
     const readyProposalId = readyProposalRes.body.id as string;
