@@ -38,7 +38,7 @@ export default function ChangeCard({ change }: ChangeCardProps): React.ReactElem
                 px: 1,
                 py: 0.25,
                 borderRadius: 1,
-                bgcolor: 'error.lighter',
+                bgcolor: 'error.light',
                 color: 'error.dark',
                 textDecoration: 'line-through',
               }}
@@ -52,7 +52,7 @@ export default function ChangeCard({ change }: ChangeCardProps): React.ReactElem
                 px: 1,
                 py: 0.25,
                 borderRadius: 1,
-                bgcolor: 'success.lighter',
+                bgcolor: 'success.light',
                 color: 'success.dark',
               }}
             >
