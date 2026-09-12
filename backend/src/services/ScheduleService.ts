@@ -6,7 +6,14 @@ import type { ScheduleJson, ScheduleRoster } from '../types/scheduleJson.js';
 
 const SOURCE_BRANCH = 'main';
 const SCHEDULE_JSON_PATH = 'schedule.json';
-const MAX_LIMIT = 500;
+// High enough that a real institution-scale schedule (thousands of classes,
+// e.g. ISCTE's ~4,900) fits on one page — readPublishedSchedule() re-fetches
+// and re-parses the *entire* schedule.json from GitHub on every call, so a
+// small page size doesn't just mean more requests, it means that full
+// fetch+parse repeated once per page. Must stay in sync with frontend
+// PAGE_SIZE (classSlice.ts, TimetablePage.tsx, PublishedSchedulePage.tsx,
+// SimulationDashboardPage.tsx) — see comments there.
+const MAX_LIMIT = 1000;
 
 // Reads main's schedule.json directly and paginates in memory. Deliberately
 // has no IGraphService/ISessionRegistry dependency — there is no simulation

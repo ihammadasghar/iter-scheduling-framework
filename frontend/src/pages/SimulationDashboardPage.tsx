@@ -15,7 +15,7 @@ import { fetchPublishedClassesPage, resetClasses } from '@/store/reducers/classS
 import { fetchPublishedScheduleThunk } from '@/store/reducers/scheduleSlice';
 import { initialWeekStart, excludedDaysForWeek } from '@/utils/weekNavigation';
 
-const PAGE_SIZE = 50; // must match PAGE_SIZE in classSlice
+const PAGE_SIZE = 1000; // must match PAGE_SIZE in classSlice
 
 export default function SimulationDashboardPage(): React.ReactElement {
   const dispatch = useAppDispatch();

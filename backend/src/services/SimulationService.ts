@@ -174,7 +174,9 @@ export class SimulationService implements ISimulationService {
 
     const safePage = Number.isFinite(page) && page > 0 ? page : 1;
     const requestedLimit = Number.isFinite(limit) && limit > 0 ? limit : 20;
-    const MAX_LIMIT = 500;
+    // Kept in sync with ScheduleService's MAX_LIMIT and frontend PAGE_SIZE —
+    // see the comment there.
+    const MAX_LIMIT = 1000;
     const safeLimit = Math.min(requestedLimit, MAX_LIMIT);
 
     // Ensure simulation exists in registry (session must be active/hydrated).

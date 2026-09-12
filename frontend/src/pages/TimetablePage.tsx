@@ -27,7 +27,7 @@ import { useInactivityWarning } from '@/hooks/useInactivityWarning';
 import { initialWeekStart, excludedDaysForWeek } from '@/utils/weekNavigation';
 import type { ConflictType, UserRole } from '@/types';
 
-const PAGE_SIZE = 50; // must match PAGE_SIZE in classSlice
+const PAGE_SIZE = 1000; // must match PAGE_SIZE in classSlice
 
 // A professor/student's default landing tab is their own calendar; anyone
 // else (admin, or no identity chosen at all — e.g. in isolated tests) lands

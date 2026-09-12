@@ -19,7 +19,7 @@ import { initialWeekStart, excludedDaysForWeek } from '@/utils/weekNavigation';
 // published-schedule calendar).
 const PUBLISHED_TABS: readonly WorkspaceTabValue[] = ['grid', 'browse'];
 
-const PAGE_SIZE = 50; // must match PAGE_SIZE in classSlice
+const PAGE_SIZE = 1000; // must match PAGE_SIZE in classSlice
 
 // Read-only view of the currently published (main) schedule — no simulation
 // session, no editing affordances (no HUD/conflicts/metrics/score/submit,

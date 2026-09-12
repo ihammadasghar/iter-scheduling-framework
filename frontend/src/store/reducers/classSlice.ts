@@ -21,7 +21,7 @@ const initialState: ClassState = {
   error: null,
 };
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 1000; // must match backend MAX_LIMIT (ScheduleService/SimulationService)
 
 export const fetchClassesPage = createAsyncThunk<
   { classes: ScheduleClass[]; total: number; page: number },

@@ -96,10 +96,10 @@ describe('ScheduleService.listClasses()', () => {
     expect(page3.data.map((c) => c.id)).toEqual(['CLS_5']);
   });
 
-  it('clamps limit to MAX_LIMIT (500)', async () => {
+  it('clamps limit to MAX_LIMIT (1000)', async () => {
     const result = await service.listClasses(1, 10_000);
 
-    expect(result.limit).toBe(500);
+    expect(result.limit).toBe(1000);
   });
 
   it('returns an empty page when the schedule has no classes', async () => {

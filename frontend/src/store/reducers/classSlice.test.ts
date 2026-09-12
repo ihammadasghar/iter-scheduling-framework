@@ -98,7 +98,7 @@ describe('classSlice', () => {
     const store = makeStore();
     await store.dispatch(fetchPublishedClassesPage({ page: 1 }));
     expect(store.getState().class.classes).toHaveLength(1);
-    expect(scheduleService.getPublishedClasses).toHaveBeenCalledWith(1, 50);
+    expect(scheduleService.getPublishedClasses).toHaveBeenCalledWith(1, 1000);
   });
 
   it('updateClassThunk.fulfilled replaces the updated class in state', () => {
