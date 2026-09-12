@@ -3,15 +3,15 @@ import theme from '../styles/theme';
 
 describe('theme', () => {
   it('primary colour matches MD3 token', () => {
-    expect(theme.palette.primary.main).toBe('#004d99');
+    expect(theme.palette.primary.main).toBe('#3454d8');
   });
 
   it('secondary colour matches MD3 token', () => {
-    expect(theme.palette.secondary.main).toBe('#046b5e');
+    expect(theme.palette.secondary.main).toBe('#0a6f64');
   });
 
   it('background default is surface colour', () => {
-    expect(theme.palette.background.default).toBe('#f9f9ff');
+    expect(theme.palette.background.default).toBe('#f5f6fb');
   });
 
   it('body1 font size is 1rem (16px minimum)', () => {
@@ -52,8 +52,8 @@ describe('theme', () => {
   });
 
   it('custom MD3 surface tokens are defined', () => {
-    expect(theme.palette.surfaceContainer).toBe('#ecedf6');
-    expect(theme.palette.outlineVariant).toBe('#c2c6d4');
-    expect(theme.palette.primaryContainer).toBe('#1565c0');
+    expect(theme.palette.surfaceContainer).toBe('#eef0f9');
+    expect(theme.palette.outlineVariant).toBe('#d9dcec');
+    expect(theme.palette.primaryContainer).toBe('#0f2e94');
   });
 });

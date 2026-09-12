@@ -1,4 +1,5 @@
-import { createTheme } from '@mui/material/styles';
+import { createTheme, alpha } from '@mui/material/styles';
+import type { Shadows, Theme } from '@mui/material/styles';
 
 // Extend MUI palette with MD3 surface/outline tokens
 declare module '@mui/material/styles' {
@@ -24,19 +25,37 @@ declare module '@mui/material/styles' {
   }
 }
 
+// A soft, indigo-tinted shadow scale replacing MUI's default flat-black
+// shadows — every component that reads elevation from theme.shadows[n]
+// (Card, Menu, Popover, Dialog, Select dropdown, Tooltip) picks this up for
+// a cohesive "floating surface" look in one place, instead of the harsh
+// default Material 2 shadow set.
+const SHADOW_TINT = '31, 41, 102'; // deep indigo, matches the new primary hue
+const softShadow = (elevation: number): string => {
+  if (elevation === 0) return 'none';
+  const yOffset = Math.round(elevation * 0.6);
+  const blur = Math.round(2 + elevation * 1.6);
+  const spread = elevation > 6 ? 1 : 0;
+  const opacity = Math.max(0.05, 0.14 - elevation * 0.0035).toFixed(3);
+  return `0 ${yOffset}px ${blur}px ${spread}px rgba(${SHADOW_TINT}, ${opacity})`;
+};
+const shadows = Array.from({ length: 25 }, (_, i) => softShadow(i)) as Shadows;
+
 const theme = createTheme({
+  shadows,
+
   palette: {
     primary: {
-      main: '#004d99',
+      main: '#3454d8',
       contrastText: '#ffffff',
-      light: '#a9c7ff',
-      dark: '#001b3d',
+      light: '#3f66dc',
+      dark: '#1f39ad',
     },
     secondary: {
-      main: '#046b5e',
+      main: '#0a6f64',
       contrastText: '#ffffff',
-      light: '#84d5c5',
-      dark: '#00201b',
+      light: '#3fc9b3',
+      dark: '#043d37',
     },
     error: {
       main: '#ba1a1a',
@@ -45,36 +64,38 @@ const theme = createTheme({
       dark: '#93000a',
     },
     success: {
-      main: '#198754',
+      main: '#127a48',
       contrastText: '#ffffff',
-      light: '#d1e7dd',
-      dark: '#0f5132',
+      light: '#d7f2e3',
+      dark: '#0a4a2c',
     },
     warning: {
-      main: '#813900',
+      main: '#b45309',
       contrastText: '#ffffff',
-      light: '#ffdbc9',
-      dark: '#321200',
+      light: '#ffe8cf',
+      dark: '#7c2d12',
     },
     background: {
-      default: '#f9f9ff',
-      paper: '#f9f9ff',
+      // Two-tier neutral: a slightly deeper page background so white cards
+      // ("paper") read as visibly elevated even before shadows are added.
+      default: '#f5f6fb',
+      paper: '#ffffff',
     },
     text: {
       primary: '#191c21',
       secondary: '#424752',
       disabled: '#727783',
     },
-    divider: '#c2c6d4',
+    divider: '#d9dcec',
     // MD3 surface/outline tokens
-    surfaceContainer: '#ecedf6',
-    surfaceContainerLow: '#f2f3fb',
-    surfaceContainerHigh: '#e7e8f0',
-    outlineVariant: '#c2c6d4',
-    primaryContainer: '#1565c0',
-    onPrimaryContainer: '#dae5ff',
-    secondaryContainer: '#9defde',
-    onSecondaryContainer: '#0f6f62',
+    surfaceContainer: '#eef0f9',
+    surfaceContainerLow: '#f7f8fc',
+    surfaceContainerHigh: '#e5e8f4',
+    outlineVariant: '#d9dcec',
+    primaryContainer: '#0f2e94',
+    onPrimaryContainer: '#dee6ff',
+    secondaryContainer: '#a7f0e0',
+    onSecondaryContainer: '#075e53',
   },
 
   typography: {
@@ -92,10 +113,10 @@ const theme = createTheme({
       fontWeight: 400,
     },
     h1: {
-      fontSize: '2rem',       // 32px
-      lineHeight: 1.25,
-      fontWeight: 700,
-      letterSpacing: '-0.01em',
+      fontSize: '2.25rem',    // 36px — bolder page-title presence
+      lineHeight: 1.2,
+      fontWeight: 800,
+      letterSpacing: '-0.02em',
     },
     h2: {
       fontSize: '1.5rem',     // 24px
@@ -126,8 +147,8 @@ const theme = createTheme({
     overline: {
       fontSize: '0.8125rem',  // 13px
       lineHeight: '16px',
-      fontWeight: 600,
-      letterSpacing: '0.05em',
+      fontWeight: 700,
+      letterSpacing: '0.08em',
       textTransform: 'uppercase',
     },
     caption: {
@@ -143,7 +164,7 @@ const theme = createTheme({
   },
 
   shape: {
-    borderRadius: 4,
+    borderRadius: 10,
   },
 
   components: {
@@ -155,7 +176,7 @@ const theme = createTheme({
           minWidth: '44px',
           paddingLeft: '16px',
           paddingRight: '16px',
-          borderRadius: '8px',
+          borderRadius: '10px',
         },
         sizeLarge: {
           minHeight: '48px',
@@ -167,6 +188,12 @@ const theme = createTheme({
           minHeight: '36px',
           paddingLeft: '12px',
           paddingRight: '12px',
+        },
+        contained: {
+          boxShadow: `0 2px 8px 0 rgba(${SHADOW_TINT}, 0.28)`,
+          '&:hover': {
+            boxShadow: `0 4px 14px 0 rgba(${SHADOW_TINT}, 0.34)`,
+          },
         },
       },
     },
@@ -188,6 +215,22 @@ const theme = createTheme({
           fontSize: '0.875rem',
         },
       },
+      variants: [
+        // Soft-filled status pills (tinted container + matching dark text)
+        // instead of a solid saturated block with white text — used by
+        // every status Chip (ProposalStatusChip, CIStatusBadge, ConflictChip,
+        // etc.) automatically, since they all go through color="..." already.
+        ...(['success', 'warning', 'error', 'info'] as const).map((key) => ({
+          props: { variant: 'filled' as const, color: key },
+          style: ({ theme: t }: { theme: Theme }) => ({
+            backgroundColor: alpha(t.palette[key].main, 0.16),
+            color: t.palette[key].dark,
+            '& .MuiChip-icon': {
+              color: t.palette[key].dark,
+            },
+          }),
+        })),
+      ],
     },
 
     MuiTooltip: {
@@ -208,13 +251,13 @@ const theme = createTheme({
         }
         body {
           margin: 0;
-          background-color: #f9f9ff;
+          background-color: #f5f6fb;
           color: #191c21;
           font-family: "Inter", sans-serif;
         }
         /* Visible focus ring for keyboard navigation (WCAG) */
         :focus-visible {
-          outline: 2px solid #004d99;
+          outline: 2px solid #3454d8;
           outline-offset: 2px;
         }
       `,
@@ -223,7 +266,7 @@ const theme = createTheme({
     MuiAppBar: {
       styleOverrides: {
         root: {
-          boxShadow: '0 1px 0 0 #c2c6d4',
+          boxShadow: `0 1px 0 0 #e5e8f4, 0 2px 10px 0 rgba(${SHADOW_TINT}, 0.06)`,
         },
       },
     },
@@ -231,9 +274,9 @@ const theme = createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: '12px',
-          border: '1px solid #e7e8f0',
-          boxShadow: 'none',
+          borderRadius: '16px',
+          border: '1px solid #eceffa',
+          boxShadow: `0 1px 2px 0 rgba(${SHADOW_TINT}, 0.05), 0 4px 16px 0 rgba(${SHADOW_TINT}, 0.06)`,
         },
       },
     },
@@ -241,7 +284,7 @@ const theme = createTheme({
     MuiDialog: {
       styleOverrides: {
         paper: {
-          borderRadius: '16px',
+          borderRadius: '20px',
         },
       },
     },
@@ -257,7 +300,7 @@ const theme = createTheme({
     MuiLinearProgress: {
       styleOverrides: {
         root: {
-          borderRadius: '4px',
+          borderRadius: '6px',
           height: '4px',
         },
       },
@@ -266,7 +309,7 @@ const theme = createTheme({
     MuiAlert: {
       styleOverrides: {
         root: {
-          borderRadius: '8px',
+          borderRadius: '10px',
           fontSize: '1rem',       // 16px — readable for older users
           lineHeight: 1.5,
         },

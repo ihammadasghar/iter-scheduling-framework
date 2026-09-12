@@ -14,10 +14,10 @@ export default function GlobalStyles(): React.ReactElement {
           height: '8px',
         },
         '::-webkit-scrollbar-track': {
-          background: '#f2f3fb',
+          background: '#f7f8fc',
         },
         '::-webkit-scrollbar-thumb': {
-          background: '#c2c6d4',
+          background: '#d9dcec',
           borderRadius: '4px',
         },
         '::-webkit-scrollbar-thumb:hover': {

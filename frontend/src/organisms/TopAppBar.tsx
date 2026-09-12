@@ -35,16 +35,19 @@ function NavLink({ href, label, tooltip }: NavLinkProps): React.ReactElement {
         sx={{
           textDecoration: 'none',
           fontWeight: active ? 700 : 500,
-          color: active ? 'primary.main' : 'text.secondary',
-          borderBottom: active ? '2px solid' : '2px solid transparent',
-          borderColor: active ? 'primary.main' : 'transparent',
-          height: '64px',
+          color: active ? 'onPrimaryContainer' : 'text.secondary',
+          bgcolor: active ? 'primaryContainer' : 'transparent',
+          borderRadius: '999px',
+          height: '44px',
           display: 'flex',
           alignItems: 'center',
-          px: 1,
-          transition: 'color 0.15s, border-color 0.15s',
-          '&:hover': { color: 'primary.main' },
-          // Enforce 44px minimum touch target width
+          px: 2,
+          transition: 'color 0.15s, background-color 0.15s',
+          '&:hover': {
+            color: active ? 'onPrimaryContainer' : 'primary.main',
+            bgcolor: active ? 'primaryContainer' : 'surfaceContainer',
+          },
+          // Enforce 44px minimum touch target
           minWidth: '44px',
         }}
       >
@@ -70,7 +73,7 @@ export default function TopAppBar(): React.ReactElement {
       position="sticky"
       color="inherit"
       elevation={0}
-      sx={{ height: 64, borderBottom: '1px solid', borderColor: 'outlineVariant' }}
+      sx={{ height: 64 }}
     >
       <Toolbar
         sx={{
@@ -89,14 +92,27 @@ export default function TopAppBar(): React.ReactElement {
             sx={{
               display: 'flex',
               alignItems: 'center',
-              gap: 1,
+              gap: 1.25,
               textDecoration: 'none',
-              color: 'primary.main',
-              fontWeight: 700,
+              color: 'text.primary',
+              fontWeight: 800,
               flexShrink: 0,
             }}
           >
-            <CalendarMonth fontSize="medium" />
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 36,
+                height: 36,
+                borderRadius: '10px',
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+              }}
+            >
+              <CalendarMonth fontSize="small" />
+            </Box>
             ITER
           </Typography>
         </Tooltip>

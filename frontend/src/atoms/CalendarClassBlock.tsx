@@ -97,12 +97,16 @@ export default function CalendarClassBlock({
           gap: 0.25,
           border: selected ? 2 : isConflicted ? 1 : 0,
           borderColor: selected ? 'primary.main' : isConflicted ? 'warning.main' : 'transparent',
-          boxShadow: selected ? 3 : 0,
+          boxShadow: selected ? 4 : 1,
+          transition: 'box-shadow 0.15s, transform 0.15s',
+          '&:hover': { boxShadow: selected ? 6 : 3, transform: 'translateY(-1px)' },
           bgcolor: isConflicted ? 'transparent' : selected ? 'primary.light' : 'primary.main',
           color: isConflicted ? 'text.primary' : selected ? 'primary.contrastText' : 'primary.contrastText',
           ...(isConflicted && {
             bgcolor: 'warning.light',
-            color: 'warning.contrastText',
+            // warning.light is a pale tint — use dark body text, not the
+            // white contrastText meant for the solid warning.main fill.
+            color: 'text.primary',
           }),
         }}
       >

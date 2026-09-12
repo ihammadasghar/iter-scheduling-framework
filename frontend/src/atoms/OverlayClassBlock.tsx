@@ -47,6 +47,7 @@ export default function OverlayClassBlock({
           overflow: 'hidden',
           pointerEvents: 'none',
           borderRadius: 1,
+          boxShadow: 1,
           px: 0.75,
           py: 0.25,
           fontSize: '0.7rem',

@@ -59,7 +59,10 @@ export default function ClassChip({
             maxWidth: 140,
             border: 2,
             borderColor: 'primary.main',
-            borderRadius: 2,
+            // Full pill radius — matches the real MUI Chip shape used by
+            // the 'default'/'conflicted' states below, rather than the
+            // theme's general (rectangular-panel) corner radius.
+            borderRadius: '999px',
             boxShadow: 3,
             bgcolor: 'primary.light',
             color: 'primary.contrastText',
