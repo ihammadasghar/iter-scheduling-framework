@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs';
-import { join } from 'path';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
 import { createTwoFilesPatch } from 'diff';
 import { ApiError } from '../types/ApiError.js';
@@ -202,6 +203,8 @@ const FIXTURE_SETS: Readonly<Record<string, { schedule: string; rules: string }>
   mock: { schedule: 'mock-schedule.json', rules: 'mock-rules.json' },
   iscte: { schedule: 'iscte-schedule.json', rules: 'iscte-rules.json' },
 };
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export function loadDefaultFixtures(): Readonly<Record<string, string>> {
   const requested = process.env['MOCK_FIXTURE_SET'] ?? 'mock';

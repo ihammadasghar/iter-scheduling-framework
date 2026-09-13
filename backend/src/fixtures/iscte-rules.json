@@ -22,7 +22,7 @@
       "id": "constraint-no-room-double-booking",
       "name": "No Room Double Booking",
       "target": "Room",
-      "violationCondition": "double_booking"
+      "violationCondition": "room_double_book"
     }
   ]
 }

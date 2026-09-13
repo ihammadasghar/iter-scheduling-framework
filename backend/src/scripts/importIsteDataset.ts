@@ -406,7 +406,7 @@ function buildRules(): RulesJson {
     constraints: [
       {
         id: 'constraint-no-room-double-booking', name: 'No Room Double Booking',
-        target: 'Room', violationCondition: 'double_booking',
+        target: 'Room', violationCondition: 'room_double_book',
       },
     ],
   };
