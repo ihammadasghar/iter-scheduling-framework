@@ -1,13 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import { Provider } from 'react-redux';
-import { configureStore } from '@reduxjs/toolkit';
-import simulationReducer from '@/store/reducers/simulationSlice';
+import { screen } from '@testing-library/react';
+import { renderWithProviders } from '@/test/renderWithProviders';
 import SimulationCard from './SimulationCard';
-
-const makeStore = () =>
-  configureStore({ reducer: { simulation: simulationReducer } });
 
 const sim = {
   id: 'sim-bob-dead1234',
@@ -17,13 +11,7 @@ const sim = {
 };
 
 const renderCard = (props: Partial<React.ComponentProps<typeof SimulationCard>> = {}) =>
-  render(
-    <Provider store={makeStore()}>
-      <MemoryRouter>
-        <SimulationCard simulation={sim} {...props} />
-      </MemoryRouter>
-    </Provider>,
-  );
+  renderWithProviders(<SimulationCard simulation={sim} {...props} />);
 
 describe('SimulationCard', () => {
   it('does not display the raw simulation ID', () => {

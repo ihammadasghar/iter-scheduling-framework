@@ -13,11 +13,63 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { defineMessages, useIntl } from 'react-intl';
 import { useAppDispatch } from '@/store/hooks';
 import { createConstraintThunk, updateConstraintThunk } from '@/store/reducers/rulesSlice';
-import { TARGET_OPTIONS, VIOLATION_CONDITION_OPTIONS, needsLimit } from '@/utils/ruleLabels';
+import { getTargetOptions, getViolationConditionOptions, needsLimit } from '@/utils/ruleLabels';
 import type { RuleTarget } from '@/utils/ruleLabels';
 import type { Constraint } from '@/types';
+
+const messages = defineMessages({
+  editTitle: {
+    id: 'addConstraintDialog.editTitle',
+    defaultMessage: 'Edit Hard Constraint',
+  },
+  addTitle: {
+    id: 'addConstraintDialog.addTitle',
+    defaultMessage: 'Add Hard Constraint',
+  },
+  nameLabel: {
+    id: 'addConstraintDialog.nameLabel',
+    defaultMessage: 'Name',
+  },
+  nameRequired: {
+    id: 'addConstraintDialog.nameRequired',
+    defaultMessage: 'Name is required',
+  },
+  appliesToLabel: {
+    id: 'addConstraintDialog.appliesToLabel',
+    defaultMessage: 'Applies to',
+  },
+  blockWhenLabel: {
+    id: 'addConstraintDialog.blockWhenLabel',
+    defaultMessage: 'Block proposal when',
+  },
+  selectConditionError: {
+    id: 'addConstraintDialog.selectConditionError',
+    defaultMessage: 'Please select a condition',
+  },
+  limitLabel: {
+    id: 'addConstraintDialog.limitLabel',
+    defaultMessage: 'Limit',
+  },
+  limitError: {
+    id: 'addConstraintDialog.limitError',
+    defaultMessage: 'Limit must be a positive whole number',
+  },
+  cancel: {
+    id: 'addConstraintDialog.cancel',
+    defaultMessage: 'Cancel',
+  },
+  saveChanges: {
+    id: 'addConstraintDialog.saveChanges',
+    defaultMessage: 'Save Changes',
+  },
+  addConstraint: {
+    id: 'addConstraintDialog.addConstraint',
+    defaultMessage: 'Add Constraint',
+  },
+});
 
 interface AddConstraintDialogProps {
   readonly open: boolean;
@@ -35,6 +87,7 @@ export default function AddConstraintDialog({
   onSuccess,
   existingRule,
 }: AddConstraintDialogProps): React.ReactElement {
+  const intl = useIntl();
   const dispatch = useAppDispatch();
   const isEditMode = existingRule !== undefined;
 
@@ -107,37 +160,37 @@ export default function AddConstraintDialog({
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>{isEditMode ? 'Edit Hard Constraint' : 'Add Hard Constraint'}</DialogTitle>
+      <DialogTitle>{intl.formatMessage(isEditMode ? messages.editTitle : messages.addTitle)}</DialogTitle>
       <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: '16px !important' }}>
         <TextField
-          label="Name"
+          label={intl.formatMessage(messages.nameLabel)}
           value={name}
           onChange={(e) => setName(e.target.value)}
           error={nameError}
-          helperText={nameError ? 'Name is required' : ''}
+          helperText={nameError ? intl.formatMessage(messages.nameRequired) : ''}
           required
           fullWidth
         />
 
         <FormControl fullWidth required>
-          <InputLabel id="constraint-target-label">Applies to</InputLabel>
+          <InputLabel id="constraint-target-label">{intl.formatMessage(messages.appliesToLabel)}</InputLabel>
           <Select
             labelId="constraint-target-label"
-            label="Applies to"
+            label={intl.formatMessage(messages.appliesToLabel)}
             value={target}
             onChange={(e) => setTarget(e.target.value as RuleTarget)}
           >
-            {TARGET_OPTIONS.map((opt) => (
+            {getTargetOptions(intl).map((opt) => (
               <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
             ))}
           </Select>
         </FormControl>
 
         <FormControl fullWidth required error={conditionError}>
-          <InputLabel id="constraint-condition-label">Block proposal when</InputLabel>
+          <InputLabel id="constraint-condition-label">{intl.formatMessage(messages.blockWhenLabel)}</InputLabel>
           <Select
             labelId="constraint-condition-label"
-            label="Block proposal when"
+            label={intl.formatMessage(messages.blockWhenLabel)}
             value={violationCondition}
             onChange={(e) => {
               setViolationCondition(e.target.value);
@@ -149,25 +202,25 @@ export default function AddConstraintDialog({
               }
             }}
           >
-            {VIOLATION_CONDITION_OPTIONS.map((opt) => (
+            {getViolationConditionOptions(intl).map((opt) => (
               <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
             ))}
           </Select>
           {conditionError && (
             <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-              Please select a condition
+              {intl.formatMessage(messages.selectConditionError)}
             </Typography>
           )}
         </FormControl>
 
         {limitRequired && (
           <TextField
-            label="Limit"
+            label={intl.formatMessage(messages.limitLabel)}
             type="number"
             value={limit}
             onChange={(e) => setLimit(e.target.value)}
             error={limitError}
-            helperText={limitError ? 'Limit must be a positive whole number' : ''}
+            helperText={limitError ? intl.formatMessage(messages.limitError) : ''}
             slotProps={{ htmlInput: { min: 1, step: 1 } }}
             required
             fullWidth
@@ -176,7 +229,7 @@ export default function AddConstraintDialog({
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose} disabled={loading}>
-          Cancel
+          {intl.formatMessage(messages.cancel)}
         </Button>
         <Button
           variant="contained"
@@ -184,7 +237,7 @@ export default function AddConstraintDialog({
           disabled={loading}
           startIcon={loading ? <CircularProgress size={16} /> : undefined}
         >
-          {isEditMode ? 'Save Changes' : 'Add Constraint'}
+          {intl.formatMessage(isEditMode ? messages.saveChanges : messages.addConstraint)}
         </Button>
       </DialogActions>
     </Dialog>

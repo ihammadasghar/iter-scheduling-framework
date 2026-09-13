@@ -1,4 +1,5 @@
 import { Alert, Box, Button, Stack, Typography } from '@mui/material';
+import { defineMessages, useIntl } from 'react-intl';
 import { useAppSelector } from '@/store/hooks';
 import GridSkeleton from '@/organisms/GridSkeleton';
 import RoomUtilisationHeatmap from '@/organisms/RoomUtilisationHeatmap';
@@ -10,6 +11,29 @@ import { groupConflictsByType } from '@/utils/groupConflictsByType';
 import { sortTimeSlotIds, uniqueSorted } from '@/utils/scheduleFormatters';
 import type { ConflictType } from '@/types';
 
+const messages = defineMessages({
+  emptyMessage: {
+    id: 'simulationOverview.emptyMessage',
+    defaultMessage: 'Nothing to show yet — add classes in Grid View to see utilisation and conflicts here.',
+  },
+  goToGridView: {
+    id: 'simulationOverview.goToGridView',
+    defaultMessage: 'Go to Grid View',
+  },
+  roomDataError: {
+    id: 'simulationOverview.roomDataError',
+    defaultMessage: "Couldn't load room data for this draft — try refreshing the page.",
+  },
+  conflictsByType: {
+    id: 'simulationOverview.conflictsByType',
+    defaultMessage: 'Conflicts by Type',
+  },
+  metrics: {
+    id: 'simulationOverview.metrics',
+    defaultMessage: 'Metrics',
+  },
+});
+
 interface SimulationOverviewProps {
   readonly onGoToGridView: () => void;
   readonly onSelectConflictType: (type: ConflictType) => void;
@@ -19,6 +43,7 @@ export default function SimulationOverview({
   onGoToGridView,
   onSelectConflictType,
 }: SimulationOverviewProps): React.ReactElement {
+  const intl = useIntl();
   const classes = useAppSelector((s) => s.class.classes);
   const classesLoading = useAppSelector((s) => s.class.loading);
   const conflicts = useAppSelector((s) => s.conflict.conflicts);
@@ -36,10 +61,10 @@ export default function SimulationOverview({
     return (
       <Box sx={{ p: 4, textAlign: 'center' }}>
         <Typography sx={{ mb: 2 }}>
-          Nothing to show yet — add classes in Grid View to see utilisation and conflicts here.
+          {intl.formatMessage(messages.emptyMessage)}
         </Typography>
         <Button variant="contained" onClick={onGoToGridView}>
-          Go to Grid View
+          {intl.formatMessage(messages.goToGridView)}
         </Button>
       </Box>
     );
@@ -47,14 +72,14 @@ export default function SimulationOverview({
 
   const sortedTimeSlotIds = sortTimeSlotIds(uniqueSorted(classes.flatMap((c) => [...c.timeSlotIds])));
   const occupancy = aggregateOccupancy(classes, rooms, studentGroups);
-  const conflictCounts = groupConflictsByType(conflicts);
+  const conflictCounts = groupConflictsByType(intl, conflicts);
 
   return (
     <Stack spacing={3} sx={{ p: 3, maxWidth: 900, mx: 'auto' }}>
       <HealthSummaryTile conflictCount={conflicts.length} />
       {scheduleError && (
         <Alert severity="error">
-          Couldn&apos;t load room data for this draft — try refreshing the page.
+          {intl.formatMessage(messages.roomDataError)}
         </Alert>
       )}
       <RoomUtilisationHeatmap
@@ -65,13 +90,13 @@ export default function SimulationOverview({
       />
       <Box>
         <Typography variant="h6" component="h3" gutterBottom>
-          Conflicts by Type
+          {intl.formatMessage(messages.conflictsByType)}
         </Typography>
         <ConflictBreakdownChart counts={conflictCounts} onBarClick={onSelectConflictType} />
       </Box>
       <Box>
         <Typography variant="h6" component="h3" gutterBottom>
-          Metrics
+          {intl.formatMessage(messages.metrics)}
         </Typography>
         <MetricTileRow metrics={metrics} />
       </Box>

@@ -1,10 +1,34 @@
 import { Box, Chip, Tooltip } from '@mui/material';
 import { WarningAmber } from '@mui/icons-material';
+import { defineMessages, useIntl } from 'react-intl';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { selectClass, toggleInspector } from '@/store/reducers/uiSlice';
 import { useScheduleNames } from '@/hooks/useScheduleNames';
 import type { ScheduleNames } from '@/utils/scheduleNames';
 import type { ScheduleClass } from '@/types';
+
+const messages = defineMessages({
+  tooltip: {
+    id: 'classChip.tooltip',
+    defaultMessage: '{title} · Room: {room} · Prof: {professor}',
+  },
+  selectedAriaLabel: {
+    id: 'classChip.selectedAriaLabel',
+    defaultMessage: '{label} — selected',
+  },
+  conflictTooltip: {
+    id: 'classChip.conflictTooltip',
+    defaultMessage: '{conflictSummary} — click for details',
+  },
+  conflictAriaLabel: {
+    id: 'classChip.conflictAriaLabel',
+    defaultMessage: '{label} — {conflictSummary}',
+  },
+  hasConflictAriaLabel: {
+    id: 'classChip.hasConflictAriaLabel',
+    defaultMessage: '{label} — has conflict',
+  },
+});
 
 type ChipVariant = 'default' | 'conflicted' | 'selected';
 
@@ -16,21 +40,23 @@ interface ClassChipProps {
   readonly conflictSummary?: string;
 }
 
-const buildTooltip = (cls: ScheduleClass, names: ScheduleNames): string => [
-  cls.title,
-  `Room: ${names.roomName(cls.roomId)}`,
-  `Prof: ${names.professorName(cls.professorId)}`,
-].join(' · ');
-
 export default function ClassChip({
   classItem,
   state = 'default',
   conflictSummary,
 }: ClassChipProps): React.ReactElement {
+  const intl = useIntl();
   const dispatch = useAppDispatch();
   const selectedId = useAppSelector((s) => s.ui.selectedClassId);
   const names = useScheduleNames();
   const resolvedState: ChipVariant = state !== 'default' ? state : selectedId === classItem.id ? 'selected' : 'default';
+
+  const buildTooltip = (cls: ScheduleClass, n: ScheduleNames): string =>
+    intl.formatMessage(messages.tooltip, {
+      title: cls.title,
+      room: n.roomName(cls.roomId),
+      professor: n.professorName(cls.professorId),
+    });
 
   const handleClick = (e: React.MouseEvent): void => {
     e.stopPropagation(); // prevent grid's deselectClass handler
@@ -49,7 +75,7 @@ export default function ClassChip({
           onClick={handleClick}
           role="button"
           tabIndex={0}
-          aria-label={`${label} — selected`}
+          aria-label={intl.formatMessage(messages.selectedAriaLabel, { label })}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleClick(e as unknown as React.MouseEvent); }}
           sx={{
             display: 'inline-flex',
@@ -83,11 +109,11 @@ export default function ClassChip({
 
   if (resolvedState === 'conflicted') {
     const conflictTooltip = conflictSummary !== undefined
-      ? `${conflictSummary} — click for details`
+      ? intl.formatMessage(messages.conflictTooltip, { conflictSummary })
       : buildTooltip(classItem, names);
     const conflictAriaLabel = conflictSummary !== undefined
-      ? `${label} — ${conflictSummary}`
-      : `${label} — has conflict`;
+      ? intl.formatMessage(messages.conflictAriaLabel, { label, conflictSummary })
+      : intl.formatMessage(messages.hasConflictAriaLabel, { label });
 
     return (
       <Tooltip title={conflictTooltip} enterDelay={300}>

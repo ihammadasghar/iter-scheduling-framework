@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import ScheduleUpdatedModal from './ScheduleUpdatedModal';
 import proposalReducer from '@/store/reducers/proposalSlice';
@@ -34,7 +35,16 @@ const makeStore = (staleDraft: { simulationId: string } | null) =>
 
 const renderModal = (staleDraft: { simulationId: string } | null) => {
   const store = makeStore(staleDraft);
-  return { store, ...render(<Provider store={store}><ScheduleUpdatedModal /></Provider>) };
+  return {
+    store,
+    ...render(
+      <Provider store={store}>
+        <IntlProvider locale="en" messages={{}}>
+          <ScheduleUpdatedModal />
+        </IntlProvider>
+      </Provider>,
+    ),
+  };
 };
 
 describe('ScheduleUpdatedModal', () => {

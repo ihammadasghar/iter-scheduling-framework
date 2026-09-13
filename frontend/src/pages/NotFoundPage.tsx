@@ -1,9 +1,26 @@
 import { Box, Button, Typography } from '@mui/material';
 import { SentimentDissatisfied } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { defineMessages, useIntl } from 'react-intl';
 import AppShell from '@/templates/AppShell';
 
+const messages = defineMessages({
+  title: {
+    id: 'notFoundPage.title',
+    defaultMessage: 'Page not found',
+  },
+  body: {
+    id: 'notFoundPage.body',
+    defaultMessage: "The page you were looking for doesn't exist. It may have been moved or the link may be incorrect.",
+  },
+  goHome: {
+    id: 'notFoundPage.goHome',
+    defaultMessage: 'Go to My Simulations',
+  },
+});
+
 export default function NotFoundPage(): React.ReactElement {
+  const intl = useIntl();
   const navigate = useNavigate();
 
   return (
@@ -22,14 +39,13 @@ export default function NotFoundPage(): React.ReactElement {
       >
         <SentimentDissatisfied sx={{ fontSize: 64, color: 'text.secondary' }} />
         <Typography variant="h2" component="h1">
-          Page not found
+          {intl.formatMessage(messages.title)}
         </Typography>
         <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 400 }}>
-          The page you were looking for doesn&apos;t exist. It may have been moved or the link may
-          be incorrect.
+          {intl.formatMessage(messages.body)}
         </Typography>
         <Button variant="contained" size="large" onClick={() => navigate('/')}>
-          Go to My Simulations
+          {intl.formatMessage(messages.goHome)}
         </Button>
       </Box>
     </AppShell>

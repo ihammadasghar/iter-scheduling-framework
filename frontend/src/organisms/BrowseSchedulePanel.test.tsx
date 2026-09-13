@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import BrowseSchedulePanel from './BrowseSchedulePanel';
 import classReducer from '@/store/reducers/classSlice';
@@ -53,7 +54,9 @@ const renderPanel = () => {
   const store = makeStore();
   render(
     <Provider store={store}>
-      <BrowseSchedulePanel />
+      <IntlProvider locale="en" messages={{}}>
+        <BrowseSchedulePanel />
+      </IntlProvider>
     </Provider>,
   );
   return store;
@@ -97,7 +100,9 @@ describe('BrowseSchedulePanel', () => {
     const store = makeStore();
     render(
       <Provider store={store}>
-        <BrowseSchedulePanel excludedDays={new Map([['Monday', 'Thanksgiving Break']])} />
+        <IntlProvider locale="en" messages={{}}>
+          <BrowseSchedulePanel excludedDays={new Map([['Monday', 'Thanksgiving Break']])} />
+        </IntlProvider>
       </Provider>,
     );
 

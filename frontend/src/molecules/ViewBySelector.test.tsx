@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import ViewBySelector from './ViewBySelector';
 import uiReducer from '@/store/reducers/uiSlice';
@@ -15,7 +16,9 @@ const renderSelector = () => {
   const store = makeStore();
   render(
     <Provider store={store}>
-      <ViewBySelector />
+      <IntlProvider locale="en" messages={{}}>
+        <ViewBySelector />
+      </IntlProvider>
     </Provider>,
   );
   return store;

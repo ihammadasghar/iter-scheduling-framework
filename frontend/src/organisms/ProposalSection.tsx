@@ -1,6 +1,14 @@
 import { Box, Chip, Typography } from '@mui/material';
+import { defineMessages, useIntl } from 'react-intl';
 import ProposalCard from '@/molecules/ProposalCard';
 import type { Proposal } from '@/types';
+
+const messages = defineMessages({
+  countAriaLabel: {
+    id: 'proposalSection.countAriaLabel',
+    defaultMessage: '{count, plural, one {# proposal} other {# proposals}}',
+  },
+});
 
 interface ProposalSectionProps {
   readonly title: string;
@@ -15,6 +23,7 @@ export default function ProposalSection({
   proposals,
   status,
 }: ProposalSectionProps): React.ReactElement | null {
+  const intl = useIntl();
   if (proposals.length === 0) return null;
 
   return (
@@ -27,7 +36,7 @@ export default function ProposalSection({
           color={status === 'ready' ? 'success' : 'warning'}
           label={proposals.length}
           size="small"
-          aria-label={`${proposals.length} proposal${proposals.length === 1 ? '' : 's'}`}
+          aria-label={intl.formatMessage(messages.countAriaLabel, { count: proposals.length })}
         />
       </Box>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>

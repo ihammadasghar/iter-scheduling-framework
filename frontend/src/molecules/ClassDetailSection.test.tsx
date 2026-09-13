@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import ClassDetailSection from './ClassDetailSection';
 import scheduleReducer from '@/store/reducers/scheduleSlice';
@@ -72,12 +73,14 @@ const renderSection = (options: {
     store,
     ...render(
       <Provider store={store}>
-        <ClassDetailSection
-          classItem={options.classItem ?? classA}
-          conflicts={options.conflicts ?? []}
-          classes={options.classes ?? [classA, classB]}
-          simId={options.simId}
-        />
+        <IntlProvider locale="en" messages={{}}>
+          <ClassDetailSection
+            classItem={options.classItem ?? classA}
+            conflicts={options.conflicts ?? []}
+            classes={options.classes ?? [classA, classB]}
+            simId={options.simId}
+          />
+        </IntlProvider>
       </Provider>,
     ),
   };

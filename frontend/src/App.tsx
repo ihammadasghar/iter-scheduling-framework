@@ -1,15 +1,19 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import { store } from '@/store/store';
-import theme from '@/styles/theme';
+import { useAppSelector } from '@/store/hooks';
+import { createAppTheme } from '@/styles/theme';
+import { DEFAULT_LOCALE, MESSAGES } from '@/i18n/config';
 import GlobalStyles from '@/styles/GlobalStyles';
 import GlobalErrorSnackbar from '@/atoms/GlobalErrorSnackbar';
 import GlobalProposalStatusSnackbar from '@/atoms/GlobalProposalStatusSnackbar';
 import OnboardingFlow from '@/organisms/OnboardingFlow';
 import AdminGuard from '@/organisms/AdminGuard';
 import { hydrateIdentity } from '@/store/reducers/identitySlice';
+import { hydrateLocale } from '@/store/reducers/languageSlice';
 import { fetchPublishedScheduleThunk } from '@/store/reducers/scheduleSlice';
 import HomeRedirect from '@/pages/HomeRedirect';
 import TimetablePage from '@/pages/TimetablePage';
@@ -20,21 +24,17 @@ import RulesPage from '@/pages/RulesPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 
 /**
- * Root application component.
- * Provides MUI theme, Redux store, React Router, and the app shell.
+ * Everything that needs to read from the Redux store via hooks (the active
+ * locale, in particular) lives here, inside <Provider> — IntlProvider and
+ * the theme both react to language.locale so a language switch re-renders
+ * the whole app in the new language immediately.
  */
-export default function App(): React.ReactElement {
-  // Once, on first load: check localStorage for a previously chosen identity
-  // (OnboardingFlow gates the app until this resolves), and load the
-  // published roster so the onboarding picker has real professor/student
-  // group names to choose from before any simulation exists.
-  useEffect(() => {
-    store.dispatch(hydrateIdentity());
-    void store.dispatch(fetchPublishedScheduleThunk());
-  }, []);
+function AppProviders(): React.ReactElement {
+  const locale = useAppSelector((s) => s.language.locale);
+  const theme = useMemo(() => createAppTheme(locale), [locale]);
 
   return (
-    <Provider store={store}>
+    <IntlProvider locale={locale} messages={MESSAGES[locale]} defaultLocale={DEFAULT_LOCALE}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <GlobalStyles />
@@ -89,6 +89,28 @@ export default function App(): React.ReactElement {
           </Routes>
         </BrowserRouter>
       </ThemeProvider>
+    </IntlProvider>
+  );
+}
+
+/**
+ * Root application component.
+ * Provides MUI theme, Redux store, React Router, and the app shell.
+ */
+export default function App(): React.ReactElement {
+  // Once, on first load: check localStorage for a previously chosen identity
+  // (OnboardingFlow gates the app until this resolves) and language, and
+  // load the published roster so the onboarding picker has real
+  // professor/student group names to choose from before any simulation exists.
+  useEffect(() => {
+    store.dispatch(hydrateIdentity());
+    store.dispatch(hydrateLocale());
+    void store.dispatch(fetchPublishedScheduleThunk());
+  }, []);
+
+  return (
+    <Provider store={store}>
+      <AppProviders />
     </Provider>
   );
 }

@@ -1,13 +1,22 @@
 import { Card, CardContent, Stack, Typography } from '@mui/material';
+import { defineMessages, useIntl } from 'react-intl';
 import type { MetricResult } from '@/types';
+
+const messages = defineMessages({
+  noMetrics: {
+    id: 'metricTileRow.noMetrics',
+    defaultMessage: 'No metrics configured',
+  },
+});
 
 interface MetricTileRowProps {
   readonly metrics: readonly MetricResult[];
 }
 
 export default function MetricTileRow({ metrics }: MetricTileRowProps): React.ReactElement {
+  const intl = useIntl();
   if (metrics.length === 0) {
-    return <Typography color="text.secondary">No metrics configured</Typography>;
+    return <Typography color="text.secondary">{intl.formatMessage(messages.noMetrics)}</Typography>;
   }
 
   return (

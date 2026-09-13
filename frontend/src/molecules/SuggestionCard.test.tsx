@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import SuggestionCard, { DeltaChip } from './SuggestionCard';
 import scheduleReducer from '@/store/reducers/scheduleSlice';
@@ -26,14 +27,16 @@ const renderCard = (overrides: Partial<React.ComponentProps<typeof SuggestionCar
   const store = configureStore({ reducer: { schedule: scheduleReducer } });
   return render(
     <Provider store={store}>
-      <SuggestionCard
-        suggestion={suggestion}
-        currentClass={currentClass}
-        onApply={vi.fn()}
-        applying={false}
-        loadingDelta={false}
-        {...overrides}
-      />
+      <IntlProvider locale="en" messages={{}}>
+        <SuggestionCard
+          suggestion={suggestion}
+          currentClass={currentClass}
+          onApply={vi.fn()}
+          applying={false}
+          loadingDelta={false}
+          {...overrides}
+        />
+      </IntlProvider>
     </Provider>,
   );
 };
@@ -90,7 +93,11 @@ describe('DeltaChip', () => {
   // The second fixed instance of the MetricDeltaTile bug (see that file's
   // test) — same shared MetricDelta type, same direction-aware fix.
   const chipColor = (delta: MetricDelta): string => {
-    const { container } = render(<DeltaChip delta={delta} />);
+    const { container } = render(
+      <IntlProvider locale="en" messages={{}}>
+        <DeltaChip delta={delta} />
+      </IntlProvider>,
+    );
     return within(container).getByLabelText(/metric change/i).className;
   };
 

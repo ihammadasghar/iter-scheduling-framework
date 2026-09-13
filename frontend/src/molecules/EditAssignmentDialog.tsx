@@ -5,6 +5,7 @@ import {
 } from '@mui/material';
 import type { SelectChangeEvent } from '@mui/material';
 import { Close } from '@mui/icons-material';
+import { defineMessages, useIntl } from 'react-intl';
 import { useAppSelector } from '@/store/hooks';
 import { useApplySuggestion } from '@/hooks/useApplySuggestion';
 import { useScheduleNames } from '@/hooks/useScheduleNames';
@@ -15,6 +16,93 @@ import { deriveDayOrder, computeContiguousSlotIds, timeToMinutes } from '@/utils
 import { buildOverlayBlocks } from '@/utils/overlayLayout';
 import { formatTimeSlotFull } from '@/utils/scheduleFormatters';
 import type { ScheduleClass } from '@/types';
+
+const messages = defineMessages({
+  title: {
+    id: 'editAssignmentDialog.title',
+    defaultMessage: 'Edit Assignment',
+  },
+  closeAriaLabel: {
+    id: 'editAssignmentDialog.closeAriaLabel',
+    defaultMessage: 'Close edit assignment dialog',
+  },
+  room: {
+    id: 'editAssignmentDialog.room',
+    defaultMessage: 'Room',
+  },
+  roomSubtitle: {
+    id: 'editAssignmentDialog.roomSubtitle',
+    defaultMessage: '{building} · Capacity {capacity}',
+  },
+  professor: {
+    id: 'editAssignmentDialog.professor',
+    defaultMessage: 'Professor',
+  },
+  professorSubtitle: {
+    id: 'editAssignmentDialog.professorSubtitle',
+    defaultMessage: '{department} · {count, plural, one {# class taught} other {# classes taught}}',
+  },
+  studentGroup: {
+    id: 'editAssignmentDialog.studentGroup',
+    defaultMessage: 'Student Group',
+  },
+  studentGroupSubtitle: {
+    id: 'editAssignmentDialog.studentGroupSubtitle',
+    defaultMessage: '{size, plural, one {# student} other {# students}} · {count, plural, one {# class attended} other {# classes attended}}',
+  },
+  day: {
+    id: 'editAssignmentDialog.day',
+    defaultMessage: 'Day',
+  },
+  period: {
+    id: 'editAssignmentDialog.period',
+    defaultMessage: 'Period',
+  },
+  notEnoughPeriods: {
+    id: 'editAssignmentDialog.notEnoughPeriods',
+    defaultMessage: "This day doesn't have enough consecutive periods left for a class this length. Try a different day or starting period.",
+  },
+  capacityExceeded: {
+    id: 'editAssignmentDialog.capacityExceeded',
+    defaultMessage: "{group} has {size} students, more than {room}'s capacity of {capacity}.",
+  },
+  clashRoom: {
+    id: 'editAssignmentDialog.clashRoom',
+    defaultMessage: 'the room',
+  },
+  clashProfessor: {
+    id: 'editAssignmentDialog.clashProfessor',
+    defaultMessage: 'the professor',
+  },
+  clashGroup: {
+    id: 'editAssignmentDialog.clashGroup',
+    defaultMessage: 'the student group',
+  },
+  clashesWarning: {
+    id: 'editAssignmentDialog.clashesWarning',
+    defaultMessage: 'This time clashes with an existing class for {clashes}.',
+  },
+  movedTo: {
+    id: 'editAssignmentDialog.movedTo',
+    defaultMessage: 'Moved to {label} · {timeLabel}',
+  },
+  computingImpactAriaLabel: {
+    id: 'editAssignmentDialog.computingImpactAriaLabel',
+    defaultMessage: 'Computing metric impact…',
+  },
+  cancel: {
+    id: 'editAssignmentDialog.cancel',
+    defaultMessage: 'Cancel',
+  },
+  applying: {
+    id: 'editAssignmentDialog.applying',
+    defaultMessage: 'Applying…',
+  },
+  applyChanges: {
+    id: 'editAssignmentDialog.applyChanges',
+    defaultMessage: 'Apply Changes',
+  },
+});
 
 interface EditAssignmentDialogProps {
   readonly open: boolean;
@@ -46,6 +134,7 @@ export default function EditAssignmentDialog({
   classId,
   currentClass,
 }: EditAssignmentDialogProps): React.ReactElement {
+  const intl = useIntl();
   const classes = useAppSelector((s) => s.class.classes);
   const rooms = useAppSelector((s) => s.schedule.rooms);
   const professors = useAppSelector((s) => s.schedule.professors);
@@ -157,9 +246,9 @@ export default function EditAssignmentDialog({
 
   const clashes: string[] = [];
   if (targetSlotIds !== null) {
-    if (targetSlotIds.some((id) => roomBusySlotIds.has(id))) clashes.push('the room');
-    if (targetSlotIds.some((id) => professorBusySlotIds.has(id))) clashes.push('the professor');
-    if (targetSlotIds.some((id) => groupBusySlotIds.has(id))) clashes.push('the student group');
+    if (targetSlotIds.some((id) => roomBusySlotIds.has(id))) clashes.push(intl.formatMessage(messages.clashRoom));
+    if (targetSlotIds.some((id) => professorBusySlotIds.has(id))) clashes.push(intl.formatMessage(messages.clashProfessor));
+    if (targetSlotIds.some((id) => groupBusySlotIds.has(id))) clashes.push(intl.formatMessage(messages.clashGroup));
   }
 
   const isUnchanged = targetSlotIds !== null
@@ -205,8 +294,8 @@ export default function EditAssignmentDialog({
   return (
     <Dialog open={open} onClose={handleClose} fullWidth maxWidth="md">
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        Edit Assignment
-        <IconButton onClick={handleClose} aria-label="Close edit assignment dialog" size="small">
+        {intl.formatMessage(messages.title)}
+        <IconButton onClick={handleClose} aria-label={intl.formatMessage(messages.closeAriaLabel)} size="small">
           <Close fontSize="small" />
         </IconButton>
       </DialogTitle>
@@ -214,11 +303,11 @@ export default function EditAssignmentDialog({
         <Stack spacing={2}>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <FormControl size="small" fullWidth>
-              <InputLabel id="edit-assignment-room-label">Room</InputLabel>
+              <InputLabel id="edit-assignment-room-label">{intl.formatMessage(messages.room)}</InputLabel>
               <Select
                 labelId="edit-assignment-room-label"
-                label="Room"
-                inputProps={{ 'aria-label': 'Room' }}
+                label={intl.formatMessage(messages.room)}
+                inputProps={{ 'aria-label': intl.formatMessage(messages.room) }}
                 value={roomId}
                 onChange={(e) => { setRoomId(e.target.value); setAppliedSummary(null); }}
                 // Keeps the closed field showing just the room name — the
@@ -231,7 +320,7 @@ export default function EditAssignmentDialog({
                     <Box sx={{ display: 'flex', flexDirection: 'column', py: 0.25 }}>
                       <Typography variant="body2">{r.name}</Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {r.building} · Capacity {r.capacity}
+                        {intl.formatMessage(messages.roomSubtitle, { building: r.building, capacity: r.capacity })}
                       </Typography>
                     </Box>
                   </MenuItem>
@@ -239,17 +328,17 @@ export default function EditAssignmentDialog({
               </Select>
               {room !== undefined && (
                 <Typography variant="caption" color="text.secondary">
-                  {room.building} · Capacity {room.capacity}
+                  {intl.formatMessage(messages.roomSubtitle, { building: room.building, capacity: room.capacity })}
                 </Typography>
               )}
             </FormControl>
 
             <FormControl size="small" fullWidth>
-              <InputLabel id="edit-assignment-professor-label">Professor</InputLabel>
+              <InputLabel id="edit-assignment-professor-label">{intl.formatMessage(messages.professor)}</InputLabel>
               <Select
                 labelId="edit-assignment-professor-label"
-                label="Professor"
-                inputProps={{ 'aria-label': 'Professor' }}
+                label={intl.formatMessage(messages.professor)}
+                inputProps={{ 'aria-label': intl.formatMessage(messages.professor) }}
                 value={professorId}
                 onChange={(e) => { setProfessorId(e.target.value); setAppliedSummary(null); }}
               >
@@ -259,17 +348,17 @@ export default function EditAssignmentDialog({
               </Select>
               {professor !== undefined && (
                 <Typography variant="caption" color="text.secondary">
-                  {professor.department} · {professorBusy.length} classes taught
+                  {intl.formatMessage(messages.professorSubtitle, { department: professor.department, count: professorBusy.length })}
                 </Typography>
               )}
             </FormControl>
 
             <FormControl size="small" fullWidth>
-              <InputLabel id="edit-assignment-group-label">Student Group</InputLabel>
+              <InputLabel id="edit-assignment-group-label">{intl.formatMessage(messages.studentGroup)}</InputLabel>
               <Select
                 labelId="edit-assignment-group-label"
-                label="Student Group"
-                inputProps={{ 'aria-label': 'Student Group' }}
+                label={intl.formatMessage(messages.studentGroup)}
+                inputProps={{ 'aria-label': intl.formatMessage(messages.studentGroup) }}
                 value={studentGroupId}
                 onChange={(e) => { setStudentGroupId(e.target.value); setAppliedSummary(null); }}
               >
@@ -279,7 +368,7 @@ export default function EditAssignmentDialog({
               </Select>
               {group !== undefined && (
                 <Typography variant="caption" color="text.secondary">
-                  {group.size} students · {groupBusy.length} classes attended
+                  {intl.formatMessage(messages.studentGroupSubtitle, { size: group.size, count: groupBusy.length })}
                 </Typography>
               )}
             </FormControl>
@@ -294,11 +383,11 @@ export default function EditAssignmentDialog({
 
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <FormControl size="small" fullWidth>
-              <InputLabel id="edit-assignment-day-label">Day</InputLabel>
+              <InputLabel id="edit-assignment-day-label">{intl.formatMessage(messages.day)}</InputLabel>
               <Select
                 labelId="edit-assignment-day-label"
-                label="Day"
-                inputProps={{ 'aria-label': 'Day' }}
+                label={intl.formatMessage(messages.day)}
+                inputProps={{ 'aria-label': intl.formatMessage(messages.day) }}
                 value={day}
                 onChange={handleDayChange}
               >
@@ -309,11 +398,11 @@ export default function EditAssignmentDialog({
             </FormControl>
 
             <FormControl size="small" fullWidth disabled={periodsForDay.length === 0}>
-              <InputLabel id="edit-assignment-period-label">Period</InputLabel>
+              <InputLabel id="edit-assignment-period-label">{intl.formatMessage(messages.period)}</InputLabel>
               <Select
                 labelId="edit-assignment-period-label"
-                label="Period"
-                inputProps={{ 'aria-label': 'Period' }}
+                label={intl.formatMessage(messages.period)}
+                inputProps={{ 'aria-label': intl.formatMessage(messages.period) }}
                 value={startSlotId}
                 onChange={(e) => { setStartSlotId(e.target.value); setAppliedSummary(null); }}
               >
@@ -326,20 +415,19 @@ export default function EditAssignmentDialog({
 
           {startSlotId !== '' && targetSlotIds === null && (
             <Alert severity="warning">
-              This day doesn&apos;t have enough consecutive periods left for a class this length.
-              Try a different day or starting period.
+              {intl.formatMessage(messages.notEnoughPeriods)}
             </Alert>
           )}
 
           {capacityExceeded && room !== undefined && group !== undefined && (
             <Alert severity="warning">
-              {group.name} has {group.size} students, more than {room.name}&apos;s capacity of {room.capacity}.
+              {intl.formatMessage(messages.capacityExceeded, { group: group.name, size: group.size, room: room.name, capacity: room.capacity })}
             </Alert>
           )}
 
           {targetSlotIds !== null && clashes.length > 0 && (
             <Alert severity="warning">
-              This time clashes with an existing class for {clashes.join(', ')}.
+              {intl.formatMessage(messages.clashesWarning, { clashes: clashes.join(', ') })}
             </Alert>
           )}
 
@@ -350,7 +438,7 @@ export default function EditAssignmentDialog({
             <Alert severity="success">
               <Stack spacing={0.5}>
                 <Typography variant="body2">
-                  Moved to {appliedSummary.label} · {appliedSummary.timeLabel}
+                  {intl.formatMessage(messages.movedTo, { label: appliedSummary.label, timeLabel: appliedSummary.timeLabel })}
                 </Typography>
                 {(lastDelta !== null || lastScoreDelta !== null) && (
                   <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
@@ -363,18 +451,18 @@ export default function EditAssignmentDialog({
           )}
 
           {error && <Alert severity="error">{error}</Alert>}
-          {deltaLoading && <CircularProgress size={16} aria-label="Computing metric impact…" />}
+          {deltaLoading && <CircularProgress size={16} aria-label={intl.formatMessage(messages.computingImpactAriaLabel)} />}
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleClose}>Cancel</Button>
+        <Button onClick={handleClose}>{intl.formatMessage(messages.cancel)}</Button>
         <Button
           variant="contained"
           onClick={() => void handleApply()}
           disabled={!canApply}
           startIcon={loading ? <CircularProgress size={14} color="inherit" /> : undefined}
         >
-          {loading ? 'Applying…' : 'Apply Changes'}
+          {loading ? intl.formatMessage(messages.applying) : intl.formatMessage(messages.applyChanges)}
         </Button>
       </DialogActions>
     </Dialog>

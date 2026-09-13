@@ -1,8 +1,52 @@
 import { Alert, Box, List, ListItem, ListItemText, Stack, Typography } from '@mui/material';
+import { defineMessages, useIntl } from 'react-intl';
 import HealthSummaryTile from '@/molecules/HealthSummaryTile';
 import ConflictBreakdownChart from '@/molecules/ConflictBreakdownChart';
 import { groupConflictsByType, isPolicyViolation } from '@/utils/groupConflictsByType';
 import type { Conflict, ConflictDelta } from '@/types';
+
+const messages = defineMessages({
+  currentlyPublished: {
+    id: 'conflictsComparisonPanel.currentlyPublished',
+    defaultMessage: 'Currently Published',
+  },
+  thisProposal: {
+    id: 'conflictsComparisonPanel.thisProposal',
+    defaultMessage: 'This Proposal',
+  },
+  newConflictsIntroduced: {
+    id: 'conflictsComparisonPanel.newConflictsIntroduced',
+    defaultMessage: '{count, plural, one {# new conflict introduced. } other {# new conflicts introduced. }}',
+  },
+  conflictsResolved: {
+    id: 'conflictsComparisonPanel.conflictsResolved',
+    defaultMessage: '{count, plural, one {# conflict resolved.} other {# conflicts resolved.}}',
+  },
+  conflictsByTypePublished: {
+    id: 'conflictsComparisonPanel.conflictsByTypePublished',
+    defaultMessage: 'Conflicts by Type — Published',
+  },
+  conflictsByTypeProposal: {
+    id: 'conflictsComparisonPanel.conflictsByTypeProposal',
+    defaultMessage: 'Conflicts by Type — This Proposal',
+  },
+  newlyIntroduced: {
+    id: 'conflictsComparisonPanel.newlyIntroduced',
+    defaultMessage: 'Newly Introduced Conflicts',
+  },
+  resolved: {
+    id: 'conflictsComparisonPanel.resolved',
+    defaultMessage: 'Resolved Conflicts',
+  },
+  listTitle: {
+    id: 'conflictsComparisonPanel.listTitle',
+    defaultMessage: '{title} ({count})',
+  },
+  institutionRuleViolated: {
+    id: 'conflictsComparisonPanel.institutionRuleViolated',
+    defaultMessage: 'Institution rule violated: {message}',
+  },
+});
 
 interface ConflictsComparisonPanelProps {
   readonly baselineConflicts: readonly Conflict[];
@@ -16,16 +60,17 @@ interface ConflictListProps {
 }
 
 function ConflictList({ title, conflicts }: ConflictListProps): React.ReactElement {
+  const intl = useIntl();
   return (
     <Box>
       <Typography variant="subtitle2" gutterBottom>
-        {title} ({conflicts.length})
+        {intl.formatMessage(messages.listTitle, { title, count: conflicts.length })}
       </Typography>
       <List dense disablePadding>
         {conflicts.map((c) => (
           <ListItem key={c.id} disablePadding>
             <ListItemText
-              primary={isPolicyViolation(c.type) ? `Institution rule violated: ${c.message}` : c.message}
+              primary={isPolicyViolation(c.type) ? intl.formatMessage(messages.institutionRuleViolated, { message: c.message }) : c.message}
             />
           </ListItem>
         ))}
@@ -39,21 +84,22 @@ export default function ConflictsComparisonPanel({
   candidateConflicts,
   conflictDelta,
 }: ConflictsComparisonPanelProps): React.ReactElement {
-  const baselineCounts = groupConflictsByType(baselineConflicts);
-  const candidateCounts = groupConflictsByType(candidateConflicts);
+  const intl = useIntl();
+  const baselineCounts = groupConflictsByType(intl, baselineConflicts);
+  const candidateCounts = groupConflictsByType(intl, candidateConflicts);
 
   return (
     <Stack spacing={3}>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
         <Box sx={{ flex: 1 }}>
           <Typography variant="body2" color="text.secondary" gutterBottom>
-            Currently Published
+            {intl.formatMessage(messages.currentlyPublished)}
           </Typography>
           <HealthSummaryTile conflictCount={baselineConflicts.length} />
         </Box>
         <Box sx={{ flex: 1 }}>
           <Typography variant="body2" color="text.secondary" gutterBottom>
-            This Proposal
+            {intl.formatMessage(messages.thisProposal)}
           </Typography>
           <HealthSummaryTile conflictCount={candidateConflicts.length} />
         </Box>
@@ -62,32 +108,32 @@ export default function ConflictsComparisonPanel({
       {(conflictDelta.added.length > 0 || conflictDelta.resolved.length > 0) && (
         <Alert severity={conflictDelta.added.length > 0 ? 'warning' : 'success'}>
           {conflictDelta.added.length > 0 &&
-            `${conflictDelta.added.length} new conflict${conflictDelta.added.length === 1 ? '' : 's'} introduced. `}
+            intl.formatMessage(messages.newConflictsIntroduced, { count: conflictDelta.added.length })}
           {conflictDelta.resolved.length > 0 &&
-            `${conflictDelta.resolved.length} conflict${conflictDelta.resolved.length === 1 ? '' : 's'} resolved.`}
+            intl.formatMessage(messages.conflictsResolved, { count: conflictDelta.resolved.length })}
         </Alert>
       )}
 
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="body2" color="text.secondary" gutterBottom>
-            Conflicts by Type — Published
+            {intl.formatMessage(messages.conflictsByTypePublished)}
           </Typography>
           <ConflictBreakdownChart counts={baselineCounts} />
         </Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="body2" color="text.secondary" gutterBottom>
-            Conflicts by Type — This Proposal
+            {intl.formatMessage(messages.conflictsByTypeProposal)}
           </Typography>
           <ConflictBreakdownChart counts={candidateCounts} />
         </Box>
       </Stack>
 
       {conflictDelta.added.length > 0 && (
-        <ConflictList title="Newly Introduced Conflicts" conflicts={conflictDelta.added} />
+        <ConflictList title={intl.formatMessage(messages.newlyIntroduced)} conflicts={conflictDelta.added} />
       )}
       {conflictDelta.resolved.length > 0 && (
-        <ConflictList title="Resolved Conflicts" conflicts={conflictDelta.resolved} />
+        <ConflictList title={intl.formatMessage(messages.resolved)} conflicts={conflictDelta.resolved} />
       )}
     </Stack>
   );

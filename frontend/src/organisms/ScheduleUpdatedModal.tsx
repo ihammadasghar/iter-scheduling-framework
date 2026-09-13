@@ -1,8 +1,36 @@
 import { useState } from 'react';
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Snackbar } from '@mui/material';
+import { defineMessages, useIntl } from 'react-intl';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { clearStaleDraft } from '@/store/reducers/proposalSlice';
 import { rebaseSimulationThunk } from '@/store/reducers/simulationSlice';
+
+const messages = defineMessages({
+  title: {
+    id: 'scheduleUpdatedModal.title',
+    defaultMessage: '📋 The published schedule has changed',
+  },
+  body: {
+    id: 'scheduleUpdatedModal.body',
+    defaultMessage: "While you were working on this draft, the scheduling office published updates to the live timetable. Update your draft so it's compared against the latest version before submitting.",
+  },
+  updating: {
+    id: 'scheduleUpdatedModal.updating',
+    defaultMessage: 'Updating…',
+  },
+  updateDraft: {
+    id: 'scheduleUpdatedModal.updateDraft',
+    defaultMessage: 'Update My Draft →',
+  },
+  cancel: {
+    id: 'scheduleUpdatedModal.cancel',
+    defaultMessage: 'Cancel',
+  },
+  confirmation: {
+    id: 'scheduleUpdatedModal.confirmation',
+    defaultMessage: 'Your draft has been updated with the latest published schedule — review your changes and submit again.',
+  },
+});
 
 // Shown when a proposal submission is rejected because the published
 // schedule changed since the draft was created (backend code
@@ -12,6 +40,7 @@ import { rebaseSimulationThunk } from '@/store/reducers/simulationSlice';
 // a non-dismissable Dialog with two full-width stacked actions, driven by
 // Redux state rather than local component state.
 export default function ScheduleUpdatedModal(): React.ReactElement {
+  const intl = useIntl();
   const dispatch = useAppDispatch();
   const staleDraft = useAppSelector((s) => s.proposal.staleDraft);
   const simulation = useAppSelector((s) =>
@@ -60,12 +89,10 @@ export default function ScheduleUpdatedModal(): React.ReactElement {
         aria-labelledby="schedule-updated-title"
         aria-describedby="schedule-updated-desc"
       >
-        <DialogTitle id="schedule-updated-title">📋 The published schedule has changed</DialogTitle>
+        <DialogTitle id="schedule-updated-title">{intl.formatMessage(messages.title)}</DialogTitle>
         <DialogContent>
           <DialogContentText id="schedule-updated-desc">
-            While you were working on this draft, the scheduling office published updates to the live
-            timetable. Update your draft so it&rsquo;s compared against the latest version before
-            submitting.
+            {intl.formatMessage(messages.body)}
           </DialogContentText>
         </DialogContent>
         <DialogActions sx={{ flexDirection: { xs: 'column', sm: 'row' }, gap: 1, p: 3 }}>
@@ -75,10 +102,10 @@ export default function ScheduleUpdatedModal(): React.ReactElement {
             disabled={updating}
             fullWidth
           >
-            {updating ? 'Updating…' : 'Update My Draft →'}
+            {updating ? intl.formatMessage(messages.updating) : intl.formatMessage(messages.updateDraft)}
           </Button>
           <Button variant="outlined" onClick={handleCancel} disabled={updating} fullWidth>
-            Cancel
+            {intl.formatMessage(messages.cancel)}
           </Button>
         </DialogActions>
       </Dialog>
@@ -90,7 +117,7 @@ export default function ScheduleUpdatedModal(): React.ReactElement {
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
         <Alert severity="success" variant="filled" onClose={() => setConfirmationOpen(false)} sx={{ width: '100%' }}>
-          Your draft has been updated with the latest published schedule — review your changes and submit again.
+          {intl.formatMessage(messages.confirmation)}
         </Alert>
       </Snackbar>
     </>

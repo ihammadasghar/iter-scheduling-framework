@@ -1,8 +1,28 @@
 import { useRef, useState } from 'react';
 import { Chip, CircularProgress } from '@mui/material';
 import { CheckCircle, Warning } from '@mui/icons-material';
+import { defineMessages, useIntl } from 'react-intl';
 import ConflictPopover from '@/molecules/ConflictPopover';
 import type { Conflict } from '@/types';
+
+const messages = defineMessages({
+  loadingAriaLabel: {
+    id: 'conflictChip.loadingAriaLabel',
+    defaultMessage: 'Loading conflicts…',
+  },
+  checkingConflicts: {
+    id: 'conflictChip.checkingConflicts',
+    defaultMessage: 'Checking conflicts…',
+  },
+  noConflicts: {
+    id: 'conflictChip.noConflicts',
+    defaultMessage: 'No scheduling conflicts',
+  },
+  conflictsLabel: {
+    id: 'conflictChip.conflictsLabel',
+    defaultMessage: '{count, plural, one {# scheduling conflict} other {# scheduling conflicts}} — click to see details',
+  },
+});
 
 interface ConflictChipProps {
   readonly conflicts: readonly Conflict[];
@@ -13,14 +33,15 @@ export default function ConflictChip({
   conflicts,
   loading,
 }: ConflictChipProps): React.ReactElement {
+  const intl = useIntl();
   const anchorRef = useRef<HTMLDivElement>(null);
   const [popoverOpen, setPopoverOpen] = useState(false);
 
   if (loading) {
     return (
       <Chip
-        icon={<CircularProgress size={16} aria-label="Loading conflicts…" />}
-        label="Checking conflicts…"
+        icon={<CircularProgress size={16} aria-label={intl.formatMessage(messages.loadingAriaLabel)} />}
+        label={intl.formatMessage(messages.checkingConflicts)}
         variant="outlined"
         sx={{ minHeight: 32 }}
       />
@@ -33,25 +54,27 @@ export default function ConflictChip({
     return (
       <Chip
         icon={<CheckCircle />}
-        label="No scheduling conflicts"
+        label={intl.formatMessage(messages.noConflicts)}
         color="success"
         variant="outlined"
-        aria-label="No scheduling conflicts"
+        aria-label={intl.formatMessage(messages.noConflicts)}
         sx={{ minHeight: 32 }}
       />
     );
   }
+
+  const conflictsLabel = intl.formatMessage(messages.conflictsLabel, { count });
 
   return (
     <>
       <Chip
         ref={anchorRef}
         icon={<Warning />}
-        label={`${count} scheduling conflict${count === 1 ? '' : 's'} — click to see details`}
+        label={conflictsLabel}
         color="error"
         variant="outlined"
         onClick={() => setPopoverOpen(true)}
-        aria-label={`${count} scheduling conflict${count === 1 ? '' : 's'} — click to see details`}
+        aria-label={conflictsLabel}
         sx={{ minHeight: 32, cursor: 'pointer' }}
       />
       <ConflictPopover

@@ -5,11 +5,23 @@ import {
   Popover,
   Typography,
 } from '@mui/material';
+import { defineMessages, useIntl } from 'react-intl';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { selectClass, toggleInspector } from '@/store/reducers/uiSlice';
 import { getConflictMessage, resolveConflictResourceName } from '@/utils/conflictMessages';
 import { useScheduleNames } from '@/hooks/useScheduleNames';
 import type { Conflict } from '@/types';
+
+const messages = defineMessages({
+  title: {
+    id: 'conflictPopover.title',
+    defaultMessage: 'Scheduling Conflicts',
+  },
+  inspectAriaLabel: {
+    id: 'conflictPopover.inspectAriaLabel',
+    defaultMessage: '{message} — click to inspect',
+  },
+});
 
 interface ConflictPopoverProps {
   readonly open: boolean;
@@ -24,6 +36,7 @@ export default function ConflictPopover({
   conflicts,
   onClose,
 }: ConflictPopoverProps): React.ReactElement {
+  const intl = useIntl();
   const dispatch = useAppDispatch();
   const classes = useAppSelector((s) => s.class.classes);
   const names = useScheduleNames();
@@ -47,18 +60,18 @@ export default function ConflictPopover({
       slotProps={{ paper: { sx: { maxWidth: 420, maxHeight: 320, overflow: 'auto' } } }}
     >
       <Typography variant="subtitle2" sx={{ px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
-        Scheduling Conflicts
+        {intl.formatMessage(messages.title)}
       </Typography>
       <List dense disablePadding>
         {conflicts.map((conflict) => {
-          const resourceName = resolveConflictResourceName(conflict, classes, names);
-          const message = getConflictMessage(conflict.type, resourceName);
+          const resourceName = resolveConflictResourceName(intl, conflict, classes, names);
+          const message = getConflictMessage(intl, conflict.type, resourceName);
           return (
             <ListItemButton
               key={conflict.id}
               onClick={() => handleRowClick(conflict)}
               sx={{ py: 1, px: 2 }}
-              aria-label={`${message} — click to inspect`}
+              aria-label={intl.formatMessage(messages.inspectAriaLabel, { message })}
             >
               <ListItemText
                 primary={message}

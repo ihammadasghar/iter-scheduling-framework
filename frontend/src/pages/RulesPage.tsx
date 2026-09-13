@@ -12,6 +12,7 @@ import {
   Typography,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import { defineMessages, useIntl } from 'react-intl';
 import AppShell from '@/templates/AppShell';
 import TwoColumnLayout from '@/templates/TwoColumnLayout';
 import MetricRuleCard from '@/molecules/MetricRuleCard';
@@ -28,9 +29,89 @@ import {
 } from '@/store/reducers/rulesSlice';
 import type { MetricRule, Constraint } from '@/types';
 
+const messages = defineMessages({
+  ruleDeleted: {
+    id: 'rulesPage.ruleDeleted',
+    defaultMessage: 'Rule deleted',
+  },
+  constraintDeleted: {
+    id: 'rulesPage.constraintDeleted',
+    defaultMessage: 'Constraint deleted',
+  },
+  metricRulesHeading: {
+    id: 'rulesPage.metricRulesHeading',
+    defaultMessage: 'Metric Rules',
+  },
+  addMetric: {
+    id: 'rulesPage.addMetric',
+    defaultMessage: '+ Add Metric',
+  },
+  noMetricRules: {
+    id: 'rulesPage.noMetricRules',
+    defaultMessage: 'No metric rules configured yet.',
+  },
+  constraintsHeading: {
+    id: 'rulesPage.constraintsHeading',
+    defaultMessage: 'Hard Constraints',
+  },
+  addConstraint: {
+    id: 'rulesPage.addConstraint',
+    defaultMessage: '+ Add Constraint',
+  },
+  noConstraints: {
+    id: 'rulesPage.noConstraints',
+    defaultMessage: 'No hard constraints configured yet.',
+  },
+  title: {
+    id: 'rulesPage.title',
+    defaultMessage: 'Rules & Constraints',
+  },
+  unavailable: {
+    id: 'rulesPage.unavailable',
+    defaultMessage: 'The rules configuration service is not available yet. Please contact your IT department.',
+  },
+  metricRuleUpdated: {
+    id: 'rulesPage.metricRuleUpdated',
+    defaultMessage: 'Metric rule updated',
+  },
+  metricRuleAdded: {
+    id: 'rulesPage.metricRuleAdded',
+    defaultMessage: 'Metric rule added',
+  },
+  constraintUpdated: {
+    id: 'rulesPage.constraintUpdated',
+    defaultMessage: 'Constraint updated',
+  },
+  constraintAdded: {
+    id: 'rulesPage.constraintAdded',
+    defaultMessage: 'Constraint added',
+  },
+  deleteMetricRuleTitle: {
+    id: 'rulesPage.deleteMetricRuleTitle',
+    defaultMessage: 'Delete Metric Rule?',
+  },
+  deleteConstraintTitle: {
+    id: 'rulesPage.deleteConstraintTitle',
+    defaultMessage: 'Delete Constraint?',
+  },
+  deleteConfirmBody: {
+    id: 'rulesPage.deleteConfirmBody',
+    defaultMessage: 'Are you sure you want to delete "{name}"? This cannot be undone.',
+  },
+  cancel: {
+    id: 'rulesPage.cancel',
+    defaultMessage: 'Cancel',
+  },
+  yesDelete: {
+    id: 'rulesPage.yesDelete',
+    defaultMessage: 'Yes, Delete',
+  },
+});
+
 type DeleteTarget = { kind: 'metric' | 'constraint'; id: string; name: string } | null;
 
 export default function RulesPage(): React.ReactElement {
+  const intl = useIntl();
   const dispatch = useAppDispatch();
   const { metrics, constraints, loading, unavailable } = useAppSelector((s) => s.rules);
 
@@ -59,13 +140,13 @@ export default function RulesPage(): React.ReactElement {
       : deleteConstraintThunk(deleteTarget.id);
     await dispatch(thunk);
     setDeleteTarget(null);
-    showSnackbar(deleteTarget.kind === 'metric' ? 'Rule deleted' : 'Constraint deleted');
+    showSnackbar(deleteTarget.kind === 'metric' ? intl.formatMessage(messages.ruleDeleted) : intl.formatMessage(messages.constraintDeleted));
   };
 
   const metricSection = (
     <Box>
       <Typography variant="overline" color="text.secondary" sx={{ display: "block", mb: 1 }}>
-        Metric Rules
+        {intl.formatMessage(messages.metricRulesHeading)}
       </Typography>
       <Button
         variant="outlined"
@@ -74,7 +155,7 @@ export default function RulesPage(): React.ReactElement {
         disabled={unavailable || loading}
         sx={{ mb: 2 }}
       >
-        + Add Metric
+        {intl.formatMessage(messages.addMetric)}
       </Button>
 
       {loading && metrics.length === 0 && (
@@ -86,7 +167,7 @@ export default function RulesPage(): React.ReactElement {
 
       {!loading && metrics.length === 0 && (
         <Typography variant="body2" color="text.secondary">
-          No metric rules configured yet.
+          {intl.formatMessage(messages.noMetricRules)}
         </Typography>
       )}
 
@@ -107,7 +188,7 @@ export default function RulesPage(): React.ReactElement {
   const constraintSection = (
     <Box>
       <Typography variant="overline" color="text.secondary" sx={{ display: "block", mb: 1 }}>
-        Hard Constraints
+        {intl.formatMessage(messages.constraintsHeading)}
       </Typography>
       <Button
         variant="outlined"
@@ -116,7 +197,7 @@ export default function RulesPage(): React.ReactElement {
         disabled={unavailable || loading}
         sx={{ mb: 2 }}
       >
-        + Add Constraint
+        {intl.formatMessage(messages.addConstraint)}
       </Button>
 
       {loading && constraints.length === 0 && (
@@ -128,7 +209,7 @@ export default function RulesPage(): React.ReactElement {
 
       {!loading && constraints.length === 0 && (
         <Typography variant="body2" color="text.secondary">
-          No hard constraints configured yet.
+          {intl.formatMessage(messages.noConstraints)}
         </Typography>
       )}
 
@@ -150,12 +231,12 @@ export default function RulesPage(): React.ReactElement {
     <AppShell>
       <Box sx={{ maxWidth: 1100, mx: 'auto', px: 3, py: 4 }}>
         <Typography variant="h3" component="h1" sx={{ mb: 3 }}>
-          Rules &amp; Constraints
+          {intl.formatMessage(messages.title)}
         </Typography>
 
         {unavailable && (
           <Alert severity="info" sx={{ mb: 3 }}>
-            The rules configuration service is not available yet. Please contact your IT department.
+            {intl.formatMessage(messages.unavailable)}
           </Alert>
         )}
 
@@ -169,7 +250,7 @@ export default function RulesPage(): React.ReactElement {
             setAddMetricOpen(false);
             setEditMetricTarget(null);
           }}
-          onSuccess={() => showSnackbar(editMetricTarget ? 'Metric rule updated' : 'Metric rule added')}
+          onSuccess={() => showSnackbar(editMetricTarget ? intl.formatMessage(messages.metricRuleUpdated) : intl.formatMessage(messages.metricRuleAdded))}
           existingRule={editMetricTarget ?? undefined}
         />
         <AddConstraintDialog
@@ -178,22 +259,22 @@ export default function RulesPage(): React.ReactElement {
             setAddConstraintOpen(false);
             setEditConstraintTarget(null);
           }}
-          onSuccess={() => showSnackbar(editConstraintTarget ? 'Constraint updated' : 'Constraint added')}
+          onSuccess={() => showSnackbar(editConstraintTarget ? intl.formatMessage(messages.constraintUpdated) : intl.formatMessage(messages.constraintAdded))}
           existingRule={editConstraintTarget ?? undefined}
         />
 
         {/* Delete confirmation */}
         <Dialog open={deleteTarget !== null} onClose={() => setDeleteTarget(null)}>
-          <DialogTitle>Delete {deleteTarget?.kind === 'metric' ? 'Metric Rule' : 'Constraint'}?</DialogTitle>
+          <DialogTitle>{deleteTarget?.kind === 'metric' ? intl.formatMessage(messages.deleteMetricRuleTitle) : intl.formatMessage(messages.deleteConstraintTitle)}</DialogTitle>
           <DialogContent>
             <DialogContentText>
-              Are you sure you want to delete &ldquo;{deleteTarget?.name}&rdquo;? This cannot be undone.
+              {intl.formatMessage(messages.deleteConfirmBody, { name: deleteTarget?.name ?? '' })}
             </DialogContentText>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button onClick={() => setDeleteTarget(null)}>{intl.formatMessage(messages.cancel)}</Button>
             <Button variant="contained" color="error" onClick={handleDeleteConfirm}>
-              Yes, Delete
+              {intl.formatMessage(messages.yesDelete)}
             </Button>
           </DialogActions>
         </Dialog>

@@ -1,13 +1,15 @@
 import { Tabs, Tab } from '@mui/material';
+import { defineMessages, useIntl } from 'react-intl';
 
 export type WorkspaceTabValue = 'myschedule' | 'grid' | 'browse' | 'overview';
 
-const TAB_CONFIG: Record<WorkspaceTabValue, { readonly label: string }> = {
-  myschedule: { label: 'My Schedule' },
-  grid: { label: 'Full Schedule' },
-  browse: { label: 'Browse' },
-  overview: { label: 'Overview' },
-};
+const messages = defineMessages({
+  myschedule: { id: 'workspaceTabs.mySchedule', defaultMessage: 'My Schedule' },
+  grid: { id: 'workspaceTabs.fullSchedule', defaultMessage: 'Full Schedule' },
+  browse: { id: 'workspaceTabs.browse', defaultMessage: 'Browse' },
+  overview: { id: 'workspaceTabs.overview', defaultMessage: 'Overview' },
+  ariaLabel: { id: 'workspaceTabs.ariaLabel', defaultMessage: 'Timetable workspace view' },
+});
 
 const DEFAULT_TABS: readonly WorkspaceTabValue[] = ['myschedule', 'grid', 'browse', 'overview'];
 
@@ -22,14 +24,15 @@ interface WorkspaceTabsProps {
 }
 
 export default function WorkspaceTabs({ value, onChange, tabs = DEFAULT_TABS }: WorkspaceTabsProps): React.ReactElement {
+  const intl = useIntl();
   return (
     <Tabs
       value={value}
       onChange={(_e, newValue: WorkspaceTabValue) => onChange(newValue)}
-      aria-label="Timetable workspace view"
+      aria-label={intl.formatMessage(messages.ariaLabel)}
     >
       {tabs.map((tabValue) => (
-        <Tab key={tabValue} value={tabValue} label={TAB_CONFIG[tabValue].label} />
+        <Tab key={tabValue} value={tabValue} label={intl.formatMessage(messages[tabValue])} />
       ))}
     </Tabs>
   );

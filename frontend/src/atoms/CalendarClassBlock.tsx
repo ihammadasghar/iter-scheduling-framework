@@ -1,11 +1,35 @@
 import { Box, Tooltip } from '@mui/material';
 import { WarningAmber } from '@mui/icons-material';
+import { defineMessages, useIntl } from 'react-intl';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { selectClass, toggleInspector } from '@/store/reducers/uiSlice';
 import { useScheduleNames } from '@/hooks/useScheduleNames';
 import type { ScheduleNames } from '@/utils/scheduleNames';
 import type { CalendarBlock } from '@/utils/calendarLayout';
 import type { ScheduleClass } from '@/types';
+
+const messages = defineMessages({
+  tooltip: {
+    id: 'calendarClassBlock.tooltip',
+    defaultMessage: '{title} · Room: {room} · Prof: {professor}',
+  },
+  noRoom: {
+    id: 'calendarClassBlock.noRoom',
+    defaultMessage: 'No room',
+  },
+  conflictTooltip: {
+    id: 'calendarClassBlock.conflictTooltip',
+    defaultMessage: '{conflictSummary} — click for details',
+  },
+  conflictAriaLabel: {
+    id: 'calendarClassBlock.conflictAriaLabel',
+    defaultMessage: '{label} — {conflictSummary}',
+  },
+  selectedAriaLabel: {
+    id: 'calendarClassBlock.selectedAriaLabel',
+    defaultMessage: '{label} — selected',
+  },
+});
 
 // Same idea as ClassChip.tsx, but positioned by real time-of-day geometry
 // instead of a fixed-size grid cell — one block can be a different height
@@ -24,12 +48,6 @@ interface CalendarClassBlockProps {
 // baseline), even on a densely-packed day.
 const MIN_BLOCK_HEIGHT = 44;
 
-const buildTooltip = (cls: ScheduleClass, names: ScheduleNames): string => [
-  cls.title,
-  `Room: ${names.roomName(cls.roomId)}`,
-  `Prof: ${names.professorName(cls.professorId)}`,
-].join(' · ');
-
 export default function CalendarClassBlock({
   classItem,
   block,
@@ -38,10 +56,18 @@ export default function CalendarClassBlock({
   isConflicted = false,
   conflictSummary,
 }: CalendarClassBlockProps): React.ReactElement {
+  const intl = useIntl();
   const dispatch = useAppDispatch();
   const selectedId = useAppSelector((s) => s.ui.selectedClassId);
   const names = useScheduleNames();
   const selected = selectedId === classItem.id;
+
+  const buildTooltip = (cls: ScheduleClass, n: ScheduleNames): string =>
+    intl.formatMessage(messages.tooltip, {
+      title: cls.title,
+      room: n.roomName(cls.roomId),
+      professor: n.professorName(cls.professorId),
+    });
 
   const handleClick = (e: React.MouseEvent): void => {
     e.stopPropagation(); // prevent the calendar's own background deselectClass handler
@@ -61,14 +87,14 @@ export default function CalendarClassBlock({
   // A second line (room, or "No room" for ISCTE-style unscheduled classes —
   // see docs/iscte-dataset.md) so wayfinding info is visible without a
   // hover, whenever the block is tall enough to fit it without crowding.
-  const roomLabel = names.roomName(classItem.roomId) || 'No room';
+  const roomLabel = names.roomName(classItem.roomId) || intl.formatMessage(messages.noRoom);
   const showRoomLine = height >= 50;
   const tooltipTitle = isConflicted && conflictSummary !== undefined
-    ? `${conflictSummary} — click for details`
+    ? intl.formatMessage(messages.conflictTooltip, { conflictSummary })
     : buildTooltip(classItem, names);
   const ariaLabel = isConflicted && conflictSummary !== undefined
-    ? `${label} — ${conflictSummary}`
-    : selected ? `${label} — selected` : label;
+    ? intl.formatMessage(messages.conflictAriaLabel, { label, conflictSummary })
+    : selected ? intl.formatMessage(messages.selectedAriaLabel, { label }) : label;
 
   return (
     <Tooltip title={tooltipTitle} enterDelay={300}>

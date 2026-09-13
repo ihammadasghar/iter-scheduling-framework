@@ -1,3 +1,4 @@
+import { defineMessages, type IntlShape } from 'react-intl';
 import type { Conflict, ConflictType } from '@/types';
 
 export interface ConflictTypeCount {
@@ -6,14 +7,14 @@ export interface ConflictTypeCount {
   readonly count: number;
 }
 
-const CONFLICT_TYPE_LABELS: Readonly<Record<ConflictType, string>> = {
-  ROOM_DOUBLE_BOOK: 'Room double-booked',
-  PROFESSOR_OVERLAP: 'Lecturer double-booked',
-  GROUP_OVERLAP: 'Student group overlap',
-  ROOM_CAPACITY_EXCEEDED: 'Room over capacity',
-  CONSECUTIVE_LIMIT_EXCEEDED: 'Consecutive periods exceeded',
-  GAP_LIMIT_EXCEEDED: 'Gap limit exceeded',
-};
+const messages = defineMessages({
+  ROOM_DOUBLE_BOOK: { id: 'groupConflictsByType.roomDoubleBook', defaultMessage: 'Room double-booked' },
+  PROFESSOR_OVERLAP: { id: 'groupConflictsByType.professorOverlap', defaultMessage: 'Lecturer double-booked' },
+  GROUP_OVERLAP: { id: 'groupConflictsByType.groupOverlap', defaultMessage: 'Student group overlap' },
+  ROOM_CAPACITY_EXCEEDED: { id: 'groupConflictsByType.roomCapacityExceeded', defaultMessage: 'Room over capacity' },
+  CONSECUTIVE_LIMIT_EXCEEDED: { id: 'groupConflictsByType.consecutiveLimitExceeded', defaultMessage: 'Consecutive periods exceeded' },
+  GAP_LIMIT_EXCEEDED: { id: 'groupConflictsByType.gapLimitExceeded', defaultMessage: 'Gap limit exceeded' },
+});
 
 const CONFLICT_TYPE_ORDER: readonly ConflictType[] = [
   'ROOM_DOUBLE_BOOK',
@@ -37,6 +38,7 @@ const POLICY_CONFLICT_TYPES: ReadonlySet<ConflictType> = new Set([
 export const isPolicyViolation = (type: ConflictType): boolean => POLICY_CONFLICT_TYPES.has(type);
 
 export const groupConflictsByType = (
+  intl: IntlShape,
   conflicts: readonly Conflict[],
 ): readonly ConflictTypeCount[] => {
   const counts = new Map<ConflictType, number>();
@@ -44,7 +46,7 @@ export const groupConflictsByType = (
 
   return CONFLICT_TYPE_ORDER.map((type) => ({
     type,
-    label: CONFLICT_TYPE_LABELS[type],
+    label: intl.formatMessage(messages[type]),
     count: counts.get(type) ?? 0,
   }));
 };

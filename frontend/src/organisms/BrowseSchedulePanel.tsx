@@ -1,9 +1,21 @@
 import { useState } from 'react';
 import { Box, Typography } from '@mui/material';
+import { defineMessages, useIntl } from 'react-intl';
 import ResourcePicker from '@/molecules/ResourcePicker';
 import MyScheduleCalendar from '@/organisms/MyScheduleCalendar';
 import { useScheduleNames } from '@/hooks/useScheduleNames';
 import type { ViewByOption } from '@/types';
+
+const messages = defineMessages({
+  searchPrompt: {
+    id: 'browseSchedulePanel.searchPrompt',
+    defaultMessage: 'Search for a room, professor, or student group to see their weekly schedule.',
+  },
+  emptyMessage: {
+    id: 'browseSchedulePanel.emptyMessage',
+    defaultMessage: 'No classes are scheduled for {resource} this week.',
+  },
+});
 
 interface BrowseSchedulePanelProps {
   readonly conflictedClassIds?: ReadonlySet<string>;
@@ -33,6 +45,7 @@ export default function BrowseSchedulePanel({
   conflictedClassIds,
   excludedDays,
 }: BrowseSchedulePanelProps): React.ReactElement {
+  const intl = useIntl();
   const [resourceType, setResourceType] = useState<ViewByOption>('room');
   const [resourceId, setResourceId] = useState<string | null>(null);
   const names = useScheduleNames();
@@ -51,7 +64,7 @@ export default function BrowseSchedulePanel({
       {resourceId === null ? (
         <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 4 }}>
           <Typography color="text.secondary">
-            Search for a room, professor, or student group to see their weekly schedule.
+            {intl.formatMessage(messages.searchPrompt)}
           </Typography>
         </Box>
       ) : (
@@ -59,7 +72,7 @@ export default function BrowseSchedulePanel({
           resource={{ type: resourceType, id: resourceId }}
           conflictedClassIds={conflictedClassIds}
           excludedDays={excludedDays}
-          emptyMessage={`No classes are scheduled for ${nameResolverFor(names, resourceType)(resourceId)} this week.`}
+          emptyMessage={intl.formatMessage(messages.emptyMessage, { resource: nameResolverFor(names, resourceType)(resourceId) })}
         />
       )}
     </Box>

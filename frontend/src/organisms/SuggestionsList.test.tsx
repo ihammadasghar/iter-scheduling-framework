@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import SuggestionsList from './SuggestionsList';
 import classReducer from '@/store/reducers/classSlice';
@@ -63,7 +64,9 @@ const makeStore = () =>
 const renderList = (store: ReturnType<typeof makeStore>) =>
   render(
     <Provider store={store}>
-      <SuggestionsList simId={SIM_ID} classId={CLASS_ID} currentClass={currentClass} />
+      <IntlProvider locale="en" messages={{}}>
+        <SuggestionsList simId={SIM_ID} classId={CLASS_ID} currentClass={currentClass} />
+      </IntlProvider>
     </Provider>,
   );
 
@@ -150,7 +153,9 @@ describe('SuggestionsList', () => {
 
     rerender(
       <Provider store={store}>
-        <SuggestionsList simId={SIM_ID} classId="CLS_002" currentClass={{ ...currentClass, id: 'CLS_002' }} />
+        <IntlProvider locale="en" messages={{}}>
+          <SuggestionsList simId={SIM_ID} classId="CLS_002" currentClass={{ ...currentClass, id: 'CLS_002' }} />
+        </IntlProvider>
       </Provider>,
     );
 

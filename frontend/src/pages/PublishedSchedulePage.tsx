@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Box, Typography } from '@mui/material';
+import { defineMessages, useIntl } from 'react-intl';
 import AppShell from '@/templates/AppShell';
 import BackButton from '@/atoms/BackButton';
 import TimetableGrid from '@/organisms/TimetableGrid';
@@ -12,6 +13,17 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchPublishedClassesPage, resetClasses } from '@/store/reducers/classSlice';
 import { fetchPublishedScheduleThunk } from '@/store/reducers/scheduleSlice';
 import { initialWeekStart, excludedDaysForWeek } from '@/utils/weekNavigation';
+
+const messages = defineMessages({
+  title: {
+    id: 'publishedSchedulePage.title',
+    defaultMessage: 'Published Schedule',
+  },
+  loadError: {
+    id: 'publishedSchedulePage.loadError',
+    defaultMessage: 'Could not load the published schedule. Please try again.',
+  },
+});
 
 // Only Full Schedule and Browse apply here — this page has no simulation
 // session, so no conflicts/metrics for Overview, and no redundant "My
@@ -26,6 +38,7 @@ const PAGE_SIZE = 1000; // must match PAGE_SIZE in classSlice
 // no heartbeat/inactivity tracking). Just "what does the live timetable
 // look like right now".
 export default function PublishedSchedulePage(): React.ReactElement {
+  const intl = useIntl();
   const dispatch = useAppDispatch();
   const error = useAppSelector((s) => s.class.error);
   const [tab, setTab] = useState<WorkspaceTabValue>('grid');
@@ -86,7 +99,7 @@ export default function PublishedSchedulePage(): React.ReactElement {
         >
           <BackButton />
           <Typography variant="h6" component="h1" sx={{ mr: 1 }}>
-            Published Schedule
+            {intl.formatMessage(messages.title)}
           </Typography>
           {tab === 'grid' && <ViewBySelector />}
           {metadata !== null && weekStart !== null && (
@@ -102,7 +115,7 @@ export default function PublishedSchedulePage(): React.ReactElement {
 
         {error && (
           <Alert severity="error" sx={{ mx: 3, mt: 2 }}>
-            Could not load the published schedule. Please try again.
+            {intl.formatMessage(messages.loadError)}
           </Alert>
         )}
 

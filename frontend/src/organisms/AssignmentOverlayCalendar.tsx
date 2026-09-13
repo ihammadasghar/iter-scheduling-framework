@@ -1,10 +1,40 @@
 import { useMemo } from 'react';
 import { Box, Chip, Stack, Typography } from '@mui/material';
+import { defineMessages, useIntl } from 'react-intl';
 import OverlayClassBlock from '@/atoms/OverlayClassBlock';
 import { useScheduleNames } from '@/hooks/useScheduleNames';
 import { deriveDayOrder, computeCalendarBounds, timeToMinutes } from '@/utils/calendarLayout';
 import type { OverlayBlock, OverlaySource } from '@/utils/overlayLayout';
 import type { RawTimeSlot, ScheduleClass } from '@/types';
+
+const messages = defineMessages({
+  room: { id: 'assignmentOverlayCalendar.room', defaultMessage: 'Room' },
+  professor: { id: 'assignmentOverlayCalendar.professor', defaultMessage: 'Professor' },
+  group: { id: 'assignmentOverlayCalendar.group', defaultMessage: 'Student Group' },
+  editing: { id: 'assignmentOverlayCalendar.editing', defaultMessage: 'This Class' },
+  legendAriaLabel: {
+    id: 'assignmentOverlayCalendar.legendAriaLabel',
+    defaultMessage: 'Schedule color legend',
+  },
+  overlayAriaLabel: {
+    id: 'assignmentOverlayCalendar.overlayAriaLabel',
+    defaultMessage: 'Room, professor, and student group schedule overlay',
+  },
+  dayAvailabilityAriaLabel: {
+    id: 'assignmentOverlayCalendar.dayAvailabilityAriaLabel',
+    defaultMessage: '{day} availability',
+  },
+  useSlotAriaLabel: {
+    id: 'assignmentOverlayCalendar.useSlotAriaLabel',
+    defaultMessage: 'Use {day} {slotName}',
+  },
+  blockTooltip: {
+    id: 'assignmentOverlayCalendar.blockTooltip',
+    defaultMessage: '{label}: {title}',
+  },
+  am: { id: 'assignmentOverlayCalendar.am', defaultMessage: 'AM' },
+  pm: { id: 'assignmentOverlayCalendar.pm', defaultMessage: 'PM' },
+});
 
 interface AssignmentOverlayCalendarProps {
   // Includes an 'editing' block for the class being edited itself, at
@@ -35,19 +65,11 @@ const MIN_LANE_WIDTH = 70;
 // so this palette reads as "whose schedule" rather than "good/bad". Only
 // two of MUI's named roles are otherwise unclaimed (secondary, info); the
 // rest are plain literals since there's no unused semantic slot left.
-const SOURCE_COLORS: Record<OverlaySource, { bgcolor: string; color: string; label: string }> = {
-  room: { bgcolor: 'info.main', color: 'info.contrastText', label: 'Room' },
-  professor: { bgcolor: 'secondary.main', color: 'secondary.contrastText', label: 'Professor' },
-  group: { bgcolor: '#6a1b9a', color: '#ffffff', label: 'Student Group' },
-  editing: { bgcolor: '#ffab00', color: '#000000', label: 'This Class' },
-};
-
-/** 630 → "10 AM" */
-const formatHour = (minutes: number): string => {
-  const hour = Math.floor(minutes / 60);
-  const period = hour >= 12 ? 'PM' : 'AM';
-  const displayHour = hour % 12 === 0 ? 12 : hour % 12;
-  return `${displayHour} ${period}`;
+const SOURCE_COLORS: Record<OverlaySource, { bgcolor: string; color: string }> = {
+  room: { bgcolor: 'info.main', color: 'info.contrastText' },
+  professor: { bgcolor: 'secondary.main', color: 'secondary.contrastText' },
+  group: { bgcolor: '#6a1b9a', color: '#ffffff' },
+  editing: { bgcolor: '#ffab00', color: '#000000' },
 };
 
 /**
@@ -62,6 +84,7 @@ export default function AssignmentOverlayCalendar({
   timeSlots,
   onSlotClick,
 }: AssignmentOverlayCalendarProps): React.ReactElement {
+  const intl = useIntl();
   const names = useScheduleNames();
   const dayOrder = useMemo(() => deriveDayOrder(timeSlots), [timeSlots]);
   const bounds = useMemo(() => computeCalendarBounds(timeSlots), [timeSlots]);
@@ -69,6 +92,21 @@ export default function AssignmentOverlayCalendar({
     () => Math.max(MIN_DAY_COLUMN_WIDTH, ...blocks.map((b) => b.laneCount * MIN_LANE_WIDTH)),
     [blocks],
   );
+
+  const sourceLabels: Record<OverlaySource, string> = {
+    room: intl.formatMessage(messages.room),
+    professor: intl.formatMessage(messages.professor),
+    group: intl.formatMessage(messages.group),
+    editing: intl.formatMessage(messages.editing),
+  };
+
+  /** 630 → "10 AM" */
+  const formatHour = (minutes: number): string => {
+    const hour = Math.floor(minutes / 60);
+    const period = hour >= 12 ? intl.formatMessage(messages.pm) : intl.formatMessage(messages.am);
+    const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+    return `${displayHour} ${period}`;
+  };
 
   const totalHeight = Math.max((bounds.maxMinutes - bounds.minMinutes) * PIXELS_PER_MINUTE, 0);
   const hourMarks: number[] = [];
@@ -78,19 +116,19 @@ export default function AssignmentOverlayCalendar({
 
   return (
     <Box>
-      <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: 'wrap', rowGap: 1 }} aria-label="Schedule color legend">
+      <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: 'wrap', rowGap: 1 }} aria-label={intl.formatMessage(messages.legendAriaLabel)}>
         {(Object.keys(SOURCE_COLORS) as OverlaySource[]).map((source) => (
           <Chip
             key={source}
             size="small"
-            label={SOURCE_COLORS[source].label}
+            label={sourceLabels[source]}
             sx={{ bgcolor: SOURCE_COLORS[source].bgcolor, color: SOURCE_COLORS[source].color }}
           />
         ))}
       </Stack>
 
       <Box
-        aria-label="Room, professor, and student group schedule overlay"
+        aria-label={intl.formatMessage(messages.overlayAriaLabel)}
         sx={{ overflow: 'auto', maxHeight: 360, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}
       >
         <Box
@@ -146,7 +184,7 @@ export default function AssignmentOverlayCalendar({
             return (
               <Box
                 key={day}
-                aria-label={`${day} availability`}
+                aria-label={intl.formatMessage(messages.dayAvailabilityAriaLabel, { day })}
                 sx={{ position: 'relative', height: totalHeight, borderRight: '1px solid', borderColor: 'divider' }}
               >
                 {/* Click-to-set shortcut — bottom layer, so it's reachable
@@ -159,7 +197,7 @@ export default function AssignmentOverlayCalendar({
                       key={slot.id}
                       role={onSlotClick ? 'button' : undefined}
                       tabIndex={onSlotClick ? 0 : undefined}
-                      aria-label={onSlotClick ? `Use ${day} ${slot.name}` : undefined}
+                      aria-label={onSlotClick ? intl.formatMessage(messages.useSlotAriaLabel, { day, slotName: slot.name }) : undefined}
                       onClick={() => onSlotClick?.(day, slot.id)}
                       onKeyDown={(e) => {
                         if (onSlotClick && (e.key === 'Enter' || e.key === ' ')) onSlotClick(day, slot.id);
@@ -200,7 +238,7 @@ export default function AssignmentOverlayCalendar({
                     <OverlayClassBlock
                       key={`${block.source}-${block.classId}-${block.day}`}
                       label={names.courseCode(cls.courseId)}
-                      tooltip={`${palette.label}: ${cls.title}`}
+                      tooltip={intl.formatMessage(messages.blockTooltip, { label: sourceLabels[block.source], title: cls.title })}
                       block={block}
                       minMinutes={bounds.minMinutes}
                       pixelsPerMinute={PIXELS_PER_MINUTE}

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { IntlProvider } from 'react-intl';
 import ConflictBreakdownChart from './ConflictBreakdownChart';
 
 const ZERO_COUNTS = [
@@ -8,15 +9,22 @@ const ZERO_COUNTS = [
   { type: 'GROUP_OVERLAP' as const, label: 'Student group overlap', count: 0 },
 ];
 
+const renderChart = (counts: typeof ZERO_COUNTS) =>
+  render(
+    <IntlProvider locale="en" messages={{}}>
+      <ConflictBreakdownChart counts={counts} />
+    </IntlProvider>,
+  );
+
 describe('ConflictBreakdownChart', () => {
   it('shows "No conflicts to report" when all counts are zero', () => {
-    render(<ConflictBreakdownChart counts={ZERO_COUNTS} />);
+    renderChart(ZERO_COUNTS);
     expect(screen.getByText(/no conflicts to report/i)).toBeInTheDocument();
   });
 
   it('renders the chart when there is at least one conflict', () => {
     const counts = [{ ...ZERO_COUNTS[0]!, count: 2 }, ZERO_COUNTS[1]!, ZERO_COUNTS[2]!];
-    render(<ConflictBreakdownChart counts={counts} />);
+    renderChart(counts);
     expect(screen.getByLabelText(/conflicts by type/i)).toBeInTheDocument();
   });
 
@@ -26,7 +34,7 @@ describe('ConflictBreakdownChart', () => {
       { type: 'PROFESSOR_OVERLAP' as const, label: 'Lecturer double-booked', count: 3 },
       { type: 'GROUP_OVERLAP' as const, label: 'Student group overlap', count: 1 },
     ];
-    const { container } = render(<ConflictBreakdownChart counts={counts} />);
+    const { container } = renderChart(counts);
 
     const bars = container.querySelectorAll('.MuiBarChart-element');
     expect(bars).toHaveLength(3);

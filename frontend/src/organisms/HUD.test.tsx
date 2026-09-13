@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import HUD from './HUD';
 import conflictReducer from '@/store/reducers/conflictSlice';
@@ -45,7 +46,9 @@ const render_ = async (
   vi.mocked(simulationService.getScore).mockResolvedValue(score);
   render(
     <Provider store={makeStore()}>
-      <HUD simId="sim-test" onSubmitProposal={onSubmit} />
+      <IntlProvider locale="en" messages={{}}>
+        <HUD simId="sim-test" onSubmitProposal={onSubmit} />
+      </IntlProvider>
     </Provider>,
   );
   // Wait for on-mount fetches to resolve and loading chip to disappear

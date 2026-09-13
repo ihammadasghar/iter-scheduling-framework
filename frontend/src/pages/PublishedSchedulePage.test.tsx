@@ -3,12 +3,14 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import PublishedSchedulePage from './PublishedSchedulePage';
 import classReducer from '@/store/reducers/classSlice';
 import scheduleReducer from '@/store/reducers/scheduleSlice';
 import uiReducer from '@/store/reducers/uiSlice';
 import identityReducer from '@/store/reducers/identitySlice';
+import languageReducer from '@/store/reducers/languageSlice';
 import { scheduleService } from '@/services/scheduleService';
 
 vi.mock('@/organisms/TimetableGrid', () => ({
@@ -41,6 +43,7 @@ const rootReducer = combineReducers({
   schedule: scheduleReducer,
   ui: uiReducer,
   identity: identityReducer,
+  language: languageReducer,
 });
 
 type RootState = ReturnType<typeof rootReducer>;
@@ -52,9 +55,11 @@ const renderPage = (preloadedState?: Partial<RootState>) => {
   const store = makeStore(preloadedState);
   const utils = render(
     <Provider store={store}>
-      <MemoryRouter>
-        <PublishedSchedulePage />
-      </MemoryRouter>
+      <IntlProvider locale="en" messages={{}}>
+        <MemoryRouter>
+          <PublishedSchedulePage />
+        </MemoryRouter>
+      </IntlProvider>
     </Provider>,
   );
   return { store, ...utils };

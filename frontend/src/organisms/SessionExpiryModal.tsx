@@ -1,12 +1,33 @@
 import { useState } from 'react';
 import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { defineMessages, useIntl } from 'react-intl';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { clearSession } from '@/store/reducers/sessionSlice';
 import { deleteSimulationThunk } from '@/store/reducers/simulationSlice';
 import CreateSimulationDialog from '@/molecules/CreateSimulationDialog';
 
+const messages = defineMessages({
+  title: {
+    id: 'sessionExpiryModal.title',
+    defaultMessage: '⏱ Your session has ended',
+  },
+  body: {
+    id: 'sessionExpiryModal.body',
+    defaultMessage: "You were away for a while and your editing session has closed automatically. Don't worry — any changes you saved are still there on your draft. Only unsaved changes from this session were lost.",
+  },
+  goHome: {
+    id: 'sessionExpiryModal.goHome',
+    defaultMessage: 'Go Back to My Simulations',
+  },
+  newDraft: {
+    id: 'sessionExpiryModal.newDraft',
+    defaultMessage: 'Start a New Draft',
+  },
+});
+
 export default function SessionExpiryModal(): React.ReactElement {
+  const intl = useIntl();
   const expired = useAppSelector((s) => s.session.expired);
   const simulationId = useAppSelector((s) => s.session.simulationId);
   const dispatch = useAppDispatch();
@@ -44,20 +65,18 @@ export default function SessionExpiryModal(): React.ReactElement {
         aria-labelledby="session-expiry-title"
         aria-describedby="session-expiry-desc"
       >
-        <DialogTitle id="session-expiry-title">⏱ Your session has ended</DialogTitle>
+        <DialogTitle id="session-expiry-title">{intl.formatMessage(messages.title)}</DialogTitle>
         <DialogContent>
           <DialogContentText id="session-expiry-desc">
-            You were away for a while and your editing session has closed automatically. Don&rsquo;t
-            worry — any changes you saved are still there on your draft. Only unsaved changes from
-            this session were lost.
+            {intl.formatMessage(messages.body)}
           </DialogContentText>
         </DialogContent>
         <DialogActions sx={{ flexDirection: { xs: 'column', sm: 'row' }, gap: 1, p: 3 }}>
           <Button variant="contained" onClick={handleGoHome} fullWidth>
-            Go Back to My Simulations
+            {intl.formatMessage(messages.goHome)}
           </Button>
           <Button variant="outlined" onClick={handleNewDraft} fullWidth>
-            Start a New Draft
+            {intl.formatMessage(messages.newDraft)}
           </Button>
         </DialogActions>
       </Dialog>

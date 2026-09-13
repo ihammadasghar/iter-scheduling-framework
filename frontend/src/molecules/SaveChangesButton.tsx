@@ -1,15 +1,40 @@
 import { useState } from 'react';
 import { Box, Button, CircularProgress, Snackbar, Tooltip } from '@mui/material';
 import { CheckCircle } from '@mui/icons-material';
+import { defineMessages, useIntl } from 'react-intl';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { commitSimulationThunk } from '@/store/reducers/classSlice';
 import { setHasUnsavedChanges } from '@/store/reducers/sessionSlice';
+
+const messages = defineMessages({
+  tooltip: {
+    id: 'saveChangesButton.tooltip',
+    defaultMessage: 'Saves your current changes to your draft so they are not lost.',
+  },
+  saveAriaLabel: {
+    id: 'saveChangesButton.saveAriaLabel',
+    defaultMessage: 'Save changes to draft',
+  },
+  saving: {
+    id: 'saveChangesButton.saving',
+    defaultMessage: 'Saving…',
+  },
+  saveChanges: {
+    id: 'saveChangesButton.saveChanges',
+    defaultMessage: 'Save Changes',
+  },
+  draftSaved: {
+    id: 'saveChangesButton.draftSaved',
+    defaultMessage: 'Draft saved ✓',
+  },
+});
 
 interface SaveChangesButtonProps {
   readonly simId: string;
 }
 
 export default function SaveChangesButton({ simId }: SaveChangesButtonProps): React.ReactElement {
+  const intl = useIntl();
   const dispatch = useAppDispatch();
   const hasUnsavedChanges = useAppSelector((s) => s.session.hasUnsavedChanges);
   const [loading, setLoading] = useState(false);
@@ -28,7 +53,7 @@ export default function SaveChangesButton({ simId }: SaveChangesButtonProps): Re
 
   return (
     <>
-      <Tooltip title="Saves your current changes to your draft so they are not lost.">
+      <Tooltip title={intl.formatMessage(messages.tooltip)}>
         <Box component="span">
           <Button
             variant="contained"
@@ -37,9 +62,9 @@ export default function SaveChangesButton({ simId }: SaveChangesButtonProps): Re
             startIcon={
               loading ? <CircularProgress size={16} color="inherit" /> : <CheckCircle />
             }
-            aria-label="Save changes to draft"
+            aria-label={intl.formatMessage(messages.saveAriaLabel)}
           >
-            {loading ? 'Saving…' : 'Save Changes'}
+            {loading ? intl.formatMessage(messages.saving) : intl.formatMessage(messages.saveChanges)}
           </Button>
         </Box>
       </Tooltip>
@@ -47,7 +72,7 @@ export default function SaveChangesButton({ simId }: SaveChangesButtonProps): Re
       <Snackbar
         open={snackOpen}
         onClose={() => setSnackOpen(false)}
-        message="Draft saved ✓"
+        message={intl.formatMessage(messages.draftSaved)}
         autoHideDuration={3000}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       />

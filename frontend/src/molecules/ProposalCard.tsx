@@ -2,43 +2,74 @@ import { Box, Button, Card, CardActions, CardContent, Typography } from '@mui/ma
 import { Warning } from '@mui/icons-material';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { defineMessages, useIntl } from 'react-intl';
 import ProposalStatusChip from '@/molecules/ProposalStatusChip';
 import { extractUserLabel } from '@/utils/formatSimulationId';
+import { useDateFnsLocale } from '@/utils/useDateFnsLocale';
 import type { Proposal } from '@/types';
+
+const messages = defineMessages({
+  ageFallback: {
+    id: 'proposalCard.ageFallback',
+    defaultMessage: 'some time ago',
+  },
+  draftBy: {
+    id: 'proposalCard.draftBy',
+    defaultMessage: 'Draft by {label}',
+  },
+  submitted: {
+    id: 'proposalCard.submitted',
+    defaultMessage: 'Submitted {age}',
+  },
+  conflictsDetected: {
+    id: 'proposalCard.conflictsDetected',
+    defaultMessage: '{count, plural, one {# scheduling conflict detected} other {# scheduling conflicts detected}}',
+  },
+  reviewDetails: {
+    id: 'proposalCard.reviewDetails',
+    defaultMessage: 'Review Details →',
+  },
+  reviewAndPublish: {
+    id: 'proposalCard.reviewAndPublish',
+    defaultMessage: 'Review & Publish →',
+  },
+});
 
 interface ProposalCardProps {
   readonly proposal: Proposal;
   readonly conflictCount?: number;
 }
 
-const formatAge = (dateStr: string): string => {
-  try {
-    return formatDistanceToNow(new Date(dateStr), { addSuffix: true });
-  } catch {
-    return 'some time ago';
-  }
-};
-
 export default function ProposalCard({
   proposal,
   conflictCount,
 }: ProposalCardProps): React.ReactElement {
+  const intl = useIntl();
   const navigate = useNavigate();
+  const dateFnsLocale = useDateFnsLocale();
   const isBlocked = proposal.status === 'BLOCKED';
   const userLabel = extractUserLabel(proposal.simulationId);
+
+  const formatAge = (dateStr: string): string => {
+    try {
+      return formatDistanceToNow(new Date(dateStr), { addSuffix: true, locale: dateFnsLocale });
+    } catch {
+      return intl.formatMessage(messages.ageFallback);
+    }
+  };
 
   return (
     <Card variant="outlined" sx={{ mb: 2 }}>
       <CardContent sx={{ pb: 0 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-            Draft by {userLabel}
+            {intl.formatMessage(messages.draftBy, { label: userLabel })}
           </Typography>
           <ProposalStatusChip status={proposal.status} />
         </Box>
 
         <Typography variant="body2" color="text.secondary">
-          Submitted {formatAge(proposal.createdAt)}
+          {intl.formatMessage(messages.submitted, { age: formatAge(proposal.createdAt) })}
         </Typography>
 
         {proposal.description && (
@@ -61,7 +92,7 @@ export default function ProposalCard({
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
             <Warning fontSize="small" color="warning" aria-hidden />
             <Typography variant="body2" color="warning.dark">
-              {conflictCount} scheduling conflict{conflictCount === 1 ? '' : 's'} detected
+              {intl.formatMessage(messages.conflictsDetected, { count: conflictCount })}
             </Typography>
           </Box>
         )}
@@ -72,7 +103,7 @@ export default function ProposalCard({
           variant={isBlocked ? 'outlined' : 'contained'}
           onClick={() => navigate(`/admin/proposals/${proposal.id}`)}
         >
-          {isBlocked ? 'Review Details →' : 'Review & Publish →'}
+          {isBlocked ? intl.formatMessage(messages.reviewDetails) : intl.formatMessage(messages.reviewAndPublish)}
         </Button>
       </CardActions>
     </Card>

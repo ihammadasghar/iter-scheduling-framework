@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import RulesPage from './RulesPage';
 import rulesReducer from '@/store/reducers/rulesSlice';
@@ -13,6 +14,7 @@ import metricReducer from '@/store/reducers/metricSlice';
 import proposalReducer from '@/store/reducers/proposalSlice';
 import sessionReducer from '@/store/reducers/sessionSlice';
 import identityReducer from '@/store/reducers/identitySlice';
+import languageReducer from '@/store/reducers/languageSlice';
 import * as rulesService from '@/services/rulesService';
 
 vi.mock('@/services/rulesService', () => ({
@@ -56,6 +58,7 @@ const makeStore = (overrides: Record<string, unknown> = {}) =>
       proposal: proposalReducer,
       session: sessionReducer,
       identity: identityReducer,
+      language: languageReducer,
     },
     preloadedState: {
       rules: {
@@ -73,9 +76,11 @@ const makeStore = (overrides: Record<string, unknown> = {}) =>
 const renderPage = (overrides: Record<string, unknown> = {}) =>
   render(
     <Provider store={makeStore(overrides)}>
-      <MemoryRouter>
-        <RulesPage />
-      </MemoryRouter>
+      <IntlProvider locale="en" messages={{}}>
+        <MemoryRouter>
+          <RulesPage />
+        </MemoryRouter>
+      </IntlProvider>
     </Provider>,
   );
 

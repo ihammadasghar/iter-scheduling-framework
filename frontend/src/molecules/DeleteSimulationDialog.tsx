@@ -8,8 +8,32 @@ import {
   DialogTitle,
   Typography,
 } from '@mui/material';
+import { defineMessages, useIntl } from 'react-intl';
 import { useAppDispatch } from '@/store/hooks';
 import { deleteSimulationThunk } from '@/store/reducers/simulationSlice';
+
+const messages = defineMessages({
+  title: {
+    id: 'deleteSimulationDialog.title',
+    defaultMessage: 'Delete this draft?',
+  },
+  body: {
+    id: 'deleteSimulationDialog.body',
+    defaultMessage: 'Are you sure you want to delete this draft? This cannot be undone.',
+  },
+  error: {
+    id: 'deleteSimulationDialog.error',
+    defaultMessage: 'Could not delete — please try again later.',
+  },
+  cancel: {
+    id: 'deleteSimulationDialog.cancel',
+    defaultMessage: 'Cancel',
+  },
+  confirm: {
+    id: 'deleteSimulationDialog.confirm',
+    defaultMessage: 'Yes, Delete Draft',
+  },
+});
 
 interface DeleteSimulationDialogProps {
   readonly open: boolean;
@@ -22,6 +46,7 @@ export default function DeleteSimulationDialog({
   simulationId,
   onClose,
 }: DeleteSimulationDialogProps): React.ReactElement {
+  const intl = useIntl();
   const dispatch = useAppDispatch();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -41,16 +66,16 @@ export default function DeleteSimulationDialog({
     if (deleteSimulationThunk.fulfilled.match(result)) {
       handleClose();
     } else {
-      setError('Could not delete — please try again later.');
+      setError(intl.formatMessage(messages.error));
     }
   };
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
-      <DialogTitle>Delete this draft?</DialogTitle>
+      <DialogTitle>{intl.formatMessage(messages.title)}</DialogTitle>
       <DialogContent sx={{ pt: '16px !important', display: 'flex', flexDirection: 'column', gap: 2 }}>
         <Typography variant="body1">
-          Are you sure you want to delete this draft? This cannot be undone.
+          {intl.formatMessage(messages.body)}
         </Typography>
         {error && (
           <Alert severity="error" onClose={() => setError('')}>
@@ -60,7 +85,7 @@ export default function DeleteSimulationDialog({
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 3 }}>
         <Button onClick={handleClose} variant="outlined" disabled={loading}>
-          Cancel
+          {intl.formatMessage(messages.cancel)}
         </Button>
         <Button
           onClick={() => void handleConfirm()}
@@ -68,7 +93,7 @@ export default function DeleteSimulationDialog({
           color="error"
           disabled={loading}
         >
-          Yes, Delete Draft
+          {intl.formatMessage(messages.confirm)}
         </Button>
       </DialogActions>
     </Dialog>

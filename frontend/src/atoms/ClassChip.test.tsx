@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import ClassChip from './ClassChip';
 import uiReducer from '@/store/reducers/uiSlice';
@@ -40,7 +41,9 @@ const renderChip = (
   });
   return render(
     <Provider store={store}>
-      <ClassChip classItem={classItem} {...props} />
+      <IntlProvider locale="en" messages={{}}>
+        <ClassChip classItem={classItem} {...props} />
+      </IntlProvider>
     </Provider>,
   );
 };
@@ -78,7 +81,9 @@ describe('ClassChip', () => {
     });
     render(
       <Provider store={store}>
-        <ClassChip classItem={classItem} />
+        <IntlProvider locale="en" messages={{}}>
+          <ClassChip classItem={classItem} />
+        </IntlProvider>
       </Provider>,
     );
     fireEvent.click(screen.getByText('0001'));

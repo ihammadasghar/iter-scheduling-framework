@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import DeleteSimulationDialog from './DeleteSimulationDialog';
 import simulationReducer from '@/store/reducers/simulationSlice';
@@ -50,7 +51,9 @@ const makeStore = () =>
 const renderDialog = (open = true, onClose = vi.fn()) =>
   render(
     <Provider store={makeStore()}>
-      <DeleteSimulationDialog open={open} simulationId="sim-1" onClose={onClose} />
+      <IntlProvider locale="en" messages={{}}>
+        <DeleteSimulationDialog open={open} simulationId="sim-1" onClose={onClose} />
+      </IntlProvider>
     </Provider>,
   );
 

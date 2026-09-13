@@ -8,8 +8,32 @@ import {
   DialogTitle,
   Typography,
 } from '@mui/material';
+import { defineMessages, useIntl } from 'react-intl';
 import { useAppDispatch } from '@/store/hooks';
 import { commitSimulationThunk } from '@/store/reducers/classSlice';
+
+const messages = defineMessages({
+  title: {
+    id: 'commitGate.title',
+    defaultMessage: 'Unsaved Changes',
+  },
+  body: {
+    id: 'commitGate.body',
+    defaultMessage: 'You have unsaved changes in this draft. Save them before submitting so nothing is lost.',
+  },
+  submitWithoutSaving: {
+    id: 'commitGate.submitWithoutSaving',
+    defaultMessage: 'Submit Without Saving',
+  },
+  saving: {
+    id: 'commitGate.saving',
+    defaultMessage: 'Saving…',
+  },
+  saveFirst: {
+    id: 'commitGate.saveFirst',
+    defaultMessage: 'Save My Changes First',
+  },
+});
 
 interface CommitGateProps {
   readonly open: boolean;
@@ -26,6 +50,7 @@ export default function CommitGate({
   onSkip,
   onClose,
 }: CommitGateProps): React.ReactElement {
+  const intl = useIntl();
   const dispatch = useAppDispatch();
   const [saving, setSaving] = useState(false);
 
@@ -46,15 +71,15 @@ export default function CommitGate({
       fullWidth
       aria-labelledby="commit-gate-title"
     >
-      <DialogTitle id="commit-gate-title">Unsaved Changes</DialogTitle>
+      <DialogTitle id="commit-gate-title">{intl.formatMessage(messages.title)}</DialogTitle>
       <DialogContent>
         <Typography variant="body1">
-          You have unsaved changes in this draft. Save them before submitting so nothing is lost.
+          {intl.formatMessage(messages.body)}
         </Typography>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 3, gap: 1, flexWrap: 'wrap' }}>
         <Button variant="text" onClick={onSkip} disabled={saving}>
-          Submit Without Saving
+          {intl.formatMessage(messages.submitWithoutSaving)}
         </Button>
         <Button
           variant="contained"
@@ -62,7 +87,7 @@ export default function CommitGate({
           disabled={saving}
           startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}
         >
-          {saving ? 'Saving…' : 'Save My Changes First'}
+          {saving ? intl.formatMessage(messages.saving) : intl.formatMessage(messages.saveFirst)}
         </Button>
       </DialogActions>
     </Dialog>

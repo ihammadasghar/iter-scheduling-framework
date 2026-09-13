@@ -1,5 +1,13 @@
 import { Accordion, AccordionDetails, AccordionSummary, Typography } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { defineMessages, useIntl } from 'react-intl';
+
+const messages = defineMessages({
+  showTechnicalDetails: {
+    id: 'technicalDiffAccordion.showTechnicalDetails',
+    defaultMessage: 'Show technical details (for IT use)',
+  },
+});
 
 interface TechnicalDiffAccordionProps {
   readonly rawDiff: string;
@@ -8,11 +16,12 @@ interface TechnicalDiffAccordionProps {
 export default function TechnicalDiffAccordion({
   rawDiff,
 }: TechnicalDiffAccordionProps): React.ReactElement {
+  const intl = useIntl();
   return (
     <Accordion disableGutters defaultExpanded={false} sx={{ mt: 3 }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Typography variant="body2" color="text.secondary">
-          Show technical details (for IT use)
+          {intl.formatMessage(messages.showTechnicalDetails)}
         </Typography>
       </AccordionSummary>
       <AccordionDetails>

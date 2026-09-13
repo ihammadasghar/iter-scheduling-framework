@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import AddConstraintDialog from './AddConstraintDialog';
 import type { Constraint } from '@/types';
@@ -38,7 +39,9 @@ const makeStore = () =>
 const renderDialog = (onSuccess = vi.fn(), onClose = vi.fn()) =>
   render(
     <Provider store={makeStore()}>
-      <AddConstraintDialog open onClose={onClose} onSuccess={onSuccess} />
+      <IntlProvider locale="en" messages={{}}>
+        <AddConstraintDialog open onClose={onClose} onSuccess={onSuccess} />
+      </IntlProvider>
     </Provider>,
   );
 
@@ -53,7 +56,9 @@ const EXISTING_CONSTRAINT: Constraint = {
 const renderEditDialog = (existingRule: Constraint, onSuccess = vi.fn(), onClose = vi.fn()) =>
   render(
     <Provider store={makeStore()}>
-      <AddConstraintDialog open onClose={onClose} onSuccess={onSuccess} existingRule={existingRule} />
+      <IntlProvider locale="en" messages={{}}>
+        <AddConstraintDialog open onClose={onClose} onSuccess={onSuccess} existingRule={existingRule} />
+      </IntlProvider>
     </Provider>,
   );
 

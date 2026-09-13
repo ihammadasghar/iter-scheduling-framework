@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import OnboardingFlow from './OnboardingFlow';
 import identityReducer from '@/store/reducers/identitySlice';
@@ -32,7 +33,9 @@ const makeStore = (opts: { hydrated?: boolean; identity?: null; rosterLoading?: 
 const renderFlow = (store: ReturnType<typeof makeStore>) =>
   render(
     <Provider store={store}>
-      <OnboardingFlow />
+      <IntlProvider locale="en" messages={{}}>
+        <OnboardingFlow />
+      </IntlProvider>
     </Provider>,
   );
 

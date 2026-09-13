@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router-dom';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import Inspector from './Inspector';
 import classReducer from '@/store/reducers/classSlice';
@@ -76,9 +77,11 @@ const render_ = (overrides = {}, simId: string | null = 'sim-test-123') => {
   const store = makeStore(overrides);
   render(
     <Provider store={store}>
-      <MemoryRouter>
-        <Inspector simId={simId ?? undefined} />
-      </MemoryRouter>
+      <IntlProvider locale="en" messages={{}}>
+        <MemoryRouter>
+          <Inspector simId={simId ?? undefined} />
+        </MemoryRouter>
+      </IntlProvider>
     </Provider>,
   );
   return store;

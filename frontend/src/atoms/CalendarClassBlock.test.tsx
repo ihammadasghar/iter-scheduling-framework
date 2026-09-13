@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import CalendarClassBlock from './CalendarClassBlock';
 import uiReducer from '@/store/reducers/uiSlice';
@@ -44,13 +45,15 @@ const renderBlock = (
   });
   return render(
     <Provider store={store}>
-      <CalendarClassBlock
-        classItem={makeClassItem('RM_0001')}
-        block={block}
-        minMinutes={480}
-        pixelsPerMinute={1.2}
-        {...props}
-      />
+      <IntlProvider locale="en" messages={{}}>
+        <CalendarClassBlock
+          classItem={makeClassItem('RM_0001')}
+          block={block}
+          minMinutes={480}
+          pixelsPerMinute={1.2}
+          {...props}
+        />
+      </IntlProvider>
     </Provider>,
   );
 };

@@ -1,10 +1,26 @@
 import { Box, IconButton, Tooltip, Typography } from '@mui/material';
 import { Close } from '@mui/icons-material';
+import { defineMessages, useIntl } from 'react-intl';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { deselectClass, toggleInspector } from '@/store/reducers/uiSlice';
 import ClassDetailSection from '@/molecules/ClassDetailSection';
 import InspectorSkeleton from '@/organisms/InspectorSkeleton';
 import { useScheduleNames } from '@/hooks/useScheduleNames';
+
+const messages = defineMessages({
+  panelAriaLabel: {
+    id: 'inspector.panelAriaLabel',
+    defaultMessage: 'Class inspector panel',
+  },
+  classDetails: {
+    id: 'inspector.classDetails',
+    defaultMessage: 'Class Details',
+  },
+  closeInspector: {
+    id: 'inspector.closeInspector',
+    defaultMessage: 'Close inspector',
+  },
+});
 
 const INSPECTOR_WIDTH = 380;
 
@@ -15,6 +31,7 @@ interface InspectorProps {
 }
 
 export default function Inspector({ simId }: InspectorProps): React.ReactElement {
+  const intl = useIntl();
   const dispatch = useAppDispatch();
   const inspectorOpen = useAppSelector((s) => s.ui.inspectorOpen);
   const selectedClassId = useAppSelector((s) => s.ui.selectedClassId);
@@ -33,7 +50,7 @@ export default function Inspector({ simId }: InspectorProps): React.ReactElement
 
   return (
     <Box
-      aria-label="Class inspector panel"
+      aria-label={intl.formatMessage(messages.panelAriaLabel)}
       sx={{
         position: 'absolute',
         top: 0,
@@ -76,15 +93,15 @@ export default function Inspector({ simId }: InspectorProps): React.ReactElement
             </>
           ) : (
             <Typography variant="h4" component="h2">
-              Class Details
+              {intl.formatMessage(messages.classDetails)}
             </Typography>
           )}
         </Box>
 
-        <Tooltip title="Close inspector">
+        <Tooltip title={intl.formatMessage(messages.closeInspector)}>
           <IconButton
             onClick={handleClose}
-            aria-label="Close inspector"
+            aria-label={intl.formatMessage(messages.closeInspector)}
             edge="end"
           >
             <Close />

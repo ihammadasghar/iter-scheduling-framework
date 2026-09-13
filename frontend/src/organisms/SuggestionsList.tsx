@@ -1,11 +1,39 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Box, CircularProgress, Divider, Stack, Typography } from '@mui/material';
+import { defineMessages, useIntl } from 'react-intl';
 import SuggestionCard, { DeltaChip, ScoreDeltaChip } from '@/molecules/SuggestionCard';
 import { formatTimeSlotFull } from '@/utils/scheduleFormatters';
 import { simulationService } from '@/services/simulationService';
 import { useApplySuggestion } from '@/hooks/useApplySuggestion';
 import { useScheduleNames } from '@/hooks/useScheduleNames';
 import type { ScheduleClass, Suggestion } from '@/types';
+
+const messages = defineMessages({
+  fetchError: {
+    id: 'suggestionsList.fetchError',
+    defaultMessage: 'Could not load suggestions. Please try again.',
+  },
+  heading: {
+    id: 'suggestionsList.heading',
+    defaultMessage: 'Smart Suggestions',
+  },
+  description: {
+    id: 'suggestionsList.description',
+    defaultMessage: 'Conflict-free rooms and times {course} could move to. Applying one moves the class immediately.',
+  },
+  movedTo: {
+    id: 'suggestionsList.movedTo',
+    defaultMessage: 'Moved to {room} · {time}',
+  },
+  loadingAriaLabel: {
+    id: 'suggestionsList.loadingAriaLabel',
+    defaultMessage: 'Loading suggestions…',
+  },
+  noSuggestions: {
+    id: 'suggestionsList.noSuggestions',
+    defaultMessage: 'No conflict-free slots available for this class. Try moving a conflicting class first.',
+  },
+});
 
 interface SuggestionsListProps {
   readonly simId: string;
@@ -29,6 +57,7 @@ export default function SuggestionsList({
   classId,
   currentClass,
 }: SuggestionsListProps): React.ReactElement {
+  const intl = useIntl();
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [fetchError, setFetchError] = useState('');
@@ -54,11 +83,11 @@ export default function SuggestionsList({
         setFetchError('');
       }
     } catch {
-      if (mountedRef.current) setFetchError('Could not load suggestions. Please try again.');
+      if (mountedRef.current) setFetchError(intl.formatMessage(messages.fetchError));
     } finally {
       if (mountedRef.current) setLoadingSuggestions(false);
     }
-  }, [simId, classId]);
+  }, [simId, classId, intl]);
 
   // Re-fetch suggestions whenever the selected class changes
   useEffect(() => {
@@ -90,11 +119,10 @@ export default function SuggestionsList({
         color="text.secondary"
         sx={{ display: 'block', px: 2, pt: 2 }}
       >
-        Smart Suggestions
+        {intl.formatMessage(messages.heading)}
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ px: 2, pb: 1 }}>
-        Conflict-free rooms and times {courseName(currentClass.courseId)} could move to.
-        Applying one moves the class immediately.
+        {intl.formatMessage(messages.description, { course: courseName(currentClass.courseId) })}
       </Typography>
       <Divider />
 
@@ -102,7 +130,7 @@ export default function SuggestionsList({
         <Alert severity="success" sx={{ mx: 2, mt: 1 }}>
           <Stack spacing={0.5}>
             <Typography variant="body2">
-              Moved to {appliedSummary.roomLabel} · {appliedSummary.timeLabel}
+              {intl.formatMessage(messages.movedTo, { room: appliedSummary.roomLabel, time: appliedSummary.timeLabel })}
             </Typography>
             {(lastDelta !== null || lastScoreDelta !== null) && (
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
@@ -128,13 +156,13 @@ export default function SuggestionsList({
 
       {loadingSuggestions && (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-          <CircularProgress aria-label="Loading suggestions…" />
+          <CircularProgress aria-label={intl.formatMessage(messages.loadingAriaLabel)} />
         </Box>
       )}
 
       {!loadingSuggestions && !fetchError && suggestions.length === 0 && (
         <Typography variant="body2" color="text.secondary" sx={{ px: 2, py: 2 }}>
-          No conflict-free slots available for this class. Try moving a conflicting class first.
+          {intl.formatMessage(messages.noSuggestions)}
         </Typography>
       )}
 

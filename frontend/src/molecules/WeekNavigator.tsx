@@ -1,8 +1,20 @@
 import { Box, IconButton, Typography } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import { defineMessages, useIntl } from 'react-intl';
 import { canGoPrev, canGoNext, stepWeek, formatWeekRangeLabel } from '@/utils/weekNavigation';
 import type { ScheduleTimeline } from '@/types';
+
+const messages = defineMessages({
+  previousWeek: {
+    id: 'weekNavigator.previousWeek',
+    defaultMessage: 'Previous week',
+  },
+  nextWeek: {
+    id: 'weekNavigator.nextWeek',
+    defaultMessage: 'Next week',
+  },
+});
 
 interface WeekNavigatorProps {
   readonly weekStart: string; // Monday, "YYYY-MM-DD"
@@ -18,11 +30,12 @@ interface WeekNavigatorProps {
  * this once `timeline` has actually loaded (see host pages).
  */
 export default function WeekNavigator({ weekStart, onWeekChange, timeline }: WeekNavigatorProps): React.ReactElement {
+  const intl = useIntl();
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
       <IconButton
         size="small"
-        aria-label="Previous week"
+        aria-label={intl.formatMessage(messages.previousWeek)}
         disabled={!canGoPrev(weekStart, timeline)}
         onClick={() => onWeekChange(stepWeek(weekStart, 'prev', timeline))}
       >
@@ -33,7 +46,7 @@ export default function WeekNavigator({ weekStart, onWeekChange, timeline }: Wee
       </Typography>
       <IconButton
         size="small"
-        aria-label="Next week"
+        aria-label={intl.formatMessage(messages.nextWeek)}
         disabled={!canGoNext(weekStart, timeline)}
         onClick={() => onWeekChange(stepWeek(weekStart, 'next', timeline))}
       >

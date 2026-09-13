@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest';
+import { createIntl } from 'react-intl';
 import { buildClassChanges } from './buildClassChanges';
 import { buildScheduleNames } from './scheduleNames';
 import type { ChangedClass, RawClass } from '@/types';
+
+const intl = createIntl({ locale: 'en', messages: {} });
 
 const BEFORE: RawClass = {
   id: 'CLS_001',
@@ -25,7 +28,7 @@ const NAMES = buildScheduleNames(
 
 describe('buildClassChanges', () => {
   it('returns empty array for no changes', () => {
-    expect(buildClassChanges([], NAMES)).toEqual([]);
+    expect(buildClassChanges(intl, [], NAMES)).toEqual([]);
   });
 
   it('resolves a roomId change to human-readable room names', () => {
@@ -36,7 +39,7 @@ describe('buildClassChanges', () => {
       fieldChanges: [{ field: 'roomId', before: 'RM_101', after: 'RM_102' }],
     }];
 
-    const result = buildClassChanges(changed, NAMES);
+    const result = buildClassChanges(intl, changed, NAMES);
 
     expect(result).toEqual([{
       classId: 'CLS_001',
@@ -65,7 +68,7 @@ describe('buildClassChanges', () => {
       ],
     }];
 
-    const result = buildClassChanges(changed, NAMES);
+    const result = buildClassChanges(intl, changed, NAMES);
 
     expect(result[0]?.changes).toEqual([
       { field: 'Course', from: 'Biology 101', to: 'Biology 102' },
@@ -83,7 +86,7 @@ describe('buildClassChanges', () => {
       fieldChanges: [{ field: 'timeSlotIds', before: ['TS_MON_P1'], after: ['TS_TUE_P2'] }],
     }];
 
-    const result = buildClassChanges(changed, NAMES);
+    const result = buildClassChanges(intl, changed, NAMES);
 
     expect(result[0]?.changes).toEqual([{ field: 'Time', from: 'Monday Period 1', to: 'Tuesday Period 2' }]);
   });
@@ -96,7 +99,7 @@ describe('buildClassChanges', () => {
       fieldChanges: [{ field: 'roomId', before: 'RM_101', after: 'RM_102' }],
     }];
 
-    const result = buildClassChanges(changed, NAMES);
+    const result = buildClassChanges(intl, changed, NAMES);
 
     expect(result[0]?.className).toBe('Renamed Class');
   });

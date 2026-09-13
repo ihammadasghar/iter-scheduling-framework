@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import AddMetricDialog from './AddMetricDialog';
 import type { MetricRule } from '@/types';
@@ -38,7 +39,9 @@ const makeStore = () =>
 const renderDialog = (onSuccess = vi.fn(), onClose = vi.fn()) =>
   render(
     <Provider store={makeStore()}>
-      <AddMetricDialog open onClose={onClose} onSuccess={onSuccess} />
+      <IntlProvider locale="en" messages={{}}>
+        <AddMetricDialog open onClose={onClose} onSuccess={onSuccess} />
+      </IntlProvider>
     </Provider>,
   );
 
@@ -55,7 +58,9 @@ const EXISTING_RULE: MetricRule = {
 const renderEditDialog = (existingRule: MetricRule, onSuccess = vi.fn(), onClose = vi.fn()) =>
   render(
     <Provider store={makeStore()}>
-      <AddMetricDialog open onClose={onClose} onSuccess={onSuccess} existingRule={existingRule} />
+      <IntlProvider locale="en" messages={{}}>
+        <AddMetricDialog open onClose={onClose} onSuccess={onSuccess} existingRule={existingRule} />
+      </IntlProvider>
     </Provider>,
   );
 

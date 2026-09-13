@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import InactivityBanner from './InactivityBanner';
 import sessionReducer from '@/store/reducers/sessionSlice';
@@ -27,7 +28,9 @@ const makeStore = () =>
 const renderBanner = (onDismiss = vi.fn()) =>
   render(
     <Provider store={makeStore()}>
-      <InactivityBanner simId="sim-1" onDismiss={onDismiss} />
+      <IntlProvider locale="en" messages={{}}>
+        <InactivityBanner simId="sim-1" onDismiss={onDismiss} />
+      </IntlProvider>
     </Provider>,
   );
 

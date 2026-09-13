@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import AssignmentOverlayCalendar from './AssignmentOverlayCalendar';
 import scheduleReducer from '@/store/reducers/scheduleSlice';
@@ -39,12 +40,14 @@ const renderCalendar = (props: Partial<React.ComponentProps<typeof AssignmentOve
   const classById = props.classById ?? new Map([[roomClass.id, roomClass]]);
   return render(
     <Provider store={makeStore()}>
-      <AssignmentOverlayCalendar
-        blocks={blocks}
-        classById={classById}
-        timeSlots={TIME_SLOTS}
-        {...props}
-      />
+      <IntlProvider locale="en" messages={{}}>
+        <AssignmentOverlayCalendar
+          blocks={blocks}
+          classById={classById}
+          timeSlots={TIME_SLOTS}
+          {...props}
+        />
+      </IntlProvider>
     </Provider>,
   );
 };

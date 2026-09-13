@@ -9,9 +9,11 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "i18n:extract": "formatjs extract 'src/**/*.{ts,tsx}' --ignore 'src/**/*.test.{ts,tsx}' --out-file src/locales/en.json --format simple"
   },
   "devDependencies": {
+    "@formatjs/cli": "^6.16.26",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -37,6 +39,7 @@
     "date-fns": "^4.4.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "react-intl": "^10.2.1",
     "react-redux": "^9.3.0",
     "react-router-dom": "^7.18.1"
   }

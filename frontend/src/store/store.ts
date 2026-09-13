@@ -10,6 +10,7 @@ import scheduleReducer from './reducers/scheduleSlice';
 import sessionReducer from './reducers/sessionSlice';
 import uiReducer from './reducers/uiSlice';
 import identityReducer from './reducers/identitySlice';
+import languageReducer from './reducers/languageSlice';
 
 export const store = configureStore({
   reducer: {
@@ -24,6 +25,7 @@ export const store = configureStore({
     session: sessionReducer,
     ui: uiReducer,
     identity: identityReducer,
+    language: languageReducer,
   },
 });
 

@@ -1,8 +1,16 @@
 // Shared by TimetableGrid and MyScheduleCalendar — one place for turning
 // raw Conflict[] into a per-class, one-line human summary.
+import { defineMessages, type IntlShape } from 'react-intl';
 import { getConflictMessage, resolveConflictResourceName } from './conflictMessages';
 import type { Conflict, ScheduleClass } from '@/types';
 import type { ScheduleNames } from './scheduleNames';
+
+const messages = defineMessages({
+  moreSuffix: {
+    id: 'conflictSummaries.moreSuffix',
+    defaultMessage: '{message} (+{count} more)',
+  },
+});
 
 /**
  * One-line, human-readable summary per conflicted class — shown on hover so
@@ -10,6 +18,7 @@ import type { ScheduleNames } from './scheduleNames';
  * Inspector first. Clicking the chip/block still opens the full detail there.
  */
 export const buildConflictSummaries = (
+  intl: IntlShape,
   conflicts: readonly Conflict[],
   classes: readonly ScheduleClass[],
   names: ScheduleNames,
@@ -26,10 +35,12 @@ export const buildConflictSummaries = (
   const summaries = new Map<string, string>();
   byClassId.forEach((classConflicts, classId) => {
     const first = classConflicts[0]!;
-    const message = getConflictMessage(first.type, resolveConflictResourceName(first, classes, names));
+    const message = getConflictMessage(intl, first.type, resolveConflictResourceName(intl, first, classes, names));
     summaries.set(
       classId,
-      classConflicts.length > 1 ? `${message} (+${classConflicts.length - 1} more)` : message,
+      classConflicts.length > 1
+        ? intl.formatMessage(messages.moreSuffix, { message, count: classConflicts.length - 1 })
+        : message,
     );
   });
   return summaries;

@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import ResourcePicker from './ResourcePicker';
 import scheduleReducer from '@/store/reducers/scheduleSlice';
@@ -44,12 +45,14 @@ const renderPicker = (props: Partial<Harness> = {}) => {
   const onResourceIdChange = props.onResourceIdChange ?? vi.fn();
   render(
     <Provider store={store}>
-      <ResourcePicker
-        resourceType={props.resourceType ?? 'room'}
-        onResourceTypeChange={onResourceTypeChange}
-        resourceId={props.resourceId ?? null}
-        onResourceIdChange={onResourceIdChange}
-      />
+      <IntlProvider locale="en" messages={{}}>
+        <ResourcePicker
+          resourceType={props.resourceType ?? 'room'}
+          onResourceTypeChange={onResourceTypeChange}
+          resourceId={props.resourceId ?? null}
+          onResourceIdChange={onResourceIdChange}
+        />
+      </IntlProvider>
     </Provider>,
   );
   return { onResourceTypeChange, onResourceIdChange };

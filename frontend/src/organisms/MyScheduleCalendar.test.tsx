@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import MyScheduleCalendar from './MyScheduleCalendar';
 import classReducer from '@/store/reducers/classSlice';
@@ -56,7 +57,9 @@ const makeStore = (opts: {
 const renderCalendar = (store: ReturnType<typeof makeStore>) =>
   render(
     <Provider store={store}>
-      <MyScheduleCalendar />
+      <IntlProvider locale="en" messages={{}}>
+        <MyScheduleCalendar />
+      </IntlProvider>
     </Provider>,
   );
 
@@ -107,7 +110,9 @@ describe('MyScheduleCalendar', () => {
     const store = makeStore({ conflicts: [conflict] });
     render(
       <Provider store={store}>
-        <MyScheduleCalendar conflictedClassIds={new Set(['CLS_MINE'])} />
+        <IntlProvider locale="en" messages={{}}>
+          <MyScheduleCalendar conflictedClassIds={new Set(['CLS_MINE'])} />
+        </IntlProvider>
       </Provider>,
     );
     expect(screen.getByLabelText(/BIO101 —/i)).toBeInTheDocument();
@@ -122,7 +127,9 @@ describe('MyScheduleCalendar', () => {
     const store = makeStore();
     render(
       <Provider store={store}>
-        <MyScheduleCalendar resource={{ type: 'room', id: 'RM_102' }} />
+        <IntlProvider locale="en" messages={{}}>
+          <MyScheduleCalendar resource={{ type: 'room', id: 'RM_102' }} />
+        </IntlProvider>
       </Provider>,
     );
     expect(screen.getByText('HIS201')).toBeInTheDocument();
@@ -133,7 +140,9 @@ describe('MyScheduleCalendar', () => {
     const store = makeStore();
     render(
       <Provider store={store}>
-        <MyScheduleCalendar excludedDays={new Map([['Monday', 'Thanksgiving Break']])} />
+        <IntlProvider locale="en" messages={{}}>
+          <MyScheduleCalendar excludedDays={new Map([['Monday', 'Thanksgiving Break']])} />
+        </IntlProvider>
       </Provider>,
     );
     expect(screen.queryByText('Monday')).not.toBeInTheDocument();
@@ -144,10 +153,12 @@ describe('MyScheduleCalendar', () => {
     const store = makeStore();
     render(
       <Provider store={store}>
-        <MyScheduleCalendar
-          resource={{ type: 'room', id: 'RM_NONEXISTENT' }}
-          emptyMessage="No classes are scheduled for Room 999 this week."
-        />
+        <IntlProvider locale="en" messages={{}}>
+          <MyScheduleCalendar
+            resource={{ type: 'room', id: 'RM_NONEXISTENT' }}
+            emptyMessage="No classes are scheduled for Room 999 this week."
+          />
+        </IntlProvider>
       </Provider>,
     );
     expect(screen.getByText('No classes are scheduled for Room 999 this week.')).toBeInTheDocument();

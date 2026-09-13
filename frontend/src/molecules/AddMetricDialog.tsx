@@ -14,16 +14,96 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
+import { defineMessages, useIntl } from 'react-intl';
 import { useAppDispatch } from '@/store/hooks';
 import { createMetricRuleThunk, updateMetricRuleThunk } from '@/store/reducers/rulesSlice';
 import {
-  TARGET_OPTIONS,
-  DIRECTION_OPTIONS,
+  getTargetOptions,
+  getDirectionOptions,
   getConditionsByTarget,
   getDefaultDirection,
 } from '@/utils/ruleLabels';
 import type { RuleTarget } from '@/utils/ruleLabels';
 import type { MetricDirection, MetricRule } from '@/types';
+
+const messages = defineMessages({
+  editTitle: {
+    id: 'addMetricDialog.editTitle',
+    defaultMessage: 'Edit Metric Rule',
+  },
+  addTitle: {
+    id: 'addMetricDialog.addTitle',
+    defaultMessage: 'Add Metric Rule',
+  },
+  nameLabel: {
+    id: 'addMetricDialog.nameLabel',
+    defaultMessage: 'Name',
+  },
+  nameRequired: {
+    id: 'addMetricDialog.nameRequired',
+    defaultMessage: 'Name is required',
+  },
+  whatToMeasureTooltip: {
+    id: 'addMetricDialog.whatToMeasureTooltip',
+    defaultMessage: 'Choose the type of resource this metric measures',
+  },
+  whatToMeasureLabel: {
+    id: 'addMetricDialog.whatToMeasureLabel',
+    defaultMessage: 'What to measure',
+  },
+  howToMeasureLabel: {
+    id: 'addMetricDialog.howToMeasureLabel',
+    defaultMessage: 'How to measure it',
+  },
+  selectConditionError: {
+    id: 'addMetricDialog.selectConditionError',
+    defaultMessage: 'Please select a condition',
+  },
+  directionTooltip: {
+    id: 'addMetricDialog.directionTooltip',
+    defaultMessage: "Whether a higher or lower value is preferable — leave as 'No preference' for a value that should stay close to the target",
+  },
+  directionLabel: {
+    id: 'addMetricDialog.directionLabel',
+    defaultMessage: 'Direction',
+  },
+  noPreference: {
+    id: 'addMetricDialog.noPreference',
+    defaultMessage: 'No preference (symmetric)',
+  },
+  targetValueWithUnit: {
+    id: 'addMetricDialog.targetValueWithUnit',
+    defaultMessage: 'Target value ({unit})',
+  },
+  targetValue: {
+    id: 'addMetricDialog.targetValue',
+    defaultMessage: 'Target value',
+  },
+  weightTooltip: {
+    id: 'addMetricDialog.weightTooltip',
+    defaultMessage: 'How much this metric should count toward the overall institution score, relative to other metrics',
+  },
+  weightLabel: {
+    id: 'addMetricDialog.weightLabel',
+    defaultMessage: 'Weight',
+  },
+  weightError: {
+    id: 'addMetricDialog.weightError',
+    defaultMessage: 'Weight must be a positive number',
+  },
+  cancel: {
+    id: 'addMetricDialog.cancel',
+    defaultMessage: 'Cancel',
+  },
+  saveChanges: {
+    id: 'addMetricDialog.saveChanges',
+    defaultMessage: 'Save Changes',
+  },
+  addThisMetric: {
+    id: 'addMetricDialog.addThisMetric',
+    defaultMessage: 'Add This Metric',
+  },
+});
 
 interface AddMetricDialogProps {
   readonly open: boolean;
@@ -41,6 +121,7 @@ export default function AddMetricDialog({
   onSuccess,
   existingRule,
 }: AddMetricDialogProps): React.ReactElement {
+  const intl = useIntl();
   const dispatch = useAppDispatch();
   const isEditMode = existingRule !== undefined;
 
@@ -57,7 +138,7 @@ export default function AddMetricDialog({
   const [conditionError, setConditionError] = useState(false);
   const [weightError, setWeightError] = useState(false);
 
-  const conditionOptions = getConditionsByTarget(target);
+  const conditionOptions = getConditionsByTarget(intl, target);
   const selectedCondition = conditionOptions.find((c) => c.value === condition);
   const unit = selectedCondition?.unit ?? '';
 
@@ -141,28 +222,28 @@ export default function AddMetricDialog({
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>{isEditMode ? 'Edit Metric Rule' : 'Add Metric Rule'}</DialogTitle>
+      <DialogTitle>{intl.formatMessage(isEditMode ? messages.editTitle : messages.addTitle)}</DialogTitle>
       <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: '16px !important' }}>
         <TextField
-          label="Name"
+          label={intl.formatMessage(messages.nameLabel)}
           value={name}
           onChange={(e) => setName(e.target.value)}
           error={nameError}
-          helperText={nameError ? 'Name is required' : ''}
+          helperText={nameError ? intl.formatMessage(messages.nameRequired) : ''}
           required
           fullWidth
         />
 
-        <Tooltip title="Choose the type of resource this metric measures" placement="right">
+        <Tooltip title={intl.formatMessage(messages.whatToMeasureTooltip)} placement="right">
           <FormControl fullWidth required>
-            <InputLabel id="metric-target-label">What to measure</InputLabel>
+            <InputLabel id="metric-target-label">{intl.formatMessage(messages.whatToMeasureLabel)}</InputLabel>
             <Select
               labelId="metric-target-label"
-              label="What to measure"
+              label={intl.formatMessage(messages.whatToMeasureLabel)}
               value={target}
               onChange={(e) => handleTargetChange(e.target.value as RuleTarget)}
             >
-              {TARGET_OPTIONS.map((opt) => (
+              {getTargetOptions(intl).map((opt) => (
                 <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
               ))}
             </Select>
@@ -170,10 +251,10 @@ export default function AddMetricDialog({
         </Tooltip>
 
         <FormControl fullWidth required error={conditionError}>
-          <InputLabel id="metric-condition-label">How to measure it</InputLabel>
+          <InputLabel id="metric-condition-label">{intl.formatMessage(messages.howToMeasureLabel)}</InputLabel>
           <Select
             labelId="metric-condition-label"
-            label="How to measure it"
+            label={intl.formatMessage(messages.howToMeasureLabel)}
             value={condition}
             onChange={(e) => handleConditionChange(e.target.value)}
             disabled={conditionOptions.length === 0}
@@ -184,22 +265,22 @@ export default function AddMetricDialog({
           </Select>
           {conditionError && (
             <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-              Please select a condition
+              {intl.formatMessage(messages.selectConditionError)}
             </Typography>
           )}
         </FormControl>
 
-        <Tooltip title="Whether a higher or lower value is preferable — leave as 'No preference' for a value that should stay close to the target" placement="right">
+        <Tooltip title={intl.formatMessage(messages.directionTooltip)} placement="right">
           <FormControl fullWidth>
-            <InputLabel id="metric-direction-label">Direction</InputLabel>
+            <InputLabel id="metric-direction-label">{intl.formatMessage(messages.directionLabel)}</InputLabel>
             <Select
               labelId="metric-direction-label"
-              label="Direction"
+              label={intl.formatMessage(messages.directionLabel)}
               value={direction}
               onChange={(e) => setDirection(e.target.value as MetricDirection | '')}
             >
-              <MenuItem value="">No preference (symmetric)</MenuItem>
-              {DIRECTION_OPTIONS.map((opt) => (
+              <MenuItem value="">{intl.formatMessage(messages.noPreference)}</MenuItem>
+              {getDirectionOptions(intl).map((opt) => (
                 <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
               ))}
             </Select>
@@ -207,7 +288,7 @@ export default function AddMetricDialog({
         </Tooltip>
 
         <TextField
-          label={unit ? `Target value (${unit})` : 'Target value'}
+          label={unit ? intl.formatMessage(messages.targetValueWithUnit, { unit }) : intl.formatMessage(messages.targetValue)}
           type="number"
           value={threshold}
           onChange={(e) => setThreshold(e.target.value)}
@@ -215,14 +296,14 @@ export default function AddMetricDialog({
           fullWidth
         />
 
-        <Tooltip title="How much this metric should count toward the overall institution score, relative to other metrics" placement="right">
+        <Tooltip title={intl.formatMessage(messages.weightTooltip)} placement="right">
           <TextField
-            label="Weight"
+            label={intl.formatMessage(messages.weightLabel)}
             type="number"
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
             error={weightError}
-            helperText={weightError ? 'Weight must be a positive number' : ''}
+            helperText={weightError ? intl.formatMessage(messages.weightError) : ''}
             slotProps={{ htmlInput: { min: 0, step: 'any' } }}
             required
             fullWidth
@@ -231,7 +312,7 @@ export default function AddMetricDialog({
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose} disabled={loading}>
-          Cancel
+          {intl.formatMessage(messages.cancel)}
         </Button>
         <Button
           variant="contained"
@@ -239,7 +320,7 @@ export default function AddMetricDialog({
           disabled={loading}
           startIcon={loading ? <CircularProgress size={16} /> : undefined}
         >
-          {isEditMode ? 'Save Changes' : 'Add This Metric'}
+          {intl.formatMessage(isEditMode ? messages.saveChanges : messages.addThisMetric)}
         </Button>
       </DialogActions>
     </Dialog>

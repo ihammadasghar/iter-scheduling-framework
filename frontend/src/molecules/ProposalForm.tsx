@@ -9,7 +9,51 @@ import {
   DialogTitle,
   TextField,
 } from '@mui/material';
+import { defineMessages, useIntl } from 'react-intl';
 import { useAppSelector } from '@/store/hooks';
+
+const messages = defineMessages({
+  title: {
+    id: 'proposalForm.title',
+    defaultMessage: 'Submit Proposal for Review',
+  },
+  conflictWarning: {
+    id: 'proposalForm.conflictWarning',
+    defaultMessage: 'Your draft has {count, plural, one {# scheduling conflict} other {# scheduling conflicts}}. The scheduling office will see these and may ask you to fix them before approving.',
+  },
+  explainLabel: {
+    id: 'proposalForm.explainLabel',
+    defaultMessage: 'Explain your changes',
+  },
+  explainPlaceholder: {
+    id: 'proposalForm.explainPlaceholder',
+    defaultMessage: 'Describe what you changed and why — e.g. moved Biology 101 to Tuesday to resolve a room conflict with Chemistry.',
+  },
+  descriptionRequiredError: {
+    id: 'proposalForm.descriptionRequiredError',
+    defaultMessage: 'Please describe your changes before submitting.',
+  },
+  helperText: {
+    id: 'proposalForm.helperText',
+    defaultMessage: 'Required — this helps the scheduling office review your proposal.',
+  },
+  cancel: {
+    id: 'proposalForm.cancel',
+    defaultMessage: 'Cancel',
+  },
+  submitting: {
+    id: 'proposalForm.submitting',
+    defaultMessage: 'Submitting…',
+  },
+  submitForReview: {
+    id: 'proposalForm.submitForReview',
+    defaultMessage: 'Submit for Review →',
+  },
+  submitAriaLabel: {
+    id: 'proposalForm.submitAriaLabel',
+    defaultMessage: 'Submit proposal for review',
+  },
+});
 
 interface ProposalFormProps {
   readonly open: boolean;
@@ -22,6 +66,7 @@ export default function ProposalForm({
   onSubmit,
   onClose,
 }: ProposalFormProps): React.ReactElement {
+  const intl = useIntl();
   const conflictCount = useAppSelector((s) => s.conflict.conflicts.length);
 
   const [description, setDescription] = useState('');
@@ -37,7 +82,7 @@ export default function ProposalForm({
   const handleSubmit = async (): Promise<void> => {
     const trimmed = description.trim();
     if (!trimmed) {
-      setDescriptionError('Please describe your changes before submitting.');
+      setDescriptionError(intl.formatMessage(messages.descriptionRequiredError));
       return;
     }
     setDescriptionError('');
@@ -55,35 +100,33 @@ export default function ProposalForm({
       fullWidth
       aria-labelledby="proposal-form-title"
     >
-      <DialogTitle id="proposal-form-title">Submit Proposal for Review</DialogTitle>
+      <DialogTitle id="proposal-form-title">{intl.formatMessage(messages.title)}</DialogTitle>
       <DialogContent
         sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important' }}
       >
         {conflictCount > 0 && (
           <Alert severity="warning">
-            Your draft has {conflictCount} scheduling conflict
-            {conflictCount === 1 ? '' : 's'}. The scheduling office will see these and may ask
-            you to fix them before approving.
+            {intl.formatMessage(messages.conflictWarning, { count: conflictCount })}
           </Alert>
         )}
 
         <TextField
-          label="Explain your changes"
-          placeholder="Describe what you changed and why — e.g. moved Biology 101 to Tuesday to resolve a room conflict with Chemistry."
+          label={intl.formatMessage(messages.explainLabel)}
+          placeholder={intl.formatMessage(messages.explainPlaceholder)}
           multiline
           rows={4}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           error={Boolean(descriptionError)}
-          helperText={descriptionError || 'Required — this helps the scheduling office review your proposal.'}
+          helperText={descriptionError || intl.formatMessage(messages.helperText)}
           disabled={submitting}
-          slotProps={{ htmlInput: { 'aria-label': 'Explain your changes' } }}
+          slotProps={{ htmlInput: { 'aria-label': intl.formatMessage(messages.explainLabel) } }}
           autoFocus
         />
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 3 }}>
         <Button onClick={handleClose} variant="outlined" disabled={submitting}>
-          Cancel
+          {intl.formatMessage(messages.cancel)}
         </Button>
         <Button
           variant="contained"
@@ -91,9 +134,9 @@ export default function ProposalForm({
           onClick={() => void handleSubmit()}
           disabled={submitting || !description.trim()}
           startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : undefined}
-          aria-label="Submit proposal for review"
+          aria-label={intl.formatMessage(messages.submitAriaLabel)}
         >
-          {submitting ? 'Submitting…' : 'Submit for Review →'}
+          {submitting ? intl.formatMessage(messages.submitting) : intl.formatMessage(messages.submitForReview)}
         </Button>
       </DialogActions>
     </Dialog>

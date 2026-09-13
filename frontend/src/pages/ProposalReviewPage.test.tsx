@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import ProposalReviewPage from './ProposalReviewPage';
 import proposalReducer from '@/store/reducers/proposalSlice';
@@ -14,6 +15,7 @@ import rulesReducer from '@/store/reducers/rulesSlice';
 import sessionReducer from '@/store/reducers/sessionSlice';
 import scheduleReducer from '@/store/reducers/scheduleSlice';
 import identityReducer from '@/store/reducers/identitySlice';
+import languageReducer from '@/store/reducers/languageSlice';
 import * as proposalService from '@/services/proposalService';
 
 // Must be defined inside vi.hoisted so the mock factories can reference it safely
@@ -81,6 +83,7 @@ const makeStore = () =>
       session: sessionReducer,
       schedule: scheduleReducer,
       identity: identityReducer,
+      language: languageReducer,
     },
     preloadedState: {
       identity: { identity: { role: 'admin' as const, professorId: null, studentGroupId: null }, hydrated: true },
@@ -90,12 +93,14 @@ const makeStore = () =>
 const renderPage = () =>
   render(
     <Provider store={makeStore()}>
-      <MemoryRouter initialEntries={['/admin/proposals/p1']}>
-        <Routes>
-          <Route path="/admin/proposals/:id" element={<ProposalReviewPage />} />
-          <Route path="/admin/proposals" element={<div>Dashboard</div>} />
-        </Routes>
-      </MemoryRouter>
+      <IntlProvider locale="en" messages={{}}>
+        <MemoryRouter initialEntries={['/admin/proposals/p1']}>
+          <Routes>
+            <Route path="/admin/proposals/:id" element={<ProposalReviewPage />} />
+            <Route path="/admin/proposals" element={<div>Dashboard</div>} />
+          </Routes>
+        </MemoryRouter>
+      </IntlProvider>
     </Provider>,
   );
 

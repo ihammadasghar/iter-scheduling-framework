@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest';
+import { createIntl } from 'react-intl';
 import { buildConflictSummaries } from './conflictSummaries';
 import { FORMATTER_NAMES } from './scheduleNames';
 import type { Conflict, ScheduleClass } from '@/types';
+
+const intl = createIntl({ locale: 'en', messages: {} });
 
 const classA: ScheduleClass = {
   id: 'CLS_001', courseId: 'CRS_BIO101', title: 'Biology', professorId: 'PRF_SMITH',
@@ -17,7 +20,7 @@ describe('buildConflictSummaries', () => {
     const conflict: Conflict = {
       id: 'c1', type: 'ROOM_DOUBLE_BOOK', classIds: ['CLS_001', 'CLS_002'], message: '',
     };
-    const summaries = buildConflictSummaries([conflict], [classA, classB], FORMATTER_NAMES);
+    const summaries = buildConflictSummaries(intl, [conflict], [classA, classB], FORMATTER_NAMES);
     expect(summaries.get('CLS_001')).toMatch(/booked for two classes/i);
     expect(summaries.get('CLS_002')).toMatch(/booked for two classes/i);
   });
@@ -27,11 +30,11 @@ describe('buildConflictSummaries', () => {
       { id: 'c1', type: 'ROOM_DOUBLE_BOOK', classIds: ['CLS_001', 'CLS_002'], message: '' },
       { id: 'c2', type: 'PROFESSOR_OVERLAP', classIds: ['CLS_001', 'CLS_002'], message: '' },
     ];
-    const summaries = buildConflictSummaries(conflicts, [classA, classB], FORMATTER_NAMES);
+    const summaries = buildConflictSummaries(intl, conflicts, [classA, classB], FORMATTER_NAMES);
     expect(summaries.get('CLS_001')).toContain('+1 more');
   });
 
   it('returns an empty map for no conflicts', () => {
-    expect(buildConflictSummaries([], [classA], FORMATTER_NAMES).size).toBe(0);
+    expect(buildConflictSummaries(intl, [], [classA], FORMATTER_NAMES).size).toBe(0);
   });
 });

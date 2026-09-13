@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { IntlProvider } from 'react-intl';
 import RoomUtilisationHeatmap from './RoomUtilisationHeatmap';
 import type { OccupancyLookup } from '@/utils/aggregateOccupancy';
 import type { RawRoom, ScheduleClass } from '@/types';
@@ -29,9 +30,16 @@ const CLASSES: ScheduleClass[] = [
   },
 ];
 
+const renderHeatmap = (props: React.ComponentProps<typeof RoomUtilisationHeatmap>) =>
+  render(
+    <IntlProvider locale="en" messages={{}}>
+      <RoomUtilisationHeatmap {...props} />
+    </IntlProvider>,
+  );
+
 describe('RoomUtilisationHeatmap', () => {
   it('shows a message when there are no rooms', () => {
-    render(<RoomUtilisationHeatmap occupancy={new Map()} rooms={[]} sortedTimeSlotIds={[]} classes={[]} />);
+    renderHeatmap({ occupancy: new Map(), rooms: [], sortedTimeSlotIds: [], classes: [] });
     expect(screen.getByText(/no room data available/i)).toBeInTheDocument();
   });
 
@@ -39,12 +47,12 @@ describe('RoomUtilisationHeatmap', () => {
     const occupancy: OccupancyLookup = new Map([
       ['RM_101', new Map([['TS_MON_P1', { seatFillRatio: 0.8, classIds: ['CLS_001'], hasConflict: false }]])],
     ]);
-    render(<RoomUtilisationHeatmap occupancy={occupancy} rooms={ROOMS} sortedTimeSlotIds={TS_IDS} classes={CLASSES} />);
+    renderHeatmap({ occupancy, rooms: ROOMS, sortedTimeSlotIds: TS_IDS, classes: CLASSES });
     expect(screen.getByLabelText(/room 101 80% full at mon p1/i)).toBeInTheDocument();
   });
 
   it('renders unbooked cells distinctly', () => {
-    render(<RoomUtilisationHeatmap occupancy={new Map()} rooms={ROOMS} sortedTimeSlotIds={TS_IDS} classes={CLASSES} />);
+    renderHeatmap({ occupancy: new Map(), rooms: ROOMS, sortedTimeSlotIds: TS_IDS, classes: CLASSES });
     expect(screen.getByLabelText(/room 101 unbooked at mon p1/i)).toBeInTheDocument();
   });
 
@@ -52,13 +60,13 @@ describe('RoomUtilisationHeatmap', () => {
     const occupancy: OccupancyLookup = new Map([
       ['RM_101', new Map([['TS_MON_P1', { seatFillRatio: 1.5, classIds: ['CLS_001', 'CLS_002'], hasConflict: true }]])],
     ]);
-    render(<RoomUtilisationHeatmap occupancy={occupancy} rooms={ROOMS} sortedTimeSlotIds={TS_IDS} classes={CLASSES} />);
+    renderHeatmap({ occupancy, rooms: ROOMS, sortedTimeSlotIds: TS_IDS, classes: CLASSES });
     expect(screen.getByLabelText(/room 101 150% full at mon p1/i)).toBeInTheDocument();
   });
 
   it('toggles to a table view', async () => {
     const user = userEvent.setup();
-    render(<RoomUtilisationHeatmap occupancy={new Map()} rooms={ROOMS} sortedTimeSlotIds={TS_IDS} classes={CLASSES} />);
+    renderHeatmap({ occupancy: new Map(), rooms: ROOMS, sortedTimeSlotIds: TS_IDS, classes: CLASSES });
     await user.click(screen.getByText(/view as table/i));
     expect(screen.getByLabelText(/room utilisation table/i)).toBeInTheDocument();
   });
@@ -68,7 +76,7 @@ describe('RoomUtilisationHeatmap', () => {
     const occupancy: OccupancyLookup = new Map([
       ['RM_101', new Map([['TS_MON_P1', { seatFillRatio: 0.8, classIds: ['CLS_001'], hasConflict: false }]])],
     ]);
-    render(<RoomUtilisationHeatmap occupancy={occupancy} rooms={ROOMS} sortedTimeSlotIds={TS_IDS} classes={CLASSES} />);
+    renderHeatmap({ occupancy, rooms: ROOMS, sortedTimeSlotIds: TS_IDS, classes: CLASSES });
     const cell = screen.getByLabelText(/room 101 80% full at mon p1/i);
     await user.hover(cell);
     expect(await screen.findByRole('tooltip')).toHaveTextContent('Biology 101');
@@ -79,7 +87,7 @@ describe('RoomUtilisationHeatmap', () => {
     const occupancy: OccupancyLookup = new Map([
       ['RM_101', new Map([['TS_MON_P1', { seatFillRatio: 1.5, classIds: ['CLS_001', 'CLS_002'], hasConflict: true }]])],
     ]);
-    render(<RoomUtilisationHeatmap occupancy={occupancy} rooms={ROOMS} sortedTimeSlotIds={TS_IDS} classes={CLASSES} />);
+    renderHeatmap({ occupancy, rooms: ROOMS, sortedTimeSlotIds: TS_IDS, classes: CLASSES });
     const cell = screen.getByLabelText(/room 101 150% full at mon p1/i);
     await user.hover(cell);
     const tooltip = await screen.findByRole('tooltip');
@@ -92,7 +100,7 @@ describe('RoomUtilisationHeatmap', () => {
     const occupancy: OccupancyLookup = new Map([
       ['RM_101', new Map([['TS_MON_P1', { seatFillRatio: 0.8, classIds: ['CLS_001'], hasConflict: false }]])],
     ]);
-    render(<RoomUtilisationHeatmap occupancy={occupancy} rooms={ROOMS} sortedTimeSlotIds={TS_IDS} classes={CLASSES} />);
+    renderHeatmap({ occupancy, rooms: ROOMS, sortedTimeSlotIds: TS_IDS, classes: CLASSES });
     await user.click(screen.getByText(/view as table/i));
     expect(screen.getByText(/80%.*biology 101/i)).toBeInTheDocument();
   });
@@ -101,7 +109,7 @@ describe('RoomUtilisationHeatmap', () => {
     const occupancy: OccupancyLookup = new Map([
       ['RM_101', new Map([['TS_MON_P1', { seatFillRatio: 0.8, classIds: ['CLS_001'], hasConflict: false }]])],
     ]);
-    render(<RoomUtilisationHeatmap occupancy={occupancy} rooms={ROOMS} sortedTimeSlotIds={TS_IDS} classes={CLASSES} />);
+    renderHeatmap({ occupancy, rooms: ROOMS, sortedTimeSlotIds: TS_IDS, classes: CLASSES });
     // One header row + one row per room.
     expect(screen.getAllByRole('row')).toHaveLength(1 + ROOMS.length);
     // One column header per time slot.
@@ -126,9 +134,7 @@ describe('RoomUtilisationHeatmap', () => {
     const occupancy: OccupancyLookup = new Map([
       ['RM_101', new Map([['TS_MON_P1', { seatFillRatio: ratio, classIds: ['CLS_001'], hasConflict: false }]])],
     ]);
-    const { unmount } = render(
-      <RoomUtilisationHeatmap occupancy={occupancy} rooms={ROOMS} sortedTimeSlotIds={TS_IDS} classes={CLASSES} />,
-    );
+    const { unmount } = renderHeatmap({ occupancy, rooms: ROOMS, sortedTimeSlotIds: TS_IDS, classes: CLASSES });
     const pct = Math.round(ratio * 100);
     const cell = screen.getByLabelText(new RegExp(`room 101 ${pct}% full at mon p1`, 'i'));
     expect(getComputedStyle(cell).backgroundColor).toBe(expectedRgb);
@@ -136,7 +142,7 @@ describe('RoomUtilisationHeatmap', () => {
   });
 
   it('renders the unbooked cell with the neutral (non-ramp) background color', () => {
-    render(<RoomUtilisationHeatmap occupancy={new Map()} rooms={ROOMS} sortedTimeSlotIds={TS_IDS} classes={CLASSES} />);
+    renderHeatmap({ occupancy: new Map(), rooms: ROOMS, sortedTimeSlotIds: TS_IDS, classes: CLASSES });
     const cell = screen.getByLabelText(/room 101 unbooked at mon p1/i);
     expect(getComputedStyle(cell).backgroundColor).toBe('rgb(231, 232, 240)'); // #e7e8f0
   });
@@ -145,7 +151,7 @@ describe('RoomUtilisationHeatmap', () => {
     const occupancy: OccupancyLookup = new Map([
       ['RM_101', new Map([['TS_MON_P1', { seatFillRatio: 1.5, classIds: ['CLS_001', 'CLS_002'], hasConflict: true }]])],
     ]);
-    render(<RoomUtilisationHeatmap occupancy={occupancy} rooms={ROOMS} sortedTimeSlotIds={TS_IDS} classes={CLASSES} />);
+    renderHeatmap({ occupancy, rooms: ROOMS, sortedTimeSlotIds: TS_IDS, classes: CLASSES });
     const cell = screen.getByLabelText(/room 101 150% full at mon p1/i);
     expect(cell.querySelector('[data-testid="WarningAmberIcon"]')).toBeInTheDocument();
   });

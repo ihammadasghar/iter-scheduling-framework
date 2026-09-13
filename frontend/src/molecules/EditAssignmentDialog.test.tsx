@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import EditAssignmentDialog from './EditAssignmentDialog';
 import classReducer from '@/store/reducers/classSlice';
@@ -89,7 +90,9 @@ const renderDialog = (
 ) =>
   render(
     <Provider store={store}>
-      <EditAssignmentDialog open simId={SIM_ID} classId={CLASS_ID} currentClass={currentClass} onClose={onClose} />
+      <IntlProvider locale="en" messages={{}}>
+        <EditAssignmentDialog open simId={SIM_ID} classId={CLASS_ID} currentClass={currentClass} onClose={onClose} />
+      </IntlProvider>
     </Provider>,
   );
 
@@ -195,7 +198,9 @@ describe('EditAssignmentDialog', () => {
     const user = userEvent.setup();
     render(
       <Provider store={store}>
-        <EditAssignmentDialog open simId={SIM_ID} classId={CLASS_ID} currentClass={twoperiodClass} onClose={vi.fn()} />
+        <IntlProvider locale="en" messages={{}}>
+          <EditAssignmentDialog open simId={SIM_ID} classId={CLASS_ID} currentClass={twoperiodClass} onClose={vi.fn()} />
+        </IntlProvider>
       </Provider>,
     );
     expect(screen.getByLabelText('This Class: Biology 101')).toBeInTheDocument();
@@ -264,7 +269,9 @@ describe('EditAssignmentDialog', () => {
     const store = makeStore([currentClass, otherRoomClass, secondClass]);
     const { rerender } = render(
       <Provider store={store}>
-        <EditAssignmentDialog open simId={SIM_ID} classId={CLASS_ID} currentClass={currentClass} onClose={vi.fn()} />
+        <IntlProvider locale="en" messages={{}}>
+          <EditAssignmentDialog open simId={SIM_ID} classId={CLASS_ID} currentClass={currentClass} onClose={vi.fn()} />
+        </IntlProvider>
       </Provider>,
     );
     expect(screen.getByLabelText('Room')).toHaveTextContent('Room 101');
@@ -274,12 +281,16 @@ describe('EditAssignmentDialog', () => {
     // all of this, only its props change.
     rerender(
       <Provider store={store}>
-        <EditAssignmentDialog open={false} simId={SIM_ID} classId="CLS_002" currentClass={secondClass} onClose={vi.fn()} />
+        <IntlProvider locale="en" messages={{}}>
+          <EditAssignmentDialog open={false} simId={SIM_ID} classId="CLS_002" currentClass={secondClass} onClose={vi.fn()} />
+        </IntlProvider>
       </Provider>,
     );
     rerender(
       <Provider store={store}>
-        <EditAssignmentDialog open simId={SIM_ID} classId="CLS_002" currentClass={secondClass} onClose={vi.fn()} />
+        <IntlProvider locale="en" messages={{}}>
+          <EditAssignmentDialog open simId={SIM_ID} classId="CLS_002" currentClass={secondClass} onClose={vi.fn()} />
+        </IntlProvider>
       </Provider>,
     );
 

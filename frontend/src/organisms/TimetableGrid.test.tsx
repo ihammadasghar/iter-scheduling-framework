@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import TimetableGrid from './TimetableGrid';
 import classReducer from '@/store/reducers/classSlice';
@@ -71,9 +72,11 @@ const render_ = (
 ) =>
   render(
     <Provider store={makeStore(classes, viewBy)}>
-      <MemoryRouter>
-        <TimetableGrid />
-      </MemoryRouter>
+      <IntlProvider locale="en" messages={{}}>
+        <MemoryRouter>
+          <TimetableGrid />
+        </MemoryRouter>
+      </IntlProvider>
     </Provider>,
   );
 
@@ -126,9 +129,11 @@ describe('TimetableGrid', () => {
     });
     render(
       <Provider store={store}>
-        <MemoryRouter>
-          <TimetableGrid />
-        </MemoryRouter>
+        <IntlProvider locale="en" messages={{}}>
+          <MemoryRouter>
+            <TimetableGrid />
+          </MemoryRouter>
+        </IntlProvider>
       </Provider>,
     );
     expect(screen.getByText('Dr. Jane Smith')).toBeInTheDocument();
@@ -148,9 +153,11 @@ describe('TimetableGrid', () => {
   it('marks chip as conflicted when classId is in conflictedClassIds', () => {
     render(
       <Provider store={makeStore([sampleClass])}>
-        <MemoryRouter>
-          <TimetableGrid conflictedClassIds={new Set(['CLS_001'])} />
-        </MemoryRouter>
+        <IntlProvider locale="en" messages={{}}>
+          <MemoryRouter>
+            <TimetableGrid conflictedClassIds={new Set(['CLS_001'])} />
+          </MemoryRouter>
+        </IntlProvider>
       </Provider>,
     );
     // Conflicted chip has warning icon
@@ -170,9 +177,11 @@ describe('TimetableGrid', () => {
     };
     render(
       <Provider store={makeStore([sampleClass, otherClass], 'room', [conflict])}>
-        <MemoryRouter>
-          <TimetableGrid conflictedClassIds={new Set(['CLS_001'])} />
-        </MemoryRouter>
+        <IntlProvider locale="en" messages={{}}>
+          <MemoryRouter>
+            <TimetableGrid conflictedClassIds={new Set(['CLS_001'])} />
+          </MemoryRouter>
+        </IntlProvider>
       </Provider>,
     );
     expect(
@@ -184,9 +193,11 @@ describe('TimetableGrid', () => {
     const store = makeStore([sampleClass]);
     render(
       <Provider store={store}>
-        <MemoryRouter>
-          <TimetableGrid />
-        </MemoryRouter>
+        <IntlProvider locale="en" messages={{}}>
+          <MemoryRouter>
+            <TimetableGrid />
+          </MemoryRouter>
+        </IntlProvider>
       </Provider>,
     );
     fireEvent.click(screen.getByLabelText('Timetable grid'));
@@ -205,9 +216,11 @@ describe('TimetableGrid', () => {
     });
     render(
       <Provider store={store}>
-        <MemoryRouter>
-          <TimetableGrid />
-        </MemoryRouter>
+        <IntlProvider locale="en" messages={{}}>
+          <MemoryRouter>
+            <TimetableGrid />
+          </MemoryRouter>
+        </IntlProvider>
       </Provider>,
     );
     expect(screen.getByLabelText('Loading timetable…')).toBeInTheDocument();
@@ -225,9 +238,11 @@ describe('TimetableGrid — building grouping', () => {
   it('renders a building header row for each distinct building when viewBy=room', () => {
     render(
       <Provider store={makeStoreWithRooms([classInBuildingA, classInBuildingB], ROOMS)}>
-        <MemoryRouter>
-          <TimetableGrid />
-        </MemoryRouter>
+        <IntlProvider locale="en" messages={{}}>
+          <MemoryRouter>
+            <TimetableGrid />
+          </MemoryRouter>
+        </IntlProvider>
       </Provider>,
     );
     expect(screen.getByText(/building a/i)).toBeInTheDocument();
@@ -238,9 +253,11 @@ describe('TimetableGrid — building grouping', () => {
     const user = userEvent.setup();
     render(
       <Provider store={makeStoreWithRooms([classInBuildingA], ROOMS)}>
-        <MemoryRouter>
-          <TimetableGrid />
-        </MemoryRouter>
+        <IntlProvider locale="en" messages={{}}>
+          <MemoryRouter>
+            <TimetableGrid />
+          </MemoryRouter>
+        </IntlProvider>
       </Provider>,
     );
     expect(screen.getByText(/room 101/i)).toBeInTheDocument();
@@ -277,9 +294,11 @@ describe('TimetableGrid — density control', () => {
     const ROOMS = [{ id: 'RM_101', name: 'Room 101', capacity: 40, building: 'Building A' }];
     render(
       <Provider store={makeStoreWithRooms([classInBuildingA], ROOMS)}>
-        <MemoryRouter>
-          <TimetableGrid />
-        </MemoryRouter>
+        <IntlProvider locale="en" messages={{}}>
+          <MemoryRouter>
+            <TimetableGrid />
+          </MemoryRouter>
+        </IntlProvider>
       </Provider>,
     );
 
@@ -314,9 +333,11 @@ describe('TimetableGrid — density control', () => {
       });
       return render(
         <Provider store={store}>
-          <MemoryRouter>
-            <TimetableGrid excludedDays={excludedDays} />
-          </MemoryRouter>
+          <IntlProvider locale="en" messages={{}}>
+            <MemoryRouter>
+              <TimetableGrid excludedDays={excludedDays} />
+            </MemoryRouter>
+          </IntlProvider>
         </Provider>,
       );
     };

@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import TimetablePage from './TimetablePage';
 import { simulationService } from '@/services/simulationService';
@@ -13,6 +14,7 @@ import scheduleReducer from '@/store/reducers/scheduleSlice';
 import sessionReducer from '@/store/reducers/sessionSlice';
 import uiReducer from '@/store/reducers/uiSlice';
 import identityReducer from '@/store/reducers/identitySlice';
+import languageReducer from '@/store/reducers/languageSlice';
 import type { ConflictType } from '@/types';
 
 vi.mock('@/hooks/useHeartbeat', () => ({ useHeartbeat: vi.fn() }));
@@ -74,6 +76,7 @@ const rootReducer = combineReducers({
   session: sessionReducer,
   ui: uiReducer,
   identity: identityReducer,
+  language: languageReducer,
 });
 
 type RootState = ReturnType<typeof rootReducer>;
@@ -88,11 +91,13 @@ const renderPage = (preloadedState?: Partial<RootState>) => {
   const store = makeStore(preloadedState);
   const utils = render(
     <Provider store={store}>
-      <MemoryRouter initialEntries={['/simulations/sim-1']}>
-        <Routes>
-          <Route path="/simulations/:id" element={<TimetablePage />} />
-        </Routes>
-      </MemoryRouter>
+      <IntlProvider locale="en" messages={{}}>
+        <MemoryRouter initialEntries={['/simulations/sim-1']}>
+          <Routes>
+            <Route path="/simulations/:id" element={<TimetablePage />} />
+          </Routes>
+        </MemoryRouter>
+      </IntlProvider>
     </Provider>,
   );
   return { store, ...utils };

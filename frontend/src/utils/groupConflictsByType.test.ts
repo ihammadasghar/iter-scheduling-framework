@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import { createIntl } from 'react-intl';
 import { groupConflictsByType, isPolicyViolation } from './groupConflictsByType';
 import type { Conflict } from '@/types';
+
+const intl = createIntl({ locale: 'en', messages: {} });
 
 const makeConflict = (type: Conflict['type'], id: string): Conflict => ({
   id,
@@ -11,7 +14,7 @@ const makeConflict = (type: Conflict['type'], id: string): Conflict => ({
 
 describe('groupConflictsByType', () => {
   it('returns all 6 types with count 0 when there are no conflicts', () => {
-    expect(groupConflictsByType([])).toEqual([
+    expect(groupConflictsByType(intl, [])).toEqual([
       { type: 'ROOM_DOUBLE_BOOK', label: 'Room double-booked', count: 0 },
       { type: 'PROFESSOR_OVERLAP', label: 'Lecturer double-booked', count: 0 },
       { type: 'GROUP_OVERLAP', label: 'Student group overlap', count: 0 },
@@ -28,7 +31,7 @@ describe('groupConflictsByType', () => {
       makeConflict('ROOM_DOUBLE_BOOK', 'c3'),
       makeConflict('CONSECUTIVE_LIMIT_EXCEEDED', 'c4'),
     ];
-    expect(groupConflictsByType(conflicts)).toEqual([
+    expect(groupConflictsByType(intl, conflicts)).toEqual([
       { type: 'ROOM_DOUBLE_BOOK', label: 'Room double-booked', count: 2 },
       { type: 'PROFESSOR_OVERLAP', label: 'Lecturer double-booked', count: 0 },
       { type: 'GROUP_OVERLAP', label: 'Student group overlap', count: 1 },

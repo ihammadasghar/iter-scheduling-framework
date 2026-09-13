@@ -1,12 +1,16 @@
 // Pure label-resolution utilities for rule builder UI.
-// Maps internal API keys to plain English labels.
-// All functions are pure — no side effects, no external dependencies.
+// Maps internal API keys to plain-language labels via react-intl.
+// All functions are pure — no side effects, no external dependencies beyond
+// the `intl: IntlShape` passed in explicitly (these are plain functions, not
+// hooks, since they're called from other pure utilities as well as
+// components — see AddMetricDialog.tsx/MetricRuleCard.tsx for call sites).
 //
 // NOTE: `RuleTarget` values must match the backend's MetricRuleTranslator
 // catalog keys exactly (backend/src/utils/MetricRuleTranslator.ts) — these
 // are sent verbatim as the `target` field of a metric rule, and evaluation
 // 400s if they don't match one of the backend's `target:condition` pairs.
 
+import { defineMessages, type IntlShape } from 'react-intl';
 import type { MetricDirection } from '@/types';
 
 export type RuleTarget = 'Class' | 'Professor' | 'Room' | 'StudentGroup';
@@ -26,60 +30,83 @@ export interface ConditionOption {
   readonly unit: string;
 }
 
-const TARGET_LABELS: Record<string, string> = {
-  Class: 'Classes',
-  Professor: 'Lecturers',
-  Room: 'Rooms',
-  StudentGroup: 'Student Groups',
+const targetMessages = defineMessages({
+  Class: { id: 'ruleLabels.target.class', defaultMessage: 'Classes' },
+  Professor: { id: 'ruleLabels.target.professor', defaultMessage: 'Lecturers' },
+  Room: { id: 'ruleLabels.target.room', defaultMessage: 'Rooms' },
+  StudentGroup: { id: 'ruleLabels.target.studentGroup', defaultMessage: 'Student Groups' },
+});
+
+const conditionMessages = defineMessages({
+  count: { id: 'ruleLabels.condition.count', defaultMessage: 'Total number of classes' },
+  avg_classes_per_day: { id: 'ruleLabels.condition.avgClassesPerDay', defaultMessage: 'Average classes per lecturer per day' },
+  max_classes_per_day: { id: 'ruleLabels.condition.maxClassesPerDay', defaultMessage: 'Maximum classes any lecturer teaches in one day' },
+  utilization: { id: 'ruleLabels.condition.utilization', defaultMessage: 'Percentage of rooms in use' },
+  back_to_back_ratio: { id: 'ruleLabels.condition.backToBackRatio', defaultMessage: "Share of a lecturer's classes scheduled back-to-back" },
+  room_consistency: { id: 'ruleLabels.condition.roomConsistency', defaultMessage: "Share of a lecturer's classes held in their most-used room" },
+  free_day_ratio: { id: 'ruleLabels.condition.freeDayRatio', defaultMessage: 'Share of student groups with at least one free day' },
+  avg_gap_length: { id: 'ruleLabels.condition.avgGapLength', defaultMessage: "Average idle gap between a lecturer's classes" },
+});
+
+const unitMessages = defineMessages({
+  classes: { id: 'ruleLabels.unit.classes', defaultMessage: 'classes' },
+  classesPerDay: { id: 'ruleLabels.unit.classesPerDay', defaultMessage: 'classes/day' },
+  percent: { id: 'ruleLabels.unit.percent', defaultMessage: '%' },
+  slots: { id: 'ruleLabels.unit.slots', defaultMessage: 'slots' },
+});
+
+const violationMessages = defineMessages({
+  professor_overlap: { id: 'ruleLabels.violation.professorOverlap', defaultMessage: 'Lecturer teaches two classes at the same time' },
+  room_double_book: { id: 'ruleLabels.violation.roomDoubleBook', defaultMessage: 'Room booked for two classes at the same time' },
+  group_overlap: { id: 'ruleLabels.violation.groupOverlap', defaultMessage: 'Student group in two classes at once' },
+  consecutive_limit: { id: 'ruleLabels.violation.consecutiveLimit', defaultMessage: 'Lecturer teaches more than allowed consecutive periods' },
+  gap_limit: { id: 'ruleLabels.violation.gapLimit', defaultMessage: "Gap between a lecturer's classes exceeds the allowed maximum" },
+  room_capacity_exceeded: { id: 'ruleLabels.violation.roomCapacityExceeded', defaultMessage: 'Room assigned to a class smaller than the group it holds' },
+});
+
+const directionMessages = defineMessages({
+  higher_is_better: { id: 'ruleLabels.direction.higherIsBetter', defaultMessage: 'Higher is better' },
+  lower_is_better: { id: 'ruleLabels.direction.lowerIsBetter', defaultMessage: 'Lower is better' },
+});
+
+const describeMessages = defineMessages({
+  consecutiveLimit: {
+    id: 'ruleLabels.describe.consecutiveLimit',
+    defaultMessage: '{limit, plural, one {more than # consecutive period} other {more than # consecutive periods}}',
+  },
+  gapLimit: {
+    id: 'ruleLabels.describe.gapLimit',
+    defaultMessage: '{limit, plural, one {gap greater than # period} other {gap greater than # periods}}',
+  },
+});
+
+export const getTargetLabel = (intl: IntlShape, target: string): string =>
+  target in targetMessages ? intl.formatMessage(targetMessages[target as RuleTarget]) : target;
+
+export const getConditionLabel = (intl: IntlShape, condition: string): string =>
+  condition in conditionMessages ? intl.formatMessage(conditionMessages[condition as RuleCondition]) : condition;
+
+export const getConditionsByTarget = (intl: IntlShape, target: string): readonly ConditionOption[] => {
+  const table: Record<string, readonly ConditionOption[]> = {
+    Class: [
+      { value: 'count', label: intl.formatMessage(conditionMessages.count), unit: intl.formatMessage(unitMessages.classes) },
+    ],
+    Professor: [
+      { value: 'avg_classes_per_day', label: intl.formatMessage(conditionMessages.avg_classes_per_day), unit: intl.formatMessage(unitMessages.classesPerDay) },
+      { value: 'max_classes_per_day', label: intl.formatMessage(conditionMessages.max_classes_per_day), unit: intl.formatMessage(unitMessages.classes) },
+      { value: 'back_to_back_ratio', label: intl.formatMessage(conditionMessages.back_to_back_ratio), unit: intl.formatMessage(unitMessages.percent) },
+      { value: 'room_consistency', label: intl.formatMessage(conditionMessages.room_consistency), unit: intl.formatMessage(unitMessages.percent) },
+      { value: 'avg_gap_length', label: intl.formatMessage(conditionMessages.avg_gap_length), unit: intl.formatMessage(unitMessages.slots) },
+    ],
+    Room: [
+      { value: 'utilization', label: intl.formatMessage(conditionMessages.utilization), unit: intl.formatMessage(unitMessages.percent) },
+    ],
+    StudentGroup: [
+      { value: 'free_day_ratio', label: intl.formatMessage(conditionMessages.free_day_ratio), unit: intl.formatMessage(unitMessages.percent) },
+    ],
+  };
+  return table[target] ?? [];
 };
-
-const CONDITION_LABELS: Record<string, string> = {
-  count: 'Total number of classes',
-  avg_classes_per_day: 'Average classes per lecturer per day',
-  max_classes_per_day: 'Maximum classes any lecturer teaches in one day',
-  utilization: 'Percentage of rooms in use',
-  back_to_back_ratio: 'Share of a lecturer\'s classes scheduled back-to-back',
-  room_consistency: 'Share of a lecturer\'s classes held in their most-used room',
-  free_day_ratio: 'Share of student groups with at least one free day',
-  avg_gap_length: 'Average idle gap between a lecturer\'s classes',
-};
-
-const CONDITIONS_BY_TARGET: Record<string, readonly ConditionOption[]> = {
-  Class: [
-    { value: 'count', label: 'Total number of classes', unit: 'classes' },
-  ],
-  Professor: [
-    { value: 'avg_classes_per_day', label: 'Average classes per lecturer per day', unit: 'classes/day' },
-    { value: 'max_classes_per_day', label: 'Maximum classes any lecturer teaches in one day', unit: 'classes' },
-    { value: 'back_to_back_ratio', label: 'Share of a lecturer\'s classes scheduled back-to-back', unit: '%' },
-    { value: 'room_consistency', label: 'Share of a lecturer\'s classes held in their most-used room', unit: '%' },
-    { value: 'avg_gap_length', label: 'Average idle gap between a lecturer\'s classes', unit: 'slots' },
-  ],
-  Room: [
-    { value: 'utilization', label: 'Percentage of rooms in use', unit: '%' },
-  ],
-  StudentGroup: [
-    { value: 'free_day_ratio', label: 'Share of student groups with at least one free day', unit: '%' },
-  ],
-};
-
-const VIOLATION_CONDITION_LABELS: Record<string, string> = {
-  professor_overlap: 'Lecturer teaches two classes at the same time',
-  room_double_book: 'Room booked for two classes at the same time',
-  group_overlap: 'Student group in two classes at once',
-  consecutive_limit: 'Lecturer teaches more than allowed consecutive periods',
-  gap_limit: 'Gap between a lecturer\'s classes exceeds the allowed maximum',
-  room_capacity_exceeded: 'Room assigned to a class smaller than the group it holds',
-};
-
-export const getTargetLabel = (target: string): string =>
-  TARGET_LABELS[target] ?? target;
-
-export const getConditionLabel = (condition: string): string =>
-  CONDITION_LABELS[condition] ?? condition;
-
-export const getConditionsByTarget = (target: string): readonly ConditionOption[] =>
-  CONDITIONS_BY_TARGET[target] ?? [];
 
 // Sensible default direction per condition, used to pre-fill (but never
 // silently overwrite) AddMetricDialog's direction control. `count` and
@@ -100,16 +127,13 @@ const DIRECTION_BY_CONDITION: Partial<Record<RuleCondition, MetricDirection>> = 
 export const getDefaultDirection = (condition: string): MetricDirection | undefined =>
   DIRECTION_BY_CONDITION[condition as RuleCondition];
 
-const DIRECTION_LABELS: Record<MetricDirection, string> = {
-  higher_is_better: 'Higher is better',
-  lower_is_better: 'Lower is better',
-};
+export const getDirectionLabel = (intl: IntlShape, direction: MetricDirection): string =>
+  intl.formatMessage(directionMessages[direction]);
 
-export const getDirectionLabel = (direction: MetricDirection): string =>
-  DIRECTION_LABELS[direction];
-
-export const getViolationConditionLabel = (violationCondition: string): string =>
-  VIOLATION_CONDITION_LABELS[violationCondition] ?? violationCondition;
+export const getViolationConditionLabel = (intl: IntlShape, violationCondition: string): string =>
+  violationCondition in violationMessages
+    ? intl.formatMessage(violationMessages[violationCondition as keyof typeof violationMessages])
+    : violationCondition;
 
 // The 2 violationCondition values that are institution-parameterized policy
 // constraints — the only ones that take a numeric `limit` — as opposed to
@@ -127,34 +151,34 @@ export const needsLimit = (violationCondition: string): boolean =>
 // periods". Falls back to the plain label when limit is absent (e.g. the
 // dropdown option list, which has no constraint instance to read a limit
 // from) or the condition isn't limit-based.
-export const describeViolationCondition = (violationCondition: string, limit?: number): string => {
-  if (limit === undefined) return getViolationConditionLabel(violationCondition);
+export const describeViolationCondition = (intl: IntlShape, violationCondition: string, limit?: number): string => {
+  if (limit === undefined) return getViolationConditionLabel(intl, violationCondition);
   if (violationCondition === 'consecutive_limit') {
-    return `more than ${limit} consecutive period${limit === 1 ? '' : 's'}`;
+    return intl.formatMessage(describeMessages.consecutiveLimit, { limit });
   }
   if (violationCondition === 'gap_limit') {
-    return `gap greater than ${limit} period${limit === 1 ? '' : 's'}`;
+    return intl.formatMessage(describeMessages.gapLimit, { limit });
   }
-  return getViolationConditionLabel(violationCondition);
+  return getViolationConditionLabel(intl, violationCondition);
 };
 
-export const TARGET_OPTIONS: readonly { value: RuleTarget; label: string }[] = [
-  { value: 'Class', label: 'Classes' },
-  { value: 'Professor', label: 'Lecturers' },
-  { value: 'Room', label: 'Rooms' },
-  { value: 'StudentGroup', label: 'Student Groups' },
+export const getTargetOptions = (intl: IntlShape): readonly { value: RuleTarget; label: string }[] => [
+  { value: 'Class', label: intl.formatMessage(targetMessages.Class) },
+  { value: 'Professor', label: intl.formatMessage(targetMessages.Professor) },
+  { value: 'Room', label: intl.formatMessage(targetMessages.Room) },
+  { value: 'StudentGroup', label: intl.formatMessage(targetMessages.StudentGroup) },
 ];
 
-export const DIRECTION_OPTIONS: readonly { value: MetricDirection; label: string }[] = [
-  { value: 'higher_is_better', label: 'Higher is better' },
-  { value: 'lower_is_better', label: 'Lower is better' },
+export const getDirectionOptions = (intl: IntlShape): readonly { value: MetricDirection; label: string }[] => [
+  { value: 'higher_is_better', label: intl.formatMessage(directionMessages.higher_is_better) },
+  { value: 'lower_is_better', label: intl.formatMessage(directionMessages.lower_is_better) },
 ];
 
-export const VIOLATION_CONDITION_OPTIONS: readonly { value: string; label: string }[] = [
-  { value: 'professor_overlap', label: 'Lecturer teaches two classes at the same time' },
-  { value: 'room_double_book', label: 'Room booked for two classes at the same time' },
-  { value: 'group_overlap', label: 'Student group in two classes at once' },
-  { value: 'consecutive_limit', label: 'Lecturer teaches more than allowed consecutive periods' },
-  { value: 'gap_limit', label: 'Gap between a lecturer\'s classes exceeds the allowed maximum' },
-  { value: 'room_capacity_exceeded', label: 'Room assigned to a class smaller than the group it holds' },
+export const getViolationConditionOptions = (intl: IntlShape): readonly { value: string; label: string }[] => [
+  { value: 'professor_overlap', label: intl.formatMessage(violationMessages.professor_overlap) },
+  { value: 'room_double_book', label: intl.formatMessage(violationMessages.room_double_book) },
+  { value: 'group_overlap', label: intl.formatMessage(violationMessages.group_overlap) },
+  { value: 'consecutive_limit', label: intl.formatMessage(violationMessages.consecutive_limit) },
+  { value: 'gap_limit', label: intl.formatMessage(violationMessages.gap_limit) },
+  { value: 'room_capacity_exceeded', label: intl.formatMessage(violationMessages.room_capacity_exceeded) },
 ];

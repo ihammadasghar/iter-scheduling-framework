@@ -3,6 +3,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import CreateSimulationDialog from './CreateSimulationDialog';
 import simulationReducer from '@/store/reducers/simulationSlice';
 import sessionReducer from '@/store/reducers/sessionSlice';
@@ -47,9 +48,11 @@ const makeStore = () =>
 const renderDialog = (open = true, onClose = vi.fn()) =>
   render(
     <Provider store={makeStore()}>
-      <MemoryRouter>
-        <CreateSimulationDialog open={open} onClose={onClose} />
-      </MemoryRouter>
+      <IntlProvider locale="en" messages={{}}>
+        <MemoryRouter>
+          <CreateSimulationDialog open={open} onClose={onClose} />
+        </MemoryRouter>
+      </IntlProvider>
     </Provider>,
   );
 

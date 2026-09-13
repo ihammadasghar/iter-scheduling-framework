@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import SimulationDashboardPage from './SimulationDashboardPage';
 import simulationReducer from '@/store/reducers/simulationSlice';
@@ -66,6 +67,7 @@ const makeStore = () =>
         expired: false,
         hasUnsavedChanges: false,
       }),
+      language: () => ({ locale: 'en' as const, hydrated: true }),
     },
   });
 
@@ -81,9 +83,11 @@ const renderPage = (opts: RenderOptions = {}): ReturnType<typeof render> => {
   }
   return render(
     <Provider store={makeStore()}>
-      <MemoryRouter>
-        <SimulationDashboardPage />
-      </MemoryRouter>
+      <IntlProvider locale="en" messages={{}}>
+        <MemoryRouter>
+          <SimulationDashboardPage />
+        </MemoryRouter>
+      </IntlProvider>
     </Provider>,
   );
 };

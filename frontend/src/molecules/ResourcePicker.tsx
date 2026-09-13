@@ -1,9 +1,29 @@
 import { useMemo } from 'react';
 import { Autocomplete, Box, FormControl, InputLabel, MenuItem, Select, TextField } from '@mui/material';
 import type { SelectChangeEvent } from '@mui/material';
+import { defineMessages, useIntl } from 'react-intl';
 import { useAppSelector } from '@/store/hooks';
-import { RESOURCE_TYPE_LABELS } from '@/utils/resourceTypeLabels';
+import { getResourceTypeLabels } from '@/utils/resourceTypeLabels';
 import type { ViewByOption } from '@/types';
+
+const messages = defineMessages({
+  browseBy: {
+    id: 'resourcePicker.browseBy',
+    defaultMessage: 'Browse by',
+  },
+  browseByAriaLabel: {
+    id: 'resourcePicker.browseByAriaLabel',
+    defaultMessage: 'Browse by resource type',
+  },
+  searchPlaceholder: {
+    id: 'resourcePicker.searchPlaceholder',
+    defaultMessage: 'Type a name…',
+  },
+  searchLabel: {
+    id: 'resourcePicker.searchLabel',
+    defaultMessage: 'Search {resourceType}s',
+  },
+});
 
 interface ResourcePickerProps {
   readonly resourceType: ViewByOption;
@@ -31,9 +51,11 @@ export default function ResourcePicker({
   resourceId,
   onResourceIdChange,
 }: ResourcePickerProps): React.ReactElement {
+  const intl = useIntl();
   const rooms = useAppSelector((s) => s.schedule.rooms);
   const professors = useAppSelector((s) => s.schedule.professors);
   const studentGroups = useAppSelector((s) => s.schedule.studentGroups);
+  const resourceTypeLabels = getResourceTypeLabels(intl);
 
   const options = useMemo<ResourceOption[]>(() => {
     if (resourceType === 'room') return rooms.map((r) => ({ id: r.id, label: r.name }));
@@ -51,15 +73,15 @@ export default function ResourcePicker({
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
       <FormControl size="small" sx={{ minWidth: 180 }}>
-        <InputLabel id="resource-type-label">Browse by</InputLabel>
+        <InputLabel id="resource-type-label">{intl.formatMessage(messages.browseBy)}</InputLabel>
         <Select<ViewByOption>
           labelId="resource-type-label"
           value={resourceType}
-          label="Browse by"
+          label={intl.formatMessage(messages.browseBy)}
           onChange={handleTypeChange}
-          inputProps={{ 'aria-label': 'Browse by resource type' }}
+          inputProps={{ 'aria-label': intl.formatMessage(messages.browseByAriaLabel) }}
         >
-          {(Object.entries(RESOURCE_TYPE_LABELS) as Array<[ViewByOption, string]>).map(([value, label]) => (
+          {(Object.entries(resourceTypeLabels) as Array<[ViewByOption, string]>).map(([value, label]) => (
             <MenuItem key={value} value={value}>{label}</MenuItem>
           ))}
         </Select>
@@ -76,8 +98,8 @@ export default function ResourcePicker({
         renderInput={(params) => (
           <TextField
             {...params}
-            label={`Search ${RESOURCE_TYPE_LABELS[resourceType].toLowerCase()}s`}
-            placeholder="Type a name…"
+            label={intl.formatMessage(messages.searchLabel, { resourceType: resourceTypeLabels[resourceType].toLowerCase() })}
+            placeholder={intl.formatMessage(messages.searchPlaceholder)}
           />
         )}
       />

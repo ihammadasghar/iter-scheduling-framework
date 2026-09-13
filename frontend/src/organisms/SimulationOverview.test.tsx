@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import SimulationOverview from './SimulationOverview';
 import classReducer from '@/store/reducers/classSlice';
@@ -60,7 +61,9 @@ describe('SimulationOverview', () => {
   it('shows a skeleton while loading with no classes yet', () => {
     render(
       <Provider store={makeStore({ classLoading: true })}>
-        <SimulationOverview onGoToGridView={vi.fn()} onSelectConflictType={vi.fn()} />
+        <IntlProvider locale="en" messages={{}}>
+          <SimulationOverview onGoToGridView={vi.fn()} onSelectConflictType={vi.fn()} />
+        </IntlProvider>
       </Provider>,
     );
     expect(screen.getByLabelText(/loading timetable/i)).toBeInTheDocument();
@@ -69,7 +72,9 @@ describe('SimulationOverview', () => {
   it('shows an empty state when there are no classes', () => {
     render(
       <Provider store={makeStore({ classes: [] })}>
-        <SimulationOverview onGoToGridView={vi.fn()} onSelectConflictType={vi.fn()} />
+        <IntlProvider locale="en" messages={{}}>
+          <SimulationOverview onGoToGridView={vi.fn()} onSelectConflictType={vi.fn()} />
+        </IntlProvider>
       </Provider>,
     );
     expect(screen.getByText(/nothing to show yet/i)).toBeInTheDocument();
@@ -79,7 +84,9 @@ describe('SimulationOverview', () => {
     const onGoToGridView = vi.fn();
     render(
       <Provider store={makeStore({ classes: [] })}>
-        <SimulationOverview onGoToGridView={onGoToGridView} onSelectConflictType={vi.fn()} />
+        <IntlProvider locale="en" messages={{}}>
+          <SimulationOverview onGoToGridView={onGoToGridView} onSelectConflictType={vi.fn()} />
+        </IntlProvider>
       </Provider>,
     );
     screen.getByRole('button', { name: /go to grid view/i }).click();
@@ -89,7 +96,9 @@ describe('SimulationOverview', () => {
   it('renders the health summary, heatmap, conflict chart and metrics when classes exist', () => {
     render(
       <Provider store={makeStore({ classes: [sampleClass] })}>
-        <SimulationOverview onGoToGridView={vi.fn()} onSelectConflictType={vi.fn()} />
+        <IntlProvider locale="en" messages={{}}>
+          <SimulationOverview onGoToGridView={vi.fn()} onSelectConflictType={vi.fn()} />
+        </IntlProvider>
       </Provider>,
     );
     expect(screen.getByText(/no scheduling conflicts/i)).toBeInTheDocument();
@@ -103,7 +112,9 @@ describe('SimulationOverview', () => {
       <Provider
         store={makeStore({ classes: [sampleClass], scheduleError: 'Network error' })}
       >
-        <SimulationOverview onGoToGridView={vi.fn()} onSelectConflictType={vi.fn()} />
+        <IntlProvider locale="en" messages={{}}>
+          <SimulationOverview onGoToGridView={vi.fn()} onSelectConflictType={vi.fn()} />
+        </IntlProvider>
       </Provider>,
     );
     expect(screen.getByText(/couldn't load room data for this draft/i)).toBeInTheDocument();

@@ -3,14 +3,71 @@ import {
   Box,
   Button,
   Chip,
+  MenuItem,
+  Select,
+  type SelectChangeEvent,
   Toolbar,
   Tooltip,
   Typography,
 } from '@mui/material';
 import { CalendarMonth } from '@mui/icons-material';
 import { Link, useLocation } from 'react-router-dom';
+import { defineMessages, useIntl } from 'react-intl';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { clearIdentity } from '@/store/reducers/identitySlice';
+import { setLocale } from '@/store/reducers/languageSlice';
+import { LOCALE_LABELS, SUPPORTED_LOCALES, type SupportedLocale } from '@/i18n/config';
+
+const messages = defineMessages({
+  goToHome: {
+    id: 'topAppBar.goToHome',
+    defaultMessage: 'Go to home',
+  },
+  mainNavigation: {
+    id: 'topAppBar.mainNavigation',
+    defaultMessage: 'Main navigation',
+  },
+  mySimulations: {
+    id: 'topAppBar.mySimulations',
+    defaultMessage: 'My Simulations',
+  },
+  mySimulationsTooltip: {
+    id: 'topAppBar.mySimulationsTooltip',
+    defaultMessage: 'View and manage your draft simulations',
+  },
+  proposals: {
+    id: 'topAppBar.proposals',
+    defaultMessage: 'Proposals',
+  },
+  proposalsTooltip: {
+    id: 'topAppBar.proposalsTooltip',
+    defaultMessage: 'Review and publish incoming schedule proposals',
+  },
+  rules: {
+    id: 'topAppBar.rules',
+    defaultMessage: 'Rules',
+  },
+  rulesTooltip: {
+    id: 'topAppBar.rulesTooltip',
+    defaultMessage: 'Configure scheduling rules and constraints',
+  },
+  demoOnly: {
+    id: 'topAppBar.demoOnly',
+    defaultMessage: 'DEMO ONLY',
+  },
+  changeIdentityTooltip: {
+    id: 'topAppBar.changeIdentityTooltip',
+    defaultMessage: "Choose a different role or person — there's no real login in this demo",
+  },
+  changeIdentity: {
+    id: 'topAppBar.changeIdentity',
+    defaultMessage: 'Change Identity',
+  },
+  languageSelectLabel: {
+    id: 'topAppBar.languageSelectLabel',
+    defaultMessage: 'Language',
+  },
+});
 
 // Returns true when the given path is considered "active" for a nav link.
 const isActive = (href: string, pathname: string): boolean =>
@@ -58,14 +115,20 @@ function NavLink({ href, label, tooltip }: NavLinkProps): React.ReactElement {
 }
 
 export default function TopAppBar(): React.ReactElement {
+  const intl = useIntl();
   const dispatch = useAppDispatch();
   const role = useAppSelector((s) => s.identity.identity?.role);
+  const locale = useAppSelector((s) => s.language.locale);
 
   const handleChangeIdentity = (): void => {
     // Clearing identity reopens OnboardingFlow (App.tsx) automatically —
     // there's exactly one place that asks "who's using this," reused both
     // on first load and here.
     dispatch(clearIdentity());
+  };
+
+  const handleLocaleChange = (event: SelectChangeEvent): void => {
+    dispatch(setLocale(event.target.value as SupportedLocale));
   };
 
   return (
@@ -84,7 +147,7 @@ export default function TopAppBar(): React.ReactElement {
         }}
       >
         {/* Logo */}
-        <Tooltip title="Go to home">
+        <Tooltip title={intl.formatMessage(messages.goToHome)}>
           <Typography
             component={Link}
             to="/"
@@ -120,48 +183,61 @@ export default function TopAppBar(): React.ReactElement {
         {/* Nav links */}
         <Box
           component="nav"
-          aria-label="Main navigation"
+          aria-label={intl.formatMessage(messages.mainNavigation)}
           sx={{ display: 'flex', alignItems: 'center', gap: 1, height: 64, flexGrow: 1 }}
         >
           {(role === 'professor' || role === 'student') && (
             <NavLink
               href="/"
-              label="My Simulations"
-              tooltip="View and manage your draft simulations"
+              label={intl.formatMessage(messages.mySimulations)}
+              tooltip={intl.formatMessage(messages.mySimulationsTooltip)}
             />
           )}
           {role === 'admin' && (
             <>
               <NavLink
                 href="/admin/proposals"
-                label="Proposals"
-                tooltip="Review and publish incoming schedule proposals"
+                label={intl.formatMessage(messages.proposals)}
+                tooltip={intl.formatMessage(messages.proposalsTooltip)}
               />
               <NavLink
                 href="/admin/rules"
-                label="Rules"
-                tooltip="Configure scheduling rules and constraints"
+                label={intl.formatMessage(messages.rules)}
+                tooltip={intl.formatMessage(messages.rulesTooltip)}
               />
             </>
           )}
         </Box>
 
-        {/* Right side: Demo chip + change identity */}
+        {/* Right side: language switcher + demo chip + change identity */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+          <Select
+            value={locale}
+            onChange={handleLocaleChange}
+            size="small"
+            aria-label={intl.formatMessage(messages.languageSelectLabel)}
+            sx={{ height: 44, minWidth: 96 }}
+          >
+            {SUPPORTED_LOCALES.map((supportedLocale) => (
+              <MenuItem key={supportedLocale} value={supportedLocale}>
+                {LOCALE_LABELS[supportedLocale]}
+              </MenuItem>
+            ))}
+          </Select>
           <Chip
-            label="DEMO ONLY"
+            label={intl.formatMessage(messages.demoOnly)}
             size="small"
             variant="outlined"
             sx={{ fontWeight: 600, letterSpacing: '0.05em', cursor: 'default' }}
           />
-          <Tooltip title="Choose a different role or person — there's no real login in this demo">
+          <Tooltip title={intl.formatMessage(messages.changeIdentityTooltip)}>
             <Button
               variant="outlined"
               size="small"
               onClick={handleChangeIdentity}
-              aria-label="Change identity"
+              aria-label={intl.formatMessage(messages.changeIdentity)}
             >
-              Change Identity
+              {intl.formatMessage(messages.changeIdentity)}
             </Button>
           </Tooltip>
         </Box>

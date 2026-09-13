@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { IntlProvider } from 'react-intl';
 import RemovedClassCard from './RemovedClassCard';
 import { FORMATTER_NAMES } from '@/utils/scheduleNames';
 import type { RawClass } from '@/types';
@@ -14,15 +15,22 @@ const classItem: RawClass = {
   timeSlotIds: ['TS_MON_P1'],
 };
 
+const renderCard = () =>
+  render(
+    <IntlProvider locale="en" messages={{}}>
+      <RemovedClassCard classItem={classItem} names={FORMATTER_NAMES} />
+    </IntlProvider>,
+  );
+
 describe('RemovedClassCard', () => {
   it('renders the class title and a "Removed" badge', () => {
-    render(<RemovedClassCard classItem={classItem} names={FORMATTER_NAMES} />);
+    renderCard();
     expect(screen.getByText('Intro to Biology Lecture')).toBeInTheDocument();
     expect(screen.getByText('Removed')).toBeInTheDocument();
   });
 
   it('renders resolved names for course, professor, and room', () => {
-    render(<RemovedClassCard classItem={classItem} names={FORMATTER_NAMES} />);
+    renderCard();
     expect(screen.getByText(/BIO101/)).toBeInTheDocument();
     expect(screen.getByText(/Smith/)).toBeInTheDocument();
     expect(screen.getByText(/Room 101/)).toBeInTheDocument();

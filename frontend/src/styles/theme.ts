@@ -1,5 +1,15 @@
 import { createTheme, alpha } from '@mui/material/styles';
-import type { Shadows, Theme } from '@mui/material/styles';
+import { enUS, ptPT } from '@mui/material/locale';
+import type { Shadows, Theme, ThemeOptions } from '@mui/material/styles';
+import { DEFAULT_LOCALE, type SupportedLocale } from '@/i18n/config';
+
+// Maps our app's supported locales to MUI's own component-text locale
+// objects (e.g. Autocomplete "No options", Snackbar close label) — separate
+// from react-intl, which handles this app's own strings.
+const MUI_LOCALE_MAP: Record<SupportedLocale, Parameters<typeof createTheme>[1]> = {
+  en: enUS,
+  'pt-PT': ptPT,
+};
 
 // Extend MUI palette with MD3 surface/outline tokens
 declare module '@mui/material/styles' {
@@ -41,7 +51,7 @@ const softShadow = (elevation: number): string => {
 };
 const shadows = Array.from({ length: 25 }, (_, i) => softShadow(i)) as Shadows;
 
-const theme = createTheme({
+const themeOptions: ThemeOptions = {
   shadows,
 
   palette: {
@@ -354,6 +364,16 @@ const theme = createTheme({
       },
     },
   },
-});
+};
+
+// Builds the theme composed with MUI's own locale-specific component text
+// for the given app locale — call this (via a useMemo) wherever the theme
+// needs to react to the user's chosen language, e.g. App.tsx.
+export const createAppTheme = (locale: SupportedLocale): Theme =>
+  createTheme(themeOptions, MUI_LOCALE_MAP[locale]);
+
+// Static default kept for consumers (and theme.test.ts) that just need a
+// theme object without reacting to the current locale.
+const theme = createAppTheme(DEFAULT_LOCALE);
 
 export default theme;

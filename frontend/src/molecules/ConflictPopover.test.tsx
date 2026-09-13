@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import ConflictPopover from './ConflictPopover';
 import uiReducer from '@/store/reducers/uiSlice';
@@ -26,7 +27,9 @@ const renderPopover = (conflicts: Conflict[], onClose = (): void => {}) => {
     store,
     ...render(
       <Provider store={store}>
-        <ConflictPopover open anchorEl={anchor} conflicts={conflicts} onClose={onClose} />
+        <IntlProvider locale="en" messages={{}}>
+          <ConflictPopover open anchorEl={anchor} conflicts={conflicts} onClose={onClose} />
+        </IntlProvider>
       </Provider>,
     ),
   };

@@ -3,8 +3,57 @@ import { CheckCircle, Warning } from '@mui/icons-material';
 import { formatDistanceToNow } from 'date-fns';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { defineMessages, useIntl } from 'react-intl';
 import DeleteSimulationDialog from '@/molecules/DeleteSimulationDialog';
+import { useDateFnsLocale } from '@/utils/useDateFnsLocale';
 import type { MetricResult, Simulation } from '@/types';
+
+const messages = defineMessages({
+  draftFallbackLabel: {
+    id: 'simulationCard.draftFallbackLabel',
+    defaultMessage: 'Draft',
+  },
+  ageFallback: {
+    id: 'simulationCard.ageFallback',
+    defaultMessage: 'some time ago',
+  },
+  title: {
+    id: 'simulationCard.title',
+    defaultMessage: 'Draft from {age}',
+  },
+  createdBy: {
+    id: 'simulationCard.createdBy',
+    defaultMessage: 'Created by: {label}',
+  },
+  noConflicts: {
+    id: 'simulationCard.noConflicts',
+    defaultMessage: 'No scheduling conflicts',
+  },
+  conflictsFound: {
+    id: 'simulationCard.conflictsFound',
+    defaultMessage: '{count, plural, one {# scheduling conflict found} other {# scheduling conflicts found}}',
+  },
+  metricTooltip: {
+    id: 'simulationCard.metricTooltip',
+    defaultMessage: '{name}: current value',
+  },
+  openDraft: {
+    id: 'simulationCard.openDraft',
+    defaultMessage: 'Open Draft',
+  },
+  openDraftAriaLabel: {
+    id: 'simulationCard.openDraftAriaLabel',
+    defaultMessage: 'Open draft simulation from {age}',
+  },
+  deleteDraft: {
+    id: 'simulationCard.deleteDraft',
+    defaultMessage: 'Delete Draft',
+  },
+  deleteDraftAriaLabel: {
+    id: 'simulationCard.deleteDraftAriaLabel',
+    defaultMessage: 'Delete draft simulation from {age}',
+  },
+});
 
 interface SimulationCardProps {
   readonly simulation: Simulation;
@@ -12,36 +61,40 @@ interface SimulationCardProps {
   readonly metric?: MetricResult;
 }
 
-// Extract a display-friendly label from "sim-alice-a1b2c3d4" → "alice"
-const extractLabel = (id: string): string => {
-  const parts = id.split('-');
-  // format: sim-{userId}-{hash} → parts[1] is userId
-  return parts.length >= 3 ? (parts[1] ?? 'Draft') : 'Draft';
-};
-
-const formatAge = (createdAt: string): string => {
-  try {
-    return formatDistanceToNow(new Date(createdAt), { addSuffix: true });
-  } catch {
-    return 'some time ago';
-  }
-};
-
 export default function SimulationCard({
   simulation,
   conflictCount,
   metric,
 }: SimulationCardProps): React.ReactElement {
+  const intl = useIntl();
   const navigate = useNavigate();
+  const dateFnsLocale = useDateFnsLocale();
   const [deleteOpen, setDeleteOpen] = useState(false);
+
+  // Extract a display-friendly label from "sim-alice-a1b2c3d4" → "alice"
+  const extractLabel = (id: string): string => {
+    const parts = id.split('-');
+    // format: sim-{userId}-{hash} → parts[1] is userId
+    return parts.length >= 3 ? (parts[1] ?? intl.formatMessage(messages.draftFallbackLabel)) : intl.formatMessage(messages.draftFallbackLabel);
+  };
+
+  const formatAge = (createdAt: string): string => {
+    try {
+      return formatDistanceToNow(new Date(createdAt), { addSuffix: true, locale: dateFnsLocale });
+    } catch {
+      return intl.formatMessage(messages.ageFallback);
+    }
+  };
 
   const hasConflicts = conflictCount !== undefined && conflictCount > 0;
   const conflictLabel =
     conflictCount === undefined
       ? undefined
       : conflictCount === 0
-        ? 'No scheduling conflicts'
-        : `${conflictCount} scheduling conflict${conflictCount === 1 ? '' : 's'} found`;
+        ? intl.formatMessage(messages.noConflicts)
+        : intl.formatMessage(messages.conflictsFound, { count: conflictCount });
+
+  const age = formatAge(simulation.createdAt);
 
   return (
     <>
@@ -49,11 +102,11 @@ export default function SimulationCard({
         <CardContent sx={{ pb: 0 }}>
           <Typography variant="h4" component="h2" gutterBottom>
             {/* Human-readable title — never the raw ID */}
-            Draft from {formatAge(simulation.createdAt)}
+            {intl.formatMessage(messages.title, { age })}
           </Typography>
 
           <Typography variant="body2" color="text.secondary" gutterBottom>
-            Created by: {extractLabel(simulation.id)}
+            {intl.formatMessage(messages.createdBy, { label: extractLabel(simulation.id) })}
           </Typography>
 
           {conflictLabel !== undefined && (
@@ -74,7 +127,7 @@ export default function SimulationCard({
           )}
 
           {metric !== undefined && (
-            <Tooltip title={`${metric.name}: current value`}>
+            <Tooltip title={intl.formatMessage(messages.metricTooltip, { name: metric.name })}>
               <Chip
                 label={`${metric.name}: ${metric.value}${metric.unit}`}
                 size="small"
@@ -89,17 +142,17 @@ export default function SimulationCard({
           <Button
             variant="contained"
             onClick={() => navigate(`/simulations/${simulation.id}`)}
-            aria-label={`Open draft simulation from ${formatAge(simulation.createdAt)}`}
+            aria-label={intl.formatMessage(messages.openDraftAriaLabel, { age })}
           >
-            Open Draft
+            {intl.formatMessage(messages.openDraft)}
           </Button>
           <Button
             variant="outlined"
             color="error"
             onClick={() => setDeleteOpen(true)}
-            aria-label={`Delete draft simulation from ${formatAge(simulation.createdAt)}`}
+            aria-label={intl.formatMessage(messages.deleteDraftAriaLabel, { age })}
           >
-            Delete Draft
+            {intl.formatMessage(messages.deleteDraft)}
           </Button>
         </CardActions>
       </Card>

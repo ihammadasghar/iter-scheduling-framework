@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Box, Typography } from '@mui/material';
+import { defineMessages, useIntl } from 'react-intl';
 import AppShell from '@/templates/AppShell';
 import TimetableGrid from '@/organisms/TimetableGrid';
 import MyScheduleCalendar from '@/organisms/MyScheduleCalendar';
@@ -27,6 +28,13 @@ import { useInactivityWarning } from '@/hooks/useInactivityWarning';
 import { initialWeekStart, excludedDaysForWeek } from '@/utils/weekNavigation';
 import type { ConflictType, UserRole } from '@/types';
 
+const messages = defineMessages({
+  noSimId: {
+    id: 'timetablePage.noSimId',
+    defaultMessage: 'No simulation ID provided.',
+  },
+});
+
 const PAGE_SIZE = 1000; // must match PAGE_SIZE in classSlice
 
 // A professor/student's default landing tab is their own calendar; anyone
@@ -37,6 +45,7 @@ const defaultTabFor = (role: UserRole | undefined): WorkspaceTabValue =>
   role === 'professor' || role === 'student' ? 'myschedule' : 'grid';
 
 export default function TimetablePage(): React.ReactElement {
+  const intl = useIntl();
   const { id: simId } = useParams<{ id: string }>();
   const dispatch = useAppDispatch();
   const identity = useAppSelector((s) => s.identity.identity);
@@ -123,7 +132,7 @@ export default function TimetablePage(): React.ReactElement {
     return (
       <AppShell>
         <Box sx={{ p: 4 }}>
-          <Typography color="error">No simulation ID provided.</Typography>
+          <Typography color="error">{intl.formatMessage(messages.noSimId)}</Typography>
         </Box>
       </AppShell>
     );

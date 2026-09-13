@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Box, Typography } from '@mui/material';
+import { useIntl } from 'react-intl';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { deselectClass } from '@/store/reducers/uiSlice';
 import CalendarClassBlock from '@/atoms/CalendarClassBlock';
@@ -58,6 +59,7 @@ export default function MyScheduleCalendar({
   emptyMessage,
   excludedDays = new Map(),
 }: MyScheduleCalendarProps): React.ReactElement {
+  const intl = useIntl();
   const dispatch = useAppDispatch();
   const classes = useAppSelector((s) => s.class.classes);
   const loading = useAppSelector((s) => s.class.loading);
@@ -82,8 +84,8 @@ export default function MyScheduleCalendar({
     [myClasses, timeSlotById],
   );
   const conflictSummaries = useMemo(
-    () => buildConflictSummaries(conflicts, classes, names),
-    [conflicts, classes, names],
+    () => buildConflictSummaries(intl, conflicts, classes, names),
+    [intl, conflicts, classes, names],
   );
 
   if (loading && classes.length === 0) {

@@ -4,9 +4,73 @@ import {
   FormControl, InputLabel, MenuItem, Select, Stack, Typography,
 } from '@mui/material';
 import type { SelectChangeEvent } from '@mui/material';
+import { defineMessages, useIntl } from 'react-intl';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setIdentity } from '@/store/reducers/identitySlice';
 import type { UserRole } from '@/types';
+
+const messages = defineMessages({
+  professorLabel: {
+    id: 'onboardingFlow.professorLabel',
+    defaultMessage: 'Professor',
+  },
+  professorDescription: {
+    id: 'onboardingFlow.professorDescription',
+    defaultMessage: 'I teach classes and want to check or adjust my own schedule.',
+  },
+  studentLabel: {
+    id: 'onboardingFlow.studentLabel',
+    defaultMessage: 'Student',
+  },
+  studentDescription: {
+    id: 'onboardingFlow.studentDescription',
+    defaultMessage: "I'm part of a student group and want to check our class schedule.",
+  },
+  adminLabel: {
+    id: 'onboardingFlow.adminLabel',
+    defaultMessage: 'Scheduling Office (Admin)',
+  },
+  adminDescription: {
+    id: 'onboardingFlow.adminDescription',
+    defaultMessage: 'I review and publish schedule change proposals.',
+  },
+  welcomeTitle: {
+    id: 'onboardingFlow.welcomeTitle',
+    defaultMessage: "Welcome — who's using ITER?",
+  },
+  welcomeBody: {
+    id: 'onboardingFlow.welcomeBody',
+    defaultMessage: 'This tells us what to show you first. You can change this later from the top bar.',
+  },
+  whichProfessor: {
+    id: 'onboardingFlow.whichProfessor',
+    defaultMessage: 'Which professor are you?',
+  },
+  whichStudentGroup: {
+    id: 'onboardingFlow.whichStudentGroup',
+    defaultMessage: 'Which student group are you in?',
+  },
+  loadingRoster: {
+    id: 'onboardingFlow.loadingRoster',
+    defaultMessage: 'Loading roster…',
+  },
+  professorFieldLabel: {
+    id: 'onboardingFlow.professorFieldLabel',
+    defaultMessage: 'Professor',
+  },
+  studentGroupFieldLabel: {
+    id: 'onboardingFlow.studentGroupFieldLabel',
+    defaultMessage: 'Student group',
+  },
+  back: {
+    id: 'onboardingFlow.back',
+    defaultMessage: 'Back',
+  },
+  confirm: {
+    id: 'onboardingFlow.confirm',
+    defaultMessage: 'Confirm',
+  },
+});
 
 type Step = 'role' | 'identity';
 
@@ -15,12 +79,6 @@ interface RoleOption {
   readonly label: string;
   readonly description: string;
 }
-
-const ROLE_OPTIONS: readonly RoleOption[] = [
-  { role: 'professor', label: 'Professor', description: 'I teach classes and want to check or adjust my own schedule.' },
-  { role: 'student', label: 'Student', description: 'I\'m part of a student group and want to check our class schedule.' },
-  { role: 'admin', label: 'Scheduling Office (Admin)', description: 'I review and publish schedule change proposals.' },
-];
 
 /**
  * Gates the whole app on first load: who is using it, and (for a
@@ -31,6 +89,7 @@ const ROLE_OPTIONS: readonly RoleOption[] = [
  * which reopens this).
  */
 export default function OnboardingFlow(): React.ReactElement | null {
+  const intl = useIntl();
   const dispatch = useAppDispatch();
   const identity = useAppSelector((s) => s.identity.identity);
   const hydrated = useAppSelector((s) => s.identity.hydrated);
@@ -44,6 +103,12 @@ export default function OnboardingFlow(): React.ReactElement | null {
 
   const open = hydrated && identity === null;
   if (!open) return null;
+
+  const roleOptions: readonly RoleOption[] = [
+    { role: 'professor', label: intl.formatMessage(messages.professorLabel), description: intl.formatMessage(messages.professorDescription) },
+    { role: 'student', label: intl.formatMessage(messages.studentLabel), description: intl.formatMessage(messages.studentDescription) },
+    { role: 'admin', label: intl.formatMessage(messages.adminLabel), description: intl.formatMessage(messages.adminDescription) },
+  ];
 
   const handleChooseRole = (role: UserRole): void => {
     if (role === 'admin') {
@@ -70,7 +135,8 @@ export default function OnboardingFlow(): React.ReactElement | null {
   };
 
   const identityOptions = pendingRole === 'professor' ? professors : studentGroups;
-  const identityLabel = pendingRole === 'professor' ? 'Which professor are you?' : 'Which student group are you in?';
+  const identityLabel = pendingRole === 'professor' ? intl.formatMessage(messages.whichProfessor) : intl.formatMessage(messages.whichStudentGroup);
+  const fieldLabel = pendingRole === 'professor' ? intl.formatMessage(messages.professorFieldLabel) : intl.formatMessage(messages.studentGroupFieldLabel);
 
   return (
     <Dialog
@@ -86,13 +152,13 @@ export default function OnboardingFlow(): React.ReactElement | null {
     >
       {step === 'role' ? (
         <>
-          <DialogTitle id="onboarding-title">Welcome — who&apos;s using ITER?</DialogTitle>
+          <DialogTitle id="onboarding-title">{intl.formatMessage(messages.welcomeTitle)}</DialogTitle>
           <DialogContent>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              This tells us what to show you first. You can change this later from the top bar.
+              {intl.formatMessage(messages.welcomeBody)}
             </Typography>
             <Stack spacing={1.5}>
-              {ROLE_OPTIONS.map((option) => (
+              {roleOptions.map((option) => (
                 <Button
                   key={option.role}
                   variant="outlined"
@@ -112,17 +178,17 @@ export default function OnboardingFlow(): React.ReactElement | null {
           <DialogContent>
             {rosterLoading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
-                <CircularProgress aria-label="Loading roster…" />
+                <CircularProgress aria-label={intl.formatMessage(messages.loadingRoster)} />
               </Box>
             ) : (
               <FormControl fullWidth sx={{ mt: 1 }}>
                 <InputLabel id="onboarding-identity-label">
-                  {pendingRole === 'professor' ? 'Professor' : 'Student group'}
+                  {fieldLabel}
                 </InputLabel>
                 <Select
                   labelId="onboarding-identity-label"
-                  label={pendingRole === 'professor' ? 'Professor' : 'Student group'}
-                  inputProps={{ 'aria-label': pendingRole === 'professor' ? 'Professor' : 'Student group' }}
+                  label={fieldLabel}
+                  inputProps={{ 'aria-label': fieldLabel }}
                   value={selectedId}
                   onChange={(e: SelectChangeEvent<string>) => setSelectedId(e.target.value)}
                 >
@@ -134,9 +200,9 @@ export default function OnboardingFlow(): React.ReactElement | null {
             )}
           </DialogContent>
           <DialogActions>
-            <Button onClick={handleBack}>Back</Button>
+            <Button onClick={handleBack}>{intl.formatMessage(messages.back)}</Button>
             <Button variant="contained" onClick={handleConfirm} disabled={selectedId === ''}>
-              Confirm
+              {intl.formatMessage(messages.confirm)}
             </Button>
           </DialogActions>
         </>

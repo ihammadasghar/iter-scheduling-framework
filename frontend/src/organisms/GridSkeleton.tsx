@@ -1,4 +1,12 @@
 import { Box, Skeleton } from '@mui/material';
+import { defineMessages, useIntl } from 'react-intl';
+
+const messages = defineMessages({
+  ariaLabel: {
+    id: 'gridSkeleton.ariaLabel',
+    defaultMessage: 'Loading timetable…',
+  },
+});
 
 const SKELETON_ROWS = 4;
 const SKELETON_COLS = 6;
@@ -7,6 +15,7 @@ const SKELETON_COLS = 6;
  * Placeholder grid shown while the class list is loading.
  */
 export default function GridSkeleton(): React.ReactElement {
+  const intl = useIntl();
   return (
     <Box
       sx={{
@@ -17,7 +26,7 @@ export default function GridSkeleton(): React.ReactElement {
         overflow: 'hidden',
         borderRadius: 1,
       }}
-      aria-label="Loading timetable…"
+      aria-label={intl.formatMessage(messages.ariaLabel)}
     >
       {/* Header row */}
       <Skeleton variant="rectangular" height={48} sx={{ bgcolor: 'background.paper' }} />

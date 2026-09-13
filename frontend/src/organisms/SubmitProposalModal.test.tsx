@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import SubmitProposalModal from './SubmitProposalModal';
@@ -70,15 +71,17 @@ const render_ = (overrides = {}) => {
   const onClose = vi.fn();
   render(
     <Provider store={store}>
-      <MemoryRouter initialEntries={['/simulations/sim-test']}>
-        <Routes>
-          <Route
-            path="/simulations/:id"
-            element={<SubmitProposalModal open simId="sim-test" onClose={onClose} />}
-          />
-          <Route path="/" element={<div>Home Screen</div>} />
-        </Routes>
-      </MemoryRouter>
+      <IntlProvider locale="en" messages={{}}>
+        <MemoryRouter initialEntries={['/simulations/sim-test']}>
+          <Routes>
+            <Route
+              path="/simulations/:id"
+              element={<SubmitProposalModal open simId="sim-test" onClose={onClose} />}
+            />
+            <Route path="/" element={<div>Home Screen</div>} />
+          </Routes>
+        </MemoryRouter>
+      </IntlProvider>
     </Provider>,
   );
   return { store, onClose };

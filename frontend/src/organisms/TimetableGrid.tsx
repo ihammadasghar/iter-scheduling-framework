@@ -1,6 +1,7 @@
 import { Fragment, useMemo, useState } from 'react';
 import { Box, Typography, Tooltip, IconButton, ToggleButton, ToggleButtonGroup } from '@mui/material';
 import { ExpandMore, ExpandLess } from '@mui/icons-material';
+import { useIntl } from 'react-intl';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { deselectClass } from '@/store/reducers/uiSlice';
 import ClassChip from '@/atoms/ClassChip';
@@ -118,10 +119,11 @@ export default function TimetableGrid({
   const timeSlots = useAppSelector((s) => s.schedule.timeSlots);
   const conflicts = useAppSelector((s) => s.conflict.conflicts);
   const names = useScheduleNames();
+  const intl = useIntl();
 
   const conflictSummaries = useMemo(
-    () => buildConflictSummaries(conflicts, classes, names),
-    [conflicts, classes, names],
+    () => buildConflictSummaries(intl, conflicts, classes, names),
+    [intl, conflicts, classes, names],
   );
   const [collapsedBuildings, setCollapsedBuildings] = useState<ReadonlySet<string>>(new Set());
   const [density, setDensity] = useState<'compact' | 'comfortable'>('comfortable');

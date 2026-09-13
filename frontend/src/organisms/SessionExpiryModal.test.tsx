@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import SessionExpiryModal from './SessionExpiryModal';
 import sessionReducer from '@/store/reducers/sessionSlice';
@@ -45,9 +46,11 @@ const renderModal = (expired = false) => {
     store,
     ...render(
       <Provider store={store}>
-        <MemoryRouter>
-          <SessionExpiryModal />
-        </MemoryRouter>
+        <IntlProvider locale="en" messages={{}}>
+          <MemoryRouter>
+            <SessionExpiryModal />
+          </MemoryRouter>
+        </IntlProvider>
       </Provider>,
     ),
   };

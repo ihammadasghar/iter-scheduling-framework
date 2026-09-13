@@ -1,46 +1,28 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { Provider } from 'react-redux';
-import { configureStore } from '@reduxjs/toolkit';
-import identityReducer, { setIdentity } from '@/store/reducers/identitySlice';
-import sessionReducer from '@/store/reducers/sessionSlice';
-import classReducer from '@/store/reducers/classSlice';
+import { screen, fireEvent } from '@testing-library/react';
+import { Route, Routes } from 'react-router-dom';
+import { renderWithProviders } from '@/test/renderWithProviders';
 import AdminGuard from './AdminGuard';
 import TopAppBar from './TopAppBar';
 import type { UserRole } from '@/types';
+import type { RootState } from '@/store/store';
 
-// Minimal store for UI tests
-const makeStore = (role?: UserRole) => {
-  const store = configureStore({
-    reducer: { identity: identityReducer, session: sessionReducer, class: classReducer },
-  });
-  if (role !== undefined) {
-    store.dispatch(setIdentity({
+// Minimal preloaded state for UI tests
+const identityState = (role?: UserRole): Partial<RootState> => ({
+  identity: {
+    hydrated: false,
+    identity: role === undefined ? null : {
       role,
       professorId: role === 'professor' ? 'PRF_SMITH' : null,
       studentGroupId: role === 'student' ? 'GRP_BIO_Y1' : null,
-    }));
-  }
-  return store;
-};
+    },
+  },
+});
 
 const renderWithRouter = (
   ui: React.ReactElement,
   { initialPath = '/', role }: { initialPath?: string; role?: UserRole } = {},
-) => {
-  const store = makeStore(role);
-  return {
-    store,
-    ...render(
-      <Provider store={store}>
-        <MemoryRouter initialEntries={[initialPath]}>
-          {ui}
-        </MemoryRouter>
-      </Provider>,
-    ),
-  };
-};
+) => renderWithProviders(ui, { route: initialPath, preloadedState: identityState(role) });
 
 describe('AdminGuard', () => {
   it('renders children when role is admin', () => {
@@ -128,5 +110,17 @@ describe('TopAppBar', () => {
     const { store } = renderWithRouter(<TopAppBar />, { role: 'admin' });
     fireEvent.click(screen.getByRole('button', { name: /change identity/i }));
     expect(store.getState().identity.identity).toBeNull();
+  });
+
+  it('shows a language switcher defaulting to English', () => {
+    renderWithRouter(<TopAppBar />, { role: 'admin' });
+    expect(screen.getByText('English')).toBeInTheDocument();
+  });
+
+  it('switching language dispatches setLocale and persists the choice', () => {
+    const { store } = renderWithRouter(<TopAppBar />, { role: 'admin' });
+    fireEvent.mouseDown(screen.getByLabelText('Language'));
+    fireEvent.click(screen.getByText('Português (PT)'));
+    expect(store.getState().language.locale).toBe('pt-PT');
   });
 });

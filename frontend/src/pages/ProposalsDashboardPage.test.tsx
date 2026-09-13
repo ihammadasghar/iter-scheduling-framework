@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
+import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import ProposalsDashboardPage from './ProposalsDashboardPage';
 import proposalReducer from '@/store/reducers/proposalSlice';
@@ -13,6 +14,7 @@ import metricReducer from '@/store/reducers/metricSlice';
 import rulesReducer from '@/store/reducers/rulesSlice';
 import sessionReducer from '@/store/reducers/sessionSlice';
 import identityReducer from '@/store/reducers/identitySlice';
+import languageReducer from '@/store/reducers/languageSlice';
 import * as proposalService from '@/services/proposalService';
 
 vi.mock('@/services/proposalService', () => ({
@@ -38,6 +40,7 @@ const makeStore = () =>
       rules: rulesReducer,
       session: sessionReducer,
       identity: identityReducer,
+      language: languageReducer,
     },
     preloadedState: {
       identity: { identity: { role: 'admin' as const, professorId: null, studentGroupId: null }, hydrated: true },
@@ -47,9 +50,11 @@ const makeStore = () =>
 const renderPage = () =>
   render(
     <Provider store={makeStore()}>
-      <MemoryRouter initialEntries={['/admin/proposals']}>
-        <ProposalsDashboardPage />
-      </MemoryRouter>
+      <IntlProvider locale="en" messages={{}}>
+        <MemoryRouter initialEntries={['/admin/proposals']}>
+          <ProposalsDashboardPage />
+        </MemoryRouter>
+      </IntlProvider>
     </Provider>,
   );
 

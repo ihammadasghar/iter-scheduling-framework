@@ -1,7 +1,23 @@
 import { BarChart } from '@mui/x-charts/BarChart';
 import { Typography } from '@mui/material';
+import { defineMessages, useIntl } from 'react-intl';
 import type { ConflictTypeCount } from '@/utils/groupConflictsByType';
 import type { ConflictType } from '@/types';
+
+const messages = defineMessages({
+  noConflicts: {
+    id: 'conflictBreakdownChart.noConflicts',
+    defaultMessage: 'No conflicts to report',
+  },
+  seriesLabel: {
+    id: 'conflictBreakdownChart.seriesLabel',
+    defaultMessage: 'Conflicts',
+  },
+  ariaLabel: {
+    id: 'conflictBreakdownChart.ariaLabel',
+    defaultMessage: 'Conflicts by type',
+  },
+});
 
 interface ConflictBreakdownChartProps {
   readonly counts: readonly ConflictTypeCount[];
@@ -30,10 +46,11 @@ export default function ConflictBreakdownChart({
   counts,
   onBarClick,
 }: ConflictBreakdownChartProps): React.ReactElement {
+  const intl = useIntl();
   const total = counts.reduce((sum, c) => sum + c.count, 0);
 
   if (total === 0) {
-    return <Typography color="success.main">No conflicts to report</Typography>;
+    return <Typography color="success.main">{intl.formatMessage(messages.noConflicts)}</Typography>;
   }
 
   return (
@@ -50,13 +67,13 @@ export default function ConflictBreakdownChart({
           },
         },
       ]}
-      series={[{ dataKey: 'count', label: 'Conflicts' }]}
+      series={[{ dataKey: 'count', label: intl.formatMessage(messages.seriesLabel) }]}
       onItemClick={(_event, item) => {
         const clicked = counts[item.dataIndex];
         if (clicked !== undefined) onBarClick?.(clicked.type);
       }}
       height={240}
-      aria-label="Conflicts by type"
+      aria-label={intl.formatMessage(messages.ariaLabel)}
     />
   );
 }

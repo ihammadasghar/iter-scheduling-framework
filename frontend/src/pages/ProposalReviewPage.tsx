@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
 import {
   Alert,
   Box,
@@ -15,6 +16,7 @@ import {
   Skeleton,
   Typography,
 } from '@mui/material';
+import { defineMessages, useIntl } from 'react-intl';
 import AppShell from '@/templates/AppShell';
 import BackButton from '@/atoms/BackButton';
 import CIStatusBadge from '@/molecules/CIStatusBadge';
@@ -26,7 +28,99 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchProposalDetailThunk, mergeProposalThunk, rejectProposalThunk } from '@/store/reducers/proposalSlice';
 import { fetchPublishedScheduleThunk } from '@/store/reducers/scheduleSlice';
 import { buildScheduleNames } from '@/utils/scheduleNames';
+import { useDateFnsLocale } from '@/utils/useDateFnsLocale';
 import type { ProposalStatus } from '@/types';
+
+const messages = defineMessages({
+  publishSuccess: {
+    id: 'proposalReviewPage.publishSuccess',
+    defaultMessage: 'Changes published to the live timetable ✓',
+  },
+  publishConflictError: {
+    id: 'proposalReviewPage.publishConflictError',
+    defaultMessage: 'This proposal cannot be published because it has unresolved scheduling conflicts.',
+  },
+  publishGenericError: {
+    id: 'proposalReviewPage.publishGenericError',
+    defaultMessage: 'Could not publish proposal. Please try again.',
+  },
+  closeSuccess: {
+    id: 'proposalReviewPage.closeSuccess',
+    defaultMessage: 'Proposal closed.',
+  },
+  closeError: {
+    id: 'proposalReviewPage.closeError',
+    defaultMessage: 'Could not close proposal. Please try again.',
+  },
+  loadError: {
+    id: 'proposalReviewPage.loadError',
+    defaultMessage: 'Could not load proposal details. Please try again.',
+  },
+  title: {
+    id: 'proposalReviewPage.title',
+    defaultMessage: 'Proposal Review',
+  },
+  submitted: {
+    id: 'proposalReviewPage.submitted',
+    defaultMessage: 'Submitted {date}',
+  },
+  descriptionSuffix: {
+    id: 'proposalReviewPage.descriptionSuffix',
+    defaultMessage: ' — "{description}"',
+  },
+  automatedCheck: {
+    id: 'proposalReviewPage.automatedCheck',
+    defaultMessage: 'Automated Check',
+  },
+  metricsHeading: {
+    id: 'proposalReviewPage.metricsHeading',
+    defaultMessage: 'Metrics: Published vs. This Proposal',
+  },
+  conflictsHeading: {
+    id: 'proposalReviewPage.conflictsHeading',
+    defaultMessage: 'Constraint Violations: Published vs. This Proposal',
+  },
+  changesHeading: {
+    id: 'proposalReviewPage.changesHeading',
+    defaultMessage: 'Changes in this Proposal',
+  },
+  approveAndPublish: {
+    id: 'proposalReviewPage.approveAndPublish',
+    defaultMessage: '✅ Approve & Publish',
+  },
+  closeProposal: {
+    id: 'proposalReviewPage.closeProposal',
+    defaultMessage: 'Close This Proposal',
+  },
+  publishDialogTitle: {
+    id: 'proposalReviewPage.publishDialogTitle',
+    defaultMessage: 'Publish Changes?',
+  },
+  publishDialogBody: {
+    id: 'proposalReviewPage.publishDialogBody',
+    defaultMessage: 'You are about to publish these changes to the live timetable. This will affect students and lecturers. Are you sure?',
+  },
+  cancel: {
+    id: 'proposalReviewPage.cancel',
+    defaultMessage: 'Cancel',
+  },
+  yesPublish: {
+    id: 'proposalReviewPage.yesPublish',
+    defaultMessage: 'Yes, Publish Changes',
+  },
+  closeDialogTitle: {
+    id: 'proposalReviewPage.closeDialogTitle',
+    defaultMessage: 'Close This Proposal?',
+  },
+  closeDialogBody: {
+    id: 'proposalReviewPage.closeDialogBody',
+    defaultMessage: "Are you sure you want to close this proposal? The lecturer's draft will be kept and they can make adjustments and resubmit.",
+  },
+  yesClose: {
+    id: 'proposalReviewPage.yesClose',
+    defaultMessage: 'Yes, Close Proposal',
+  },
+});
 
 type ConfirmDialog = 'approve' | 'close' | null;
 
@@ -34,9 +128,11 @@ const isCiStatus = (s: ProposalStatus): s is 'READY' | 'BLOCKED' | 'PENDING' =>
   s === 'READY' || s === 'BLOCKED' || s === 'PENDING';
 
 export default function ProposalReviewPage(): React.ReactElement {
+  const intl = useIntl();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const dateFnsLocale = useDateFnsLocale();
 
   const { current: proposal, loading, error } = useAppSelector((s) => s.proposal);
   const { rooms, professors, courses, studentGroups } = useAppSelector((s) => s.schedule);
@@ -63,14 +159,14 @@ export default function ProposalReviewPage(): React.ReactElement {
     setActionLoading(false);
     setConfirmDialog(null);
     if (mergeProposalThunk.fulfilled.match(result)) {
-      setSnackbar({ open: true, message: 'Changes published to the live timetable ✓', severity: 'success' });
+      setSnackbar({ open: true, message: intl.formatMessage(messages.publishSuccess), severity: 'success' });
       setTimeout(() => navigate('/admin/proposals'), 1500);
     } else {
       const statusCode = (result.payload as { statusCode?: number } | undefined)?.statusCode;
       if (statusCode === 409) {
-        setInlineError('This proposal cannot be published because it has unresolved scheduling conflicts.');
+        setInlineError(intl.formatMessage(messages.publishConflictError));
       } else {
-        setInlineError('Could not publish proposal. Please try again.');
+        setInlineError(intl.formatMessage(messages.publishGenericError));
       }
     }
   };
@@ -83,10 +179,10 @@ export default function ProposalReviewPage(): React.ReactElement {
     setActionLoading(false);
     setConfirmDialog(null);
     if (rejectProposalThunk.fulfilled.match(result)) {
-      setSnackbar({ open: true, message: 'Proposal closed.', severity: 'info' });
+      setSnackbar({ open: true, message: intl.formatMessage(messages.closeSuccess), severity: 'info' });
       setTimeout(() => navigate('/admin/proposals'), 1500);
     } else {
-      setInlineError('Could not close proposal. Please try again.');
+      setInlineError(intl.formatMessage(messages.closeError));
     }
   };
 
@@ -106,25 +202,25 @@ export default function ProposalReviewPage(): React.ReactElement {
 
         {error && !proposal && (
           <Alert severity="error" sx={{ mt: 3 }}>
-            Could not load proposal details. Please try again.
+            {intl.formatMessage(messages.loadError)}
           </Alert>
         )}
 
         {proposal && (
           <>
             <Typography variant="h3" component="h1" sx={{ mt: 2, mb: 0.5 }}>
-              Proposal Review
+              {intl.formatMessage(messages.title)}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Submitted {new Date(proposal.createdAt).toLocaleDateString()}
-              {proposal.description && ` — "${proposal.description}"`}
+              {intl.formatMessage(messages.submitted, { date: format(new Date(proposal.createdAt), 'PP', { locale: dateFnsLocale }) })}
+              {proposal.description && intl.formatMessage(messages.descriptionSuffix, { description: proposal.description })}
             </Typography>
 
             {/* CI Status */}
             {isCiStatus(proposal.status) && (
               <Box sx={{ mb: 3 }}>
                 <Typography variant="overline" color="text.secondary">
-                  Automated Check
+                  {intl.formatMessage(messages.automatedCheck)}
                 </Typography>
                 <Box sx={{ mt: 0.5 }}>
                   <CIStatusBadge status={proposal.status} />
@@ -136,7 +232,7 @@ export default function ProposalReviewPage(): React.ReactElement {
 
             {/* Metrics comparison */}
             <Typography variant="h6" gutterBottom>
-              Metrics: Published vs. This Proposal
+              {intl.formatMessage(messages.metricsHeading)}
             </Typography>
             <Box sx={{ mb: 4 }}>
               <MetricsComparisonPanel
@@ -147,7 +243,7 @@ export default function ProposalReviewPage(): React.ReactElement {
 
             {/* Conflicts comparison */}
             <Typography variant="h6" gutterBottom>
-              Constraint Violations: Published vs. This Proposal
+              {intl.formatMessage(messages.conflictsHeading)}
             </Typography>
             <Box sx={{ mb: 4 }}>
               <ConflictsComparisonPanel
@@ -159,7 +255,7 @@ export default function ProposalReviewPage(): React.ReactElement {
 
             {/* Changes */}
             <Typography variant="h6" gutterBottom>
-              Changes in this Proposal
+              {intl.formatMessage(messages.changesHeading)}
             </Typography>
             <Box sx={{ mb: 3 }}>
               <ClassDiffPanel classDiff={proposal.comparison.classDiff} names={names} />
@@ -183,14 +279,14 @@ export default function ProposalReviewPage(): React.ReactElement {
                 onClick={() => setConfirmDialog('approve')}
                 disabled={actionLoading}
               >
-                ✅ Approve &amp; Publish
+                {intl.formatMessage(messages.approveAndPublish)}
               </Button>
               <Button
                 variant="outlined"
                 onClick={() => setConfirmDialog('close')}
                 disabled={actionLoading}
               >
-                Close This Proposal
+                {intl.formatMessage(messages.closeProposal)}
               </Button>
             </Box>
           </>
@@ -198,16 +294,15 @@ export default function ProposalReviewPage(): React.ReactElement {
 
         {/* Approve confirmation dialog */}
         <Dialog open={confirmDialog === 'approve'} onClose={() => setConfirmDialog(null)}>
-          <DialogTitle>Publish Changes?</DialogTitle>
+          <DialogTitle>{intl.formatMessage(messages.publishDialogTitle)}</DialogTitle>
           <DialogContent>
             <DialogContentText>
-              You are about to publish these changes to the live timetable. This will affect
-              students and lecturers. Are you sure?
+              {intl.formatMessage(messages.publishDialogBody)}
             </DialogContentText>
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setConfirmDialog(null)} disabled={actionLoading}>
-              Cancel
+              {intl.formatMessage(messages.cancel)}
             </Button>
             <Button
               variant="contained"
@@ -216,23 +311,22 @@ export default function ProposalReviewPage(): React.ReactElement {
               disabled={actionLoading}
               startIcon={actionLoading ? <CircularProgress size={16} /> : undefined}
             >
-              Yes, Publish Changes
+              {intl.formatMessage(messages.yesPublish)}
             </Button>
           </DialogActions>
         </Dialog>
 
         {/* Close confirmation dialog */}
         <Dialog open={confirmDialog === 'close'} onClose={() => setConfirmDialog(null)}>
-          <DialogTitle>Close This Proposal?</DialogTitle>
+          <DialogTitle>{intl.formatMessage(messages.closeDialogTitle)}</DialogTitle>
           <DialogContent>
             <DialogContentText>
-              Are you sure you want to close this proposal? The lecturer&apos;s draft will be
-              kept and they can make adjustments and resubmit.
+              {intl.formatMessage(messages.closeDialogBody)}
             </DialogContentText>
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setConfirmDialog(null)} disabled={actionLoading}>
-              Cancel
+              {intl.formatMessage(messages.cancel)}
             </Button>
             <Button
               variant="outlined"
@@ -240,7 +334,7 @@ export default function ProposalReviewPage(): React.ReactElement {
               disabled={actionLoading}
               startIcon={actionLoading ? <CircularProgress size={16} /> : undefined}
             >
-              Yes, Close Proposal
+              {intl.formatMessage(messages.yesClose)}
             </Button>
           </DialogActions>
         </Dialog>

@@ -1,5 +1,17 @@
 import { Card, CardContent, Stack, Typography } from '@mui/material';
 import { CheckCircle, Warning } from '@mui/icons-material';
+import { defineMessages, useIntl } from 'react-intl';
+
+const messages = defineMessages({
+  noConflicts: {
+    id: 'healthSummaryTile.noConflicts',
+    defaultMessage: 'No scheduling conflicts',
+  },
+  conflictsFound: {
+    id: 'healthSummaryTile.conflictsFound',
+    defaultMessage: '{count, plural, one {# scheduling conflict found} other {# scheduling conflicts found}}',
+  },
+});
 
 interface HealthSummaryTileProps {
   readonly conflictCount: number;
@@ -8,10 +20,11 @@ interface HealthSummaryTileProps {
 export default function HealthSummaryTile({
   conflictCount,
 }: HealthSummaryTileProps): React.ReactElement {
+  const intl = useIntl();
   const healthy = conflictCount === 0;
   const label = healthy
-    ? 'No scheduling conflicts'
-    : `${conflictCount} scheduling conflict${conflictCount === 1 ? '' : 's'} found`;
+    ? intl.formatMessage(messages.noConflicts)
+    : intl.formatMessage(messages.conflictsFound, { count: conflictCount });
 
   return (
     <Card>

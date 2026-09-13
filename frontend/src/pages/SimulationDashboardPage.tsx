@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Box, Button, Container, Typography } from '@mui/material';
 import { EditOutlined, InboxOutlined } from '@mui/icons-material';
+import { defineMessages, useIntl } from 'react-intl';
 import AppShell from '@/templates/AppShell';
 import EmptyState from '@/atoms/EmptyState';
 import SimulationCard from '@/organisms/SimulationCard';
@@ -15,9 +16,41 @@ import { fetchPublishedClassesPage, resetClasses } from '@/store/reducers/classS
 import { fetchPublishedScheduleThunk } from '@/store/reducers/scheduleSlice';
 import { initialWeekStart, excludedDaysForWeek } from '@/utils/weekNavigation';
 
+const messages = defineMessages({
+  dashboard: {
+    id: 'simulationDashboardPage.dashboard',
+    defaultMessage: 'Dashboard',
+  },
+  requestChanges: {
+    id: 'simulationDashboardPage.requestChanges',
+    defaultMessage: 'Request Changes',
+  },
+  yourWeeklySchedule: {
+    id: 'simulationDashboardPage.yourWeeklySchedule',
+    defaultMessage: 'Your Weekly Schedule',
+  },
+  scheduleLoadError: {
+    id: 'simulationDashboardPage.scheduleLoadError',
+    defaultMessage: 'Could not load your schedule. Please try again.',
+  },
+  myDraftSimulations: {
+    id: 'simulationDashboardPage.myDraftSimulations',
+    defaultMessage: 'My Draft Simulations',
+  },
+  noSimulationsYet: {
+    id: 'simulationDashboardPage.noSimulationsYet',
+    defaultMessage: "You haven't started any simulations yet.",
+  },
+  createFirstSimulation: {
+    id: 'simulationDashboardPage.createFirstSimulation',
+    defaultMessage: 'Create your first simulation',
+  },
+});
+
 const PAGE_SIZE = 1000; // must match PAGE_SIZE in classSlice
 
 export default function SimulationDashboardPage(): React.ReactElement {
+  const intl = useIntl();
   const dispatch = useAppDispatch();
   const simulations = useAppSelector((state) => state.simulation.simulations);
   const loading = useAppSelector((state) => state.simulation.loading);
@@ -75,7 +108,7 @@ export default function SimulationDashboardPage(): React.ReactElement {
         {/* Page header */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4 }}>
           <Typography variant="h1" component="h1">
-            Dashboard
+            {intl.formatMessage(messages.dashboard)}
           </Typography>
           <Button
             variant="contained"
@@ -83,7 +116,7 @@ export default function SimulationDashboardPage(): React.ReactElement {
             startIcon={<EditOutlined />}
             onClick={handleRequestChanges}
           >
-            Request Changes
+            {intl.formatMessage(messages.requestChanges)}
           </Button>
         </Box>
 
@@ -92,7 +125,7 @@ export default function SimulationDashboardPage(): React.ReactElement {
             of the see → request → simulate → propose flow. */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
           <Typography variant="overline" color="text.secondary" component="h2">
-            Your Weekly Schedule
+            {intl.formatMessage(messages.yourWeeklySchedule)}
           </Typography>
           {metadata !== null && weekStart !== null && (
             <WeekNavigator weekStart={weekStart} onWeekChange={setWeekStart} timeline={metadata.timeline} />
@@ -100,7 +133,7 @@ export default function SimulationDashboardPage(): React.ReactElement {
         </Box>
         {classError && (
           <Alert severity="error" sx={{ mb: 2 }}>
-            Could not load your schedule. Please try again.
+            {intl.formatMessage(messages.scheduleLoadError)}
           </Alert>
         )}
         <Box
@@ -122,7 +155,7 @@ export default function SimulationDashboardPage(): React.ReactElement {
 
         {/* Section heading */}
         <Typography variant="overline" color="text.secondary" component="h2" sx={{ display: 'block', mb: 1 }}>
-          My Draft Simulations
+          {intl.formatMessage(messages.myDraftSimulations)}
         </Typography>
 
         {/* Loading skeleton */}
@@ -137,8 +170,8 @@ export default function SimulationDashboardPage(): React.ReactElement {
         {!loading && simulations.length === 0 && (
           <EmptyState
             Icon={InboxOutlined}
-            message="You haven't started any simulations yet."
-            ctaLabel="Create your first simulation"
+            message={intl.formatMessage(messages.noSimulationsYet)}
+            ctaLabel={intl.formatMessage(messages.createFirstSimulation)}
             onCta={handleRequestChanges}
           />
         )}
