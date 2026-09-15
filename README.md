@@ -155,6 +155,7 @@ iter-scheduling-framework/
 | [docs/schedule-schema.md](./docs/schedule-schema.md) | `schedule.json` schema design |
 | [docs/sequence-diagram.md](./docs/sequence-diagram.md) | CI pipeline sequence diagram |
 | [docs/openapi.yaml](./docs/openapi.yaml) | OpenAPI specification |
+| [docs/cw-session-runbook.md](./docs/cw-session-runbook.md) | Facilitator checklist for running cognitive-walkthrough user sessions |
 
 ---
 
