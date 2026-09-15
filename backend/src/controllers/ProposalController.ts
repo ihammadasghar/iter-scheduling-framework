@@ -13,6 +13,17 @@ export class ProposalController {
     }
   }
 
+  // Facilitator/demo-only: see IProposalService.submitUnchecked. Route is
+  // only registered when GITHUB_PROVIDER=mock (routes/proposals.ts).
+  async seed(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const proposal = await this.service.submitUnchecked(req.body);
+      res.status(201).json(proposal);
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async list(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const proposals = await this.service.list(req.query['status'] as string | undefined);

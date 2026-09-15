@@ -525,6 +525,64 @@ describe('ProposalService.submit() — improvement gate', () => {
   });
 });
 
+describe('ProposalService.submitUnchecked()', () => {
+  const VALID_PARAMS = {
+    simulationId: 'sim-alice-abc123',
+    description: 'Moving Biology onto a slot that conflicts with History',
+    baseScheduleVersion: 'mock-sha',
+  };
+
+  let github: IGitHubService;
+  let ci: ICiPipelineService;
+  let rules: IRulesService;
+
+  beforeEach(() => {
+    github = makeGitHub();
+    ci = makeCi();
+    rules = makeRules();
+  });
+
+  it('creates a PR and labels it ci:blocked even when the improvement gate would reject the same candidate', async () => {
+    const graph = makeGraph({ baselineConflicts: [], candidateConflicts: [FAKE_CONFLICT] });
+    ci = makeCi([FAKE_CONFLICT]);
+    const service = new ProposalService(github, graph, ci, rules);
+
+    const proposal = await service.submitUnchecked(VALID_PARAMS);
+
+    expect(github.createPullRequest).toHaveBeenCalledOnce();
+    expect(proposal.status).toBe('BLOCKED');
+    expect(github.setPullRequestLabels).toHaveBeenCalledWith('42', ['ci:blocked']);
+  });
+
+  it('does not affect submit(), which still 409s on the same worsening candidate', async () => {
+    const graph = makeGraph({ baselineConflicts: [], candidateConflicts: [FAKE_CONFLICT] });
+    const service = new ProposalService(github, graph, ci, rules);
+
+    await expect(service.submit(VALID_PARAMS)).rejects.toMatchObject({ statusCode: 409 });
+    expect(github.createPullRequest).not.toHaveBeenCalled();
+  });
+
+  it('still enforces the staleness check', async () => {
+    const graph = makeGraph();
+    (github.readFileWithSha as ReturnType<typeof vi.fn>).mockResolvedValue({ content: '', sha: 'newer-sha' });
+    const service = new ProposalService(github, graph, ci, rules);
+
+    await expect(
+      service.submitUnchecked({ ...VALID_PARAMS, baseScheduleVersion: 'mock-sha' }),
+    ).rejects.toMatchObject({ statusCode: 409, code: 'MAIN_SCHEDULE_CHANGED' });
+    expect(github.createPullRequest).not.toHaveBeenCalled();
+  });
+
+  it('still validates required params', async () => {
+    const graph = makeGraph();
+    const service = new ProposalService(github, graph, ci, rules);
+
+    await expect(
+      service.submitUnchecked({ ...VALID_PARAMS, simulationId: '' }),
+    ).rejects.toMatchObject({ statusCode: 400, message: 'simulationId is required' });
+  });
+});
+
 describe('ProposalService.list()', () => {
   let github: IGitHubService;
   let service: ProposalService;

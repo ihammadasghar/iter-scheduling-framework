@@ -47,6 +47,9 @@ dev-backend: ## Start backend dev server only (requires Memgraph running)
 dev-frontend: ## Start frontend dev server only
 	cd frontend && $(PNPM) dev
 
+seed-blocked-proposal: ## Seed a real BLOCKED demo proposal against a running `make dev` (facilitator/demo setup)
+	cd backend && $(PNPM) run seed:blocked-proposal
+
 # ─────────────────────────────────────────────────────────────
 # Testing
 # ─────────────────────────────────────────────────────────────

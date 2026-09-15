@@ -8,6 +8,16 @@ export function createProposalsRouter(controller: ProposalController): IRouter {
   // POST /proposals — submit a simulation as a proposal (triggers CI pipeline)
   router.post('/', (req, res, next) => controller.submit(req, res, next));
 
+  // POST /proposals/seed — facilitator/demo-only: create a proposal that
+  // skips the "must not make the published schedule worse" gate, so a
+  // genuinely BLOCKED proposal can exist to review (see
+  // ProposalService.submitUnchecked for why the normal submit path can
+  // never produce one). Only registered when GITHUB_PROVIDER=mock — never
+  // reachable against a real repo.
+  if (process.env['GITHUB_PROVIDER'] === 'mock') {
+    router.post('/seed', (req, res, next) => controller.seed(req, res, next));
+  }
+
   // GET /proposals — list proposals (Admins view READY PRs)
   router.get('/', (req, res, next) => controller.list(req, res, next));
 

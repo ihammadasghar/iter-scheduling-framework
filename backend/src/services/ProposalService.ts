@@ -35,6 +35,32 @@ export class ProposalService implements IProposalService {
   ) {}
 
   async submit(params: CreateProposalParams): Promise<Proposal> {
+    const { simulationId, description, baseScheduleVersion } = this.validateSubmitParams(params);
+
+    await this.assertNotStale(baseScheduleVersion);
+    await this.assertImprovesOnPublished(simulationId);
+
+    return this.createProposalAndRunCi(simulationId, description);
+  }
+
+  // Facilitator/demo-only: creates a real, reviewable proposal without the
+  // "must not make the published schedule worse" gate `submit()` enforces.
+  // Exists because that gate (assertImprovesOnPublished) and the CI
+  // pipeline's READY/BLOCKED label both run the same isProposalAcceptable
+  // check — so a candidate that would come out BLOCKED is rejected before
+  // a PR is ever opened, and a genuinely-BLOCKED proposal can never be
+  // created through the normal submit path. Only reachable via HTTP when
+  // GITHUB_PROVIDER=mock (see routes/proposals.ts) — never wired against a
+  // real repo.
+  async submitUnchecked(params: CreateProposalParams): Promise<Proposal> {
+    const { simulationId, description, baseScheduleVersion } = this.validateSubmitParams(params);
+
+    await this.assertNotStale(baseScheduleVersion);
+
+    return this.createProposalAndRunCi(simulationId, description);
+  }
+
+  private validateSubmitParams(params: CreateProposalParams): CreateProposalParams {
     const { simulationId, description, baseScheduleVersion } = params;
 
     if (!simulationId || simulationId.trim() === '') {
@@ -47,9 +73,10 @@ export class ProposalService implements IProposalService {
       throw ApiError.badRequest('baseScheduleVersion is required');
     }
 
-    await this.assertNotStale(baseScheduleVersion);
-    await this.assertImprovesOnPublished(simulationId);
+    return params;
+  }
 
+  private async createProposalAndRunCi(simulationId: string, description: string): Promise<Proposal> {
     const prId = await this.github.createPullRequest(
       simulationId,
       SOURCE_BRANCH,
