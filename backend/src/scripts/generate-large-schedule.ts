@@ -1,6 +1,7 @@
 import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { pathToFileURL } from 'url';
+import { stringifyScheduleJson } from '../utils/ScheduleHydrator.js';
 import type {
   ScheduleJson,
   RawRoom,
@@ -267,7 +268,9 @@ function main(): void {
   const { schedule, rules } = generateLargeSchedule();
 
   mkdirSync(outDir, { recursive: true });
-  writeFileSync(join(outDir, 'schedule.json'), JSON.stringify(schedule, null, 2));
+  // See importIsteDataset.ts's identical fix for why schedule.json must use
+  // stringifyScheduleJson rather than a plain JSON.stringify here.
+  writeFileSync(join(outDir, 'schedule.json'), stringifyScheduleJson(schedule));
   writeFileSync(join(outDir, 'rules.json'), JSON.stringify(rules, null, 2));
 
   console.log(

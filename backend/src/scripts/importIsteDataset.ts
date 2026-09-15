@@ -22,6 +22,7 @@ import { writeFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import XLSX from 'xlsx';
+import { stringifyScheduleJson } from '../utils/ScheduleHydrator.js';
 import type {
   ScheduleJson,
   RawTimeSlot,
@@ -474,7 +475,16 @@ function main(): void {
   const { schedule, rules } = importIsteDataset();
 
   mkdirSync(outDir, { recursive: true });
-  writeFileSync(join(outDir, 'schedule.json'), JSON.stringify(schedule, null, 2));
+  // schedule.json must use the same one-record-per-line serialization the
+  // app itself writes on every commit (stringifyScheduleJson) — a plain
+  // JSON.stringify(..., null, 2) here left `main`'s stored text permanently
+  // reformatted differently from any simulation branch (which always goes
+  // through stringifyScheduleJson on commit), which turned every proposal's
+  // line-based diff into a near-total rewrite instead of a localized one.
+  // Measured cost against the full ISCTE dataset: ~34s per diff generation,
+  // found while auditing session readiness for live cognitive-walkthrough
+  // testing — see docs/iscte-dataset.md.
+  writeFileSync(join(outDir, 'schedule.json'), stringifyScheduleJson(schedule));
   writeFileSync(join(outDir, 'rules.json'), JSON.stringify(rules, null, 2));
 
   console.log(
