@@ -7,10 +7,13 @@ import TopAppBar from './TopAppBar';
 import type { UserRole } from '@/types';
 import type { RootState } from '@/store/store';
 
-// Minimal preloaded state for UI tests
+// Minimal preloaded state for UI tests. hydrated: true — these tests
+// simulate an already-onboarded state, which in the real app always
+// implies hydration has completed (see identitySlice.ts); AdminGuard's
+// not-yet-hydrated case is covered separately in AdminGuard.test.tsx.
 const identityState = (role?: UserRole): Partial<RootState> => ({
   identity: {
-    hydrated: false,
+    hydrated: true,
     identity: role === undefined ? null : {
       role,
       professorId: role === 'professor' ? 'PRF_SMITH' : null,
