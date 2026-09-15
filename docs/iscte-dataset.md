@@ -79,7 +79,9 @@ Implemented in `backend/src/scripts/importIsteDataset.ts`. Summary:
 Running the importer on the current source files produces: **4,894 classes**,
 131 rooms, 1,464 professors, 472 student groups, 646 courses, 280 time slots
 — with **746/4,894 classes (15%) carrying a real assigned room**, the rest
-`roomId: ""`.
+`roomId: ""`. This is the full, uncurated output — see §8 for why the
+*committed* `backend/src/fixtures/iscte-schedule.json` is a smaller,
+hand-curated subset of it, not this straight import.
 
 ## 6. Decisions and caveats (know before you use this data)
 
@@ -139,3 +141,57 @@ Three ways to actually run against it, in increasing order of fidelity:
    ```
    Restart the backend after switching either way (env vars are read once at
    startup; nodemon doesn't watch `.env`).
+
+## 8. Curated for cognitive-walkthrough sessions
+
+**The committed `backend/src/fixtures/iscte-schedule.json` is not a
+straight import** — as of 2026-09-15 it's a hand-curated subset, built for
+running `thesis/cognitive-walkthrough-protocol.md`'s live sessions against
+real ISCTE data. Re-running `pnpm import:iscte` and copying its output over
+this file would **discard the curation** (see `schedule.metadata.curationNote`
+in the file itself, which also documents this).
+
+**Why curate at all:** the straight import's 1,464 professors / 472 student
+groups make `OnboardingFlow`'s identity picker (a plain, unsearchable MUI
+`Select`, not an autocomplete) unusable — nobody can find their name in a
+1,464-entry dropdown. The protocol's task prompts also need specific,
+demoable entities (a professor with a real room assignment and a genuine
+free alternative, a group with a resolvable clash, etc.), which the raw
+import doesn't hand you deterministically.
+
+**What was changed, concretely:**
+- `professors`/`studentGroups` trimmed to **8 each**, hand-picked for real
+  room assignments and clean course titles. `classes` trimmed to those 8
+  professors' own real classes, plus ~180 additional real classes
+  (authentic course/room/timeSlot untouched) with `professorId`/
+  `studentGroupId` reassigned onto the 8/8 roster — conflict-checked
+  (professor/group/room double-booking, room capacity) so the padding
+  doesn't manufacture accidental conflicts on top of the deliberate ones
+  below. `courses`/`rooms`/`timeSlots` are untouched (full catalogs).
+- **Two deliberate scenarios**, both real ISCTE courses/rooms, matching the
+  precedent `mock-schedule.json` already sets with its own single
+  deliberate `CLS_00001`/`CLS_00004` conflict:
+  - `CLS_000001` was moved onto `CLS_000002`'s time slot — both belong to
+    student group `MCTRLA1` (`GRP_00337`), producing one `GROUP_OVERLAP`
+    baked into the baseline, for the Student persona's T3s task.
+  - `CLS_000049` (Dr. John Jones, "Projecto Empresarial em Finanças", Room
+    2E02, Monday 08:00–09:30) is the Professor persona's T3/T4 target class
+    — unmodified, chosen for having a real room assignment and genuine
+    conflict-free alternatives.
+  - `CLS_000093`/`CLS_000076` are deliberately left conflict-free in this
+    file — `backend/src/scripts/seedBlockedProposal.ts` (`make
+    seed-blocked-proposal`) forces them together *live*, at submit time,
+    for the Admin persona's T5 task. Not baked into the baseline, so it
+    doesn't pollute every other proposal's conflict count.
+- Two remaining baseline `ROOM_CAPACITY_EXCEEDED` conflicts
+  (`CLS_000231`/`CLS_000233`, Prof. Aisha Kim's real, unmodified
+  `HMCC1`/room `2E03` assignment) are genuine, untouched ISCTE data — left
+  as authentic "real-world imperfection" texture, unrelated to any task.
+
+If the source `.xlsx`/`.xls` files ever change and this needs regenerating,
+redo this curation by hand (or write a proper script) rather than
+re-running the plain importer — the entity names above
+(`CLS_000049`/`CLS_000001`/`CLS_000002`/`CLS_000093`/`CLS_000076`,
+professor/group ids) are referenced directly by
+`thesis/cognitive-walkthrough-protocol.md`, `docs/cw-session-runbook.md`,
+and `seedBlockedProposal.ts`.

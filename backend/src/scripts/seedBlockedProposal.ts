@@ -11,15 +11,20 @@
 // proposal it creates is the one the Admin Proposal Dashboard actually
 // shows.
 //
-// It moves CLS_00002 (Prof. Alan Jones, Modern History Lecture) into
-// RM_103 — already occupied at the same time slot (TS_MON_P2) by CLS_00009
-// (Dr. Bob Chen, different professor and student group) — producing
-// exactly one clean, new ROOM_DOUBLE_BOOK conflict and nothing else (no
-// professor/group overlap, since the two classes share neither), left
-// deliberately unrelated to CLS_00001/CLS_00004's pre-existing seeded
-// conflict (the T3/T4 professor tasks target CLS_00001; this leaves it
-// untouched) and posts it via POST /proposals/seed, which — unlike the
-// normal POST /proposals a professor uses — skips the "must not make the
+// It moves CLS_000093 (Prof. Maria Chen, "Análise e Modelos de Dados
+// Financeiros") into RM_0124 at TS_FRI_1630_1800 — already occupied at that
+// exact room+slot by CLS_000076 (Dr. Liam Jones, "Serviço Social com
+// Adultos e Idosos", a different professor, course, and student group) —
+// producing exactly one clean, new ROOM_DOUBLE_BOOK conflict and nothing
+// else. Deliberately live (not baked into the curated iscte-schedule.json
+// baseline): T5 needs the admin to review a *submitted proposal* that makes
+// things worse than the published baseline, not a conflict already sitting
+// in `main` — baking it into the fixture would make this script redundant
+// and would show up in every unrelated proposal's conflict count. Also
+// deliberately unrelated to CLS_000049 (T3/T4's target class) and
+// CLS_000001/CLS_000002 (the group-overlap clash baked into the fixture
+// for T3s). Posts via POST /proposals/seed, which — unlike the normal
+// POST /proposals a professor uses — skips the "must not make the
 // published schedule worse" gate (see ProposalService.submitUnchecked for
 // why that gate makes a genuinely BLOCKED proposal otherwise unreachable
 // through the app).
@@ -27,12 +32,13 @@
 // Usage:
 //   pnpm run seed:blocked-proposal
 // Requires `make dev` (or `make dev-backend`) already running with
-// GITHUB_PROVIDER=mock (the default).
+// GITHUB_PROVIDER=mock and MOCK_FIXTURE_SET=iscte.
 
 const API_BASE = process.env['API_BASE'] ?? 'http://localhost:3000/api/v1';
 
-const TARGET_CLASS_ID = 'CLS_00002';
-const CONFLICTING_ROOM_ID = 'RM_103';
+const TARGET_CLASS_ID = 'CLS_000093';
+const CONFLICTING_ROOM_ID = 'RM_0124';
+const CONFLICTING_TIME_SLOT_ID = 'TS_FRI_1630_1800';
 
 interface SimulationCreateResponse {
   readonly id: string;
@@ -80,15 +86,16 @@ async function main(): Promise<void> {
 
   await patchJson(`/simulations/${simulation.id}/classes/${TARGET_CLASS_ID}`, {
     roomId: CONFLICTING_ROOM_ID,
+    timeSlotIds: [CONFLICTING_TIME_SLOT_ID],
   });
-  console.log(`Moved ${TARGET_CLASS_ID} into ${CONFLICTING_ROOM_ID} (same time slot, now double-booked)`);
+  console.log(`Moved ${TARGET_CLASS_ID} onto ${CONFLICTING_ROOM_ID}/${CONFLICTING_TIME_SLOT_ID} (now double-booked)`);
 
   await postJson(`/simulations/${simulation.id}/commit`, {});
 
   const proposal = await postJson<ProposalResponse>('/proposals/seed', {
     simulationId: simulation.id,
     description:
-      'Demo: moved Organic Chemistry Lab into a room/time already used by Cell Biology Lab, for cognitive-walkthrough T5 setup.',
+      'Demo: moved a Financial Data Analysis class into a room/time already used by a Social Work class, for cognitive-walkthrough T5 setup.',
     baseScheduleVersion: simulation.baseScheduleVersion,
   });
 
@@ -96,7 +103,7 @@ async function main(): Promise<void> {
   if (proposal.status !== 'BLOCKED') {
     console.warn(
       'Expected status BLOCKED — got something else. The baseline schedule may have changed; ' +
-        'check backend/src/fixtures/mock-schedule.json still has CLS_00009 in RM_103 at TS_MON_P2.',
+        'check backend/src/fixtures/iscte-schedule.json still has CLS_000076 in RM_0124 at TS_FRI_1630_1800.',
     );
     process.exitCode = 1;
     return;
