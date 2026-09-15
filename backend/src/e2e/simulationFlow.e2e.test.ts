@@ -88,6 +88,19 @@ describe('simulation flow (e2e, mock GitHub + real Memgraph)', () => {
     };
     expect(parsedClass).toMatchObject({ id: 'CLS_00004', roomId: 'RM_104' });
 
+    // 7c. Regression guard for a third, independent bug in the same area:
+    // GraphService.exportScheduleJson cast the driver's raw returned map
+    // straight to RawClass/RawTimeSlot/etc. instead of rebuilding each
+    // record's fields in RawX's declared order — Memgraph's Bolt driver
+    // does not preserve the key order declared in a Cypher `RETURN { ... }`
+    // map literal, so every untouched class/timeSlot/etc. came back with
+    // reordered keys and therefore a textually different line from main's,
+    // turning every commit's diff into a near-total file rewrite. An
+    // untouched class (CLS_00001, not edited by this test) must appear on
+    // neither a `+` nor a `-` line.
+    const diffLines = (detailRes.body.diff as string).split('\n');
+    expect(diffLines.some((line) => /^[+-]/.test(line) && line.includes('CLS_00001'))).toBe(false);
+
     // 8. Merge the ready proposal
     const mergeRes = await request(app)
       .post(`/api/v1/proposals/${proposalId}/merge`)

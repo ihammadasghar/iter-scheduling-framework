@@ -90,14 +90,50 @@ export class GraphService implements IGraphService {
       ),
     ]);
 
+    // Rebuilt field-by-field, in RawX's declared order, rather than cast
+    // straight from the driver's returned map — Memgraph's Bolt driver does
+    // not preserve the key order declared in a Cypher `RETURN { ... }` map
+    // literal (it comes back effectively alphabetical). Casting the raw map
+    // left every record's JSON.stringify'd key order silently reordered
+    // relative to how the seed fixtures (and this same RawX shape) are
+    // written, which turned every committed branch's schedule.json into a
+    // textually near-total rewrite of `main`'s — even for a single-field
+    // edit — since stringifyScheduleJson/getPullRequestDiff diff this file
+    // line-by-line, not by semantic JSON equality. Confirmed directly
+    // against the ISCTE-scale dataset: this alone was responsible for most
+    // of a ~50s diff-review request, on top of the unrelated line-shape fix
+    // in importIsteDataset.ts. See docs/iscte-dataset.md.
     const schedule: ScheduleJson = {
       metadata: {},
-      courses: courses.map((r) => r['course'] as unknown as RawCourse),
-      professors: professors.map((r) => r['professor'] as unknown as RawProfessor),
-      studentGroups: studentGroups.map((r) => r['studentGroup'] as unknown as RawStudentGroup),
-      rooms: rooms.map((r) => r['room'] as unknown as RawRoom),
-      timeSlots: timeSlots.map((r) => r['timeSlot'] as unknown as RawTimeSlot),
-      classes: classes.map((r) => r['class'] as unknown as RawClass),
+      courses: courses.map((r) => {
+        const c = r['course'];
+        return { id: c['id'], code: c['code'], name: c['name'], department: c['department'] } as RawCourse;
+      }),
+      professors: professors.map((r) => {
+        const p = r['professor'];
+        return { id: p['id'], name: p['name'], department: p['department'] } as RawProfessor;
+      }),
+      studentGroups: studentGroups.map((r) => {
+        const g = r['studentGroup'];
+        return { id: g['id'], name: g['name'], size: g['size'] } as unknown as RawStudentGroup;
+      }),
+      rooms: rooms.map((r) => {
+        const room = r['room'];
+        return { id: room['id'], name: room['name'], capacity: room['capacity'], building: room['building'] } as unknown as RawRoom;
+      }),
+      timeSlots: timeSlots.map((r) => {
+        const t = r['timeSlot'];
+        return {
+          id: t['id'], day: t['day'], name: t['name'], startTime: t['startTime'], endTime: t['endTime'],
+        } as RawTimeSlot;
+      }),
+      classes: classes.map((r) => {
+        const c = r['class'];
+        return {
+          id: c['id'], courseId: c['courseId'], title: c['title'], professorId: c['professorId'],
+          studentGroupId: c['studentGroupId'], roomId: c['roomId'], timeSlotIds: c['timeSlotIds'],
+        } as unknown as RawClass;
+      }),
     };
 
     return stringifyScheduleJson(schedule);
@@ -277,19 +313,31 @@ export class GraphService implements IGraphService {
   async getSuggestions(simulationId: string, classId: string): Promise<readonly Suggestion[]> {
     const branchId = simulationId;
 
+    // Professor/group busy-slot checks depend only on the time slot, not the
+    // room — computed once here (bounded by how many other classes that one
+    // professor/group has) via busyProfSlots/busyGroupSlots, then reused
+    // across every room in the room x time-slot cross-join below. Computing
+    // them inline per (room, time slot) pair instead (as an earlier version
+    // of this query did) redundantly repeats the same professor/group
+    // traversal once per room — a ~roomCount-times multiplier that dominated
+    // runtime at institution scale (~130s for one call against ~130 rooms).
     const cypher = `
       MATCH (cls:Class {id: $classId, branchId: $branchId})-[:ATTENDED_BY]->(g:StudentGroup {branchId: $branchId})
+      MATCH (cls)-[:TAUGHT_BY]->(p:Professor {branchId: $branchId})
+      OPTIONAL MATCH (profOcc:Class {branchId: $branchId})-[:TAUGHT_BY]->(p)
+        WHERE profOcc.id <> cls.id
+      OPTIONAL MATCH (profOcc)-[:SCHEDULED_AT]->(profBusyT:TimeSlot {branchId: $branchId})
+      WITH cls, g, collect(DISTINCT profBusyT.id) AS busyProfSlots
+      OPTIONAL MATCH (groupOcc:Class {branchId: $branchId})-[:ATTENDED_BY]->(g)
+        WHERE groupOcc.id <> cls.id
+      OPTIONAL MATCH (groupOcc)-[:SCHEDULED_AT]->(groupBusyT:TimeSlot {branchId: $branchId})
+      WITH cls, g, busyProfSlots, collect(DISTINCT groupBusyT.id) AS busyGroupSlots
       MATCH (r:Room {branchId: $branchId}), (t:TimeSlot {branchId: $branchId})
+      WHERE g.size <= r.capacity AND NOT t.id IN busyProfSlots AND NOT t.id IN busyGroupSlots
       OPTIONAL MATCH (roomOcc:Class {branchId: $branchId})-[:HELD_IN]->(r)
         WHERE (roomOcc)-[:SCHEDULED_AT]->(t) AND roomOcc.id <> cls.id
-      WITH cls, g, r, t, count(roomOcc) AS roomConflicts
-      OPTIONAL MATCH (profOcc:Class {branchId: $branchId})-[:TAUGHT_BY]->(:Professor {id: cls.professorId, branchId: $branchId})
-        WHERE (profOcc)-[:SCHEDULED_AT]->(t) AND profOcc.id <> cls.id
-      WITH cls, g, r, t, roomConflicts, count(profOcc) AS profConflicts
-      OPTIONAL MATCH (groupOcc:Class {branchId: $branchId})-[:ATTENDED_BY]->(:StudentGroup {id: cls.studentGroupId, branchId: $branchId})
-        WHERE (groupOcc)-[:SCHEDULED_AT]->(t) AND groupOcc.id <> cls.id
-      WITH g, r, t, roomConflicts, profConflicts, count(groupOcc) AS groupConflicts
-      WHERE roomConflicts = 0 AND profConflicts = 0 AND groupConflicts = 0 AND g.size <= r.capacity
+      WITH r, t, count(roomOcc) AS roomConflicts
+      WHERE roomConflicts = 0
       WITH r, collect(DISTINCT t.id) AS timeSlotIds
       RETURN r.id AS roomId, timeSlotIds
       ORDER BY r.id
@@ -310,20 +358,28 @@ export class GraphService implements IGraphService {
   async getRoomAvailability(simulationId: string, classId: string): Promise<readonly RoomAvailability[]> {
     const branchId = simulationId;
 
+    // Same busy-slot precomputation as getSuggestions above, and for the
+    // same reason: profOcc/groupOcc only depend on the time slot, not the
+    // room, so computing them once here instead of once per (room, time
+    // slot) pair avoids a ~roomCount-times redundant traversal.
     const cypher = `
       MATCH (cls:Class {id: $classId, branchId: $branchId})-[:ATTENDED_BY]->(g:StudentGroup {branchId: $branchId})
+      MATCH (cls)-[:TAUGHT_BY]->(p:Professor {branchId: $branchId})
+      OPTIONAL MATCH (profOcc:Class {branchId: $branchId})-[:TAUGHT_BY]->(p)
+        WHERE profOcc.id <> cls.id
+      OPTIONAL MATCH (profOcc)-[:SCHEDULED_AT]->(profBusyT:TimeSlot {branchId: $branchId})
+      WITH cls, g, collect(DISTINCT profBusyT.id) AS busyProfSlots
+      OPTIONAL MATCH (groupOcc:Class {branchId: $branchId})-[:ATTENDED_BY]->(g)
+        WHERE groupOcc.id <> cls.id
+      OPTIONAL MATCH (groupOcc)-[:SCHEDULED_AT]->(groupBusyT:TimeSlot {branchId: $branchId})
+      WITH cls, g, busyProfSlots, collect(DISTINCT groupBusyT.id) AS busyGroupSlots
       MATCH (r:Room {branchId: $branchId}), (t:TimeSlot {branchId: $branchId})
       OPTIONAL MATCH (roomOcc:Class {branchId: $branchId})-[:HELD_IN]->(r)
         WHERE (roomOcc)-[:SCHEDULED_AT]->(t) AND roomOcc.id <> cls.id
-      WITH cls, g, r, t, count(roomOcc) AS roomConflicts
-      OPTIONAL MATCH (profOcc:Class {branchId: $branchId})-[:TAUGHT_BY]->(:Professor {id: cls.professorId, branchId: $branchId})
-        WHERE (profOcc)-[:SCHEDULED_AT]->(t) AND profOcc.id <> cls.id
-      WITH cls, g, r, t, roomConflicts, count(profOcc) AS profConflicts
-      OPTIONAL MATCH (groupOcc:Class {branchId: $branchId})-[:ATTENDED_BY]->(:StudentGroup {id: cls.studentGroupId, branchId: $branchId})
-        WHERE (groupOcc)-[:SCHEDULED_AT]->(t) AND groupOcc.id <> cls.id
-      WITH g, r, t, roomConflicts, profConflicts, count(groupOcc) AS groupConflicts
+      WITH g, r, t, busyProfSlots, busyGroupSlots, count(roomOcc) AS roomConflicts
       WITH g, r,
-           CASE WHEN roomConflicts = 0 AND profConflicts = 0 AND groupConflicts = 0 THEN t.id ELSE null END AS freeSlotId
+           CASE WHEN roomConflicts = 0 AND NOT t.id IN busyProfSlots AND NOT t.id IN busyGroupSlots
+                THEN t.id ELSE null END AS freeSlotId
       WITH g, r, collect(freeSlotId) AS freeSlotIdsRaw
       RETURN r.id AS roomId, (g.size <= r.capacity) AS capacityOk,
              [x IN freeSlotIdsRaw WHERE x IS NOT NULL] AS freeTimeSlotIds
