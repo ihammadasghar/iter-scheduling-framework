@@ -27,11 +27,18 @@ const messages = defineMessages({
 interface ConflictChipProps {
   readonly conflicts: readonly Conflict[];
   readonly loading: boolean;
+  // Renders with reduced (default, not error) color weight until the user
+  // has selected a class at least once — the chip was out-competing the
+  // grid for attention before people discovered classes are clickable
+  // (cognitive-walkthrough finding, issue #6). Full alert styling kicks in
+  // the moment they've engaged with the grid at all.
+  readonly softened?: boolean;
 }
 
 export default function ConflictChip({
   conflicts,
   loading,
+  softened = false,
 }: ConflictChipProps): React.ReactElement {
   const intl = useIntl();
   const anchorRef = useRef<HTMLDivElement>(null);
@@ -71,7 +78,7 @@ export default function ConflictChip({
         ref={anchorRef}
         icon={<Warning />}
         label={conflictsLabel}
-        color="error"
+        color={softened ? 'default' : 'error'}
         variant="outlined"
         onClick={() => setPopoverOpen(true)}
         aria-label={conflictsLabel}

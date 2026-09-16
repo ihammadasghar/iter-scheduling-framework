@@ -66,6 +66,7 @@ export default function MyScheduleCalendar({
   const identity = useAppSelector((s) => s.identity.identity);
   const timeSlots = useAppSelector((s) => s.schedule.timeSlots);
   const conflicts = useAppSelector((s) => s.conflict.conflicts);
+  const hasInteractedWithClass = useAppSelector((s) => s.ui.hasInteractedWithClass);
   const names = useScheduleNames();
 
   const myClasses = useMemo(
@@ -87,6 +88,20 @@ export default function MyScheduleCalendar({
     () => buildConflictSummaries(intl, conflicts, classes, names),
     [intl, conflicts, classes, names],
   );
+
+  // Exactly one block — the earliest in the visible week — gets the
+  // first-run discoverability hint, so it teaches by example instead of
+  // pulsing the whole grid at once. Clears itself for good the moment the
+  // user selects any class (see uiSlice's hasInteractedWithClass).
+  const hintBlockKey = useMemo(() => {
+    if (hasInteractedWithClass || blocks.length === 0) return null;
+    const dayIndex = new Map(dayOrder.map((day, i) => [day, i]));
+    const earliest = [...blocks].sort((a, b) => {
+      const dayDiff = (dayIndex.get(a.day) ?? Infinity) - (dayIndex.get(b.day) ?? Infinity);
+      return dayDiff !== 0 ? dayDiff : a.startMinutes - b.startMinutes;
+    })[0];
+    return earliest ? `${earliest.classId}-${earliest.day}` : null;
+  }, [blocks, dayOrder, hasInteractedWithClass]);
 
   if (loading && classes.length === 0) {
     return <GridSkeleton />;
@@ -190,15 +205,17 @@ export default function MyScheduleCalendar({
                 const cls = classById.get(block.classId);
                 if (cls === undefined) return null;
                 const isConflicted = conflictedClassIds.has(cls.id);
+                const blockKey = `${block.classId}-${block.day}`;
                 return (
                   <CalendarClassBlock
-                    key={`${block.classId}-${block.day}`}
+                    key={blockKey}
                     classItem={cls}
                     block={block}
                     minMinutes={bounds.minMinutes}
                     pixelsPerMinute={PIXELS_PER_MINUTE}
                     isConflicted={isConflicted}
                     conflictSummary={isConflicted ? conflictSummaries.get(cls.id) : undefined}
+                    showFirstRunHint={blockKey === hintBlockKey}
                   />
                 );
               })}

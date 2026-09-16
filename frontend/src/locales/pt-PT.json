@@ -151,6 +151,8 @@
   "calendarClassBlock.conflictTooltip": "{conflictSummary} — clique para detalhes",
   "calendarClassBlock.conflictAriaLabel": "{label} — {conflictSummary}",
   "calendarClassBlock.selectedAriaLabel": "{label} — selecionado",
+  "calendarClassBlock.firstRunHint": "Clique numa aula para ver detalhes.",
+  "calendarClassBlock.firstRunHintAriaLabel": "{label} — clique para ver detalhes",
   "addedClassCard.new": "Novo",
   "addedClassCard.summary": "{course} · {professor} · {room} · {time} · {group}",
   "addedClassCard.emptyTime": "—",

@@ -59,6 +59,7 @@ export default function HUD({ simId, onSubmitProposal }: HUDProps): React.ReactE
   const score = useAppSelector((s) => s.score.current);
   const scoreLoading = useAppSelector((s) => s.score.loading);
   const lastPatchAt = useAppSelector((s) => s.session.lastPatchAt);
+  const hasInteractedWithClass = useAppSelector((s) => s.ui.hasInteractedWithClass);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [initialised, setInitialised] = useState(false);
@@ -106,7 +107,7 @@ export default function HUD({ simId, onSubmitProposal }: HUDProps): React.ReactE
       aria-label={intl.formatMessage(messages.ariaLabel)}
     >
       {/* Zone 1 — Conflicts and institution-defined score */}
-      <ConflictChip conflicts={conflicts} loading={conflictLoading} />
+      <ConflictChip conflicts={conflicts} loading={conflictLoading} softened={!hasInteractedWithClass} />
 
       {scoreLoading && score === null && (
         <Chip

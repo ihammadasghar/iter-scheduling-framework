@@ -55,6 +55,8 @@
   "buildClassChanges.field.title": "Title",
   "calendarClassBlock.conflictAriaLabel": "{label} — {conflictSummary}",
   "calendarClassBlock.conflictTooltip": "{conflictSummary} — click for details",
+  "calendarClassBlock.firstRunHint": "Click any class to see details.",
+  "calendarClassBlock.firstRunHintAriaLabel": "{label} — click to see details",
   "calendarClassBlock.noRoom": "No room",
   "calendarClassBlock.selectedAriaLabel": "{label} — selected",
   "calendarClassBlock.tooltip": "{title} · Room: {room} · Prof: {professor}",

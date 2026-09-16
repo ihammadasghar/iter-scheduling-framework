@@ -65,6 +65,7 @@ const makeStore = (overrides: {
         selectedClassId: overrides.selectedClassId ?? null,
         inspectorOpen: overrides.inspectorOpen ?? false,
         viewBy: 'room' as const,
+        hasInteractedWithClass: false,
       },
     },
   });
