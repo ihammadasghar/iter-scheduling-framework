@@ -38,6 +38,7 @@ const makeStore = (
         selectedClassId: null,
         inspectorOpen: false,
         viewBy,
+        hasInteractedWithClass: false,
       },
       schedule: {
         rooms: [],
@@ -60,7 +61,7 @@ const makeStoreWithRooms = (
     reducer: { class: classReducer, ui: uiReducer, schedule: scheduleReducer, conflict: conflictReducer },
     preloadedState: {
       class: { classes, total: classes.length, currentPage: 1, hasMore: false, loading: false, error: null },
-      ui: { selectedClassId: null, inspectorOpen: false, viewBy: 'room' as const },
+      ui: { selectedClassId: null, inspectorOpen: false, viewBy: 'room' as const, hasInteractedWithClass: false },
       schedule: { rooms, studentGroups: [], courses: [], professors: [], timeSlots: [], metadata: null, loading: false, error: null },
       conflict: { conflicts: [], loading: false, lastFetchedAt: null, error: null },
     },
@@ -119,7 +120,7 @@ describe('TimetableGrid', () => {
       reducer: { class: classReducer, ui: uiReducer, schedule: scheduleReducer, conflict: conflictReducer },
       preloadedState: {
         class: { classes: [opaqueClass], total: 1, currentPage: 1, hasMore: false, loading: false, error: null },
-        ui: { selectedClassId: null, inspectorOpen: false, viewBy: 'professor' as const },
+        ui: { selectedClassId: null, inspectorOpen: false, viewBy: 'professor' as const, hasInteractedWithClass: false },
         schedule: {
           rooms: [], studentGroups: [], courses: [], timeSlots: [],
           professors: [{ id: 'PRF_00001', name: 'Dr. Jane Smith', department: 'Biology' }],
@@ -209,7 +210,7 @@ describe('TimetableGrid', () => {
       reducer: { class: classReducer, ui: uiReducer, schedule: scheduleReducer, conflict: conflictReducer },
       preloadedState: {
         class: { classes: [], total: 0, currentPage: 0, hasMore: true, loading: true, error: null },
-        ui: { selectedClassId: null, inspectorOpen: false, viewBy: 'room' as const },
+        ui: { selectedClassId: null, inspectorOpen: false, viewBy: 'room' as const, hasInteractedWithClass: false },
         schedule: { rooms: [], studentGroups: [], courses: [], professors: [], timeSlots: [], metadata: null, loading: false, error: null },
         conflict: { conflicts: [], loading: false, lastFetchedAt: null, error: null },
       },
@@ -326,7 +327,7 @@ describe('TimetableGrid — density control', () => {
           class: {
             classes: [mondayClass, tuesdayClass], total: 2, currentPage: 1, hasMore: false, loading: false, error: null,
           },
-          ui: { selectedClassId: null, inspectorOpen: false, viewBy: 'room' as const },
+          ui: { selectedClassId: null, inspectorOpen: false, viewBy: 'room' as const, hasInteractedWithClass: false },
           schedule: { rooms: [], studentGroups: [], courses: [], professors: [], timeSlots: TIME_SLOTS, metadata: null, loading: false, error: null },
           conflict: { conflicts: [], loading: false, lastFetchedAt: null, error: null },
         },

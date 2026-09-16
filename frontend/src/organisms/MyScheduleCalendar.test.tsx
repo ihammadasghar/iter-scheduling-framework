@@ -149,6 +149,27 @@ describe('MyScheduleCalendar', () => {
     expect(screen.queryByText('BIO101')).not.toBeInTheDocument();
   });
 
+  it('shows the first-run discoverability hint on the earliest class before any interaction', () => {
+    renderCalendar(makeStore());
+    expect(screen.getByLabelText('BIO101 — click to see details')).toBeInTheDocument();
+  });
+
+  it('drops the first-run hint after any class has been selected', () => {
+    const store = makeStore();
+    renderCalendar(store);
+    fireEvent.click(screen.getByText('BIO101'));
+    expect(screen.queryByLabelText(/click to see details/i)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('BIO101 — selected')).toBeInTheDocument();
+  });
+
+  it('does not show the first-run hint once hasInteractedWithClass is already true', () => {
+    const store = makeStore();
+    store.dispatch({ type: 'ui/selectClass', payload: 'CLS_MINE' });
+    store.dispatch({ type: 'ui/deselectClass' });
+    renderCalendar(store);
+    expect(screen.queryByLabelText(/click to see details/i)).not.toBeInTheDocument();
+  });
+
   it('renders a custom emptyMessage when provided and the resource has no classes', () => {
     const store = makeStore();
     render(

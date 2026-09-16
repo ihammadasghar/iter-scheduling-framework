@@ -77,4 +77,15 @@ describe('CalendarClassBlock', () => {
     renderBlock({ classItem: makeClassItem('') }, { courses: [COURSE], rooms: [ROOM] });
     expect(screen.getByText('No room')).toBeInTheDocument();
   });
+
+  it('marks the block with a discoverability hint aria-label when showFirstRunHint is set', () => {
+    renderBlock({ showFirstRunHint: true }, { courses: [COURSE], rooms: [ROOM] });
+    expect(screen.getByLabelText('EMA101 — click to see details')).toBeInTheDocument();
+  });
+
+  it('does not add the hint aria-label when showFirstRunHint is unset', () => {
+    renderBlock({}, { courses: [COURSE], rooms: [ROOM] });
+    expect(screen.queryByLabelText('EMA101 — click to see details')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('EMA101')).toBeInTheDocument();
+  });
 });

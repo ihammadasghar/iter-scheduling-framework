@@ -135,6 +135,19 @@ describe('HUD', () => {
     expect(screen.getByText(/score: no metrics defined/i)).toBeInTheDocument();
   });
 
+  it('renders the conflict chip softened before any class has been selected', async () => {
+    const conflicts: Conflict[] = [
+      {
+        id: 'c1',
+        type: 'ROOM_DOUBLE_BOOK',
+        classIds: ['CLS_001', 'CLS_002'] as unknown as readonly [string, string],
+        message: '',
+      },
+    ];
+    await render_(conflicts);
+    expect(screen.getByText(/1 scheduling conflict/i).closest('.MuiChip-root')).toHaveClass('MuiChip-colorDefault');
+  });
+
   it('never displays raw conflict type codes', async () => {
     const conflicts: Conflict[] = [
       {

@@ -7,12 +7,18 @@ interface UiState {
   readonly selectedClassId: string | null;
   readonly inspectorOpen: boolean;
   readonly viewBy: ViewByOption;
+  // Whether the user has ever selected a class this session — drives the
+  // simulation screen's first-run discoverability hint (issue #6) and lets
+  // the conflict chip step back once the user has found the grid on their
+  // own.
+  readonly hasInteractedWithClass: boolean;
 }
 
 const initialState: UiState = {
   selectedClassId: null,
   inspectorOpen: false,
   viewBy: 'room',
+  hasInteractedWithClass: false,
 };
 
 const uiSlice = createSlice({
@@ -22,6 +28,7 @@ const uiSlice = createSlice({
     selectClass(state, action: PayloadAction<string>) {
       state.selectedClassId = action.payload;
       state.inspectorOpen = true;
+      state.hasInteractedWithClass = true;
     },
     deselectClass(state) {
       state.selectedClassId = null;
