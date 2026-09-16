@@ -42,6 +42,10 @@ const messages = defineMessages({
     id: 'rulesPage.metricRulesHeading',
     defaultMessage: 'Metric Rules',
   },
+  metricRulesSubtitle: {
+    id: 'rulesPage.metricRulesSubtitle',
+    defaultMessage: "Influence the score — a proposal can still be submitted if it scores poorly on these.",
+  },
   addMetric: {
     id: 'rulesPage.addMetric',
     defaultMessage: '+ Add Metric',
@@ -53,6 +57,10 @@ const messages = defineMessages({
   constraintsHeading: {
     id: 'rulesPage.constraintsHeading',
     defaultMessage: 'Hard Constraints',
+  },
+  constraintsSubtitle: {
+    id: 'rulesPage.constraintsSubtitle',
+    defaultMessage: 'Violating one blocks the proposal outright — it cannot be submitted.',
   },
   addConstraint: {
     id: 'rulesPage.addConstraint',
@@ -145,8 +153,11 @@ export default function RulesPage(): React.ReactElement {
 
   const metricSection = (
     <Box>
-      <Typography variant="overline" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+      <Typography variant="overline" color="text.secondary" sx={{ display: "block" }}>
         {intl.formatMessage(messages.metricRulesHeading)}
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        {intl.formatMessage(messages.metricRulesSubtitle)}
       </Typography>
       <Button
         variant="outlined"
@@ -187,8 +198,11 @@ export default function RulesPage(): React.ReactElement {
 
   const constraintSection = (
     <Box>
-      <Typography variant="overline" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+      <Typography variant="overline" color="text.secondary" sx={{ display: "block" }}>
         {intl.formatMessage(messages.constraintsHeading)}
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        {intl.formatMessage(messages.constraintsSubtitle)}
       </Typography>
       <Button
         variant="outlined"
