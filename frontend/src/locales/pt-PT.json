@@ -231,6 +231,7 @@
   "editAssignmentDialog.studentGroupSubtitle": "{size, plural, one {# aluno} other {# alunos}} · {count, plural, one {# aula frequentada} other {# aulas frequentadas}}",
   "editAssignmentDialog.day": "Dia",
   "editAssignmentDialog.period": "Período",
+  "editAssignmentDialog.periodOptionsUpdatedAnnouncement": "Opções de período atualizadas para {day}.",
   "editAssignmentDialog.notEnoughPeriods": "Este dia não tem períodos consecutivos suficientes para uma aula com esta duração. Experimente outro dia ou período de início.",
   "editAssignmentDialog.capacityExceeded": "{group} tem {size} alunos, mais do que a capacidade de {room} de {capacity}.",
   "editAssignmentDialog.clashRoom": "a sala",

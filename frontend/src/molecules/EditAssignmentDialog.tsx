@@ -4,6 +4,7 @@ import {
   Divider, FormControl, IconButton, InputLabel, MenuItem, Select, Stack, Typography,
 } from '@mui/material';
 import type { SelectChangeEvent } from '@mui/material';
+import { keyframes } from '@mui/material/styles';
 import { Close } from '@mui/icons-material';
 import { defineMessages, useIntl } from 'react-intl';
 import { useAppSelector } from '@/store/hooks';
@@ -57,6 +58,10 @@ const messages = defineMessages({
   period: {
     id: 'editAssignmentDialog.period',
     defaultMessage: 'Period',
+  },
+  periodOptionsUpdatedAnnouncement: {
+    id: 'editAssignmentDialog.periodOptionsUpdatedAnnouncement',
+    defaultMessage: 'Period options updated for {day}.',
   },
   notEnoughPeriods: {
     id: 'editAssignmentDialog.notEnoughPeriods',
@@ -117,6 +122,17 @@ interface EditAssignmentDialogProps {
 const sameSlots = (a: readonly string[], b: readonly string[]): boolean =>
   a.length === b.length && [...a].sort().join(',') === [...b].sort().join(',');
 
+// Draws the eye to the Period field when changing Day silently repopulates
+// its options and value out from under the user (cognitive-walkthrough
+// finding, issue #9). Same idiom as CalendarClassBlock's pulseHint.
+const pulsePeriodHint = keyframes`
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+`;
+
+// How long the flash + its aria-live announcement stay active.
+const PERIOD_REPOPULATE_HINT_DURATION_MS = 1200;
+
 /**
  * Replaces ManualRescheduleForm ("Or Choose It Yourself") and
  * ChangeRoomDialog (Change Room): a single tool that overlays the room's,
@@ -167,6 +183,19 @@ export default function EditAssignmentDialog({
   };
   useEffect(() => clearCloseTimer, []);
 
+  // Flashes the Period field for PERIOD_REPOPULATE_HINT_DURATION_MS whenever
+  // handleDayChange repopulates its options (see below). Timer-ref pattern
+  // mirrors closeTimerRef above.
+  const [periodHintActive, setPeriodHintActive] = useState(false);
+  const periodHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearPeriodHintTimer = (): void => {
+    if (periodHintTimerRef.current !== null) {
+      clearTimeout(periodHintTimerRef.current);
+      periodHintTimerRef.current = null;
+    }
+  };
+  useEffect(() => clearPeriodHintTimer, []);
+
   // The useState calls above only seed their initial value once, on this
   // component's first-ever mount — but Inspector/ClassDetailSection don't
   // key their children by classId, so the same EditAssignmentDialog
@@ -189,6 +218,8 @@ export default function EditAssignmentDialog({
     setStartSlotId(currentClass.timeSlotIds[0] ?? '');
     setAppliedSummary(null);
     clearCloseTimer();
+    clearPeriodHintTimer();
+    setPeriodHintActive(false);
   }, [open, classId]);
 
   const duration = currentClass.timeSlotIds.length || 1;
@@ -287,6 +318,16 @@ export default function EditAssignmentDialog({
       .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime))[0];
     setStartSlotId(firstOfDay?.id ?? '');
     setAppliedSummary(null);
+
+    // Flash Period so it's obvious its options (and value) just changed —
+    // scoped to the Day dropdown only; a calendar-cell click already gives
+    // its own visual feedback via the clicked cell (handleSlotClick).
+    clearPeriodHintTimer();
+    setPeriodHintActive(true);
+    periodHintTimerRef.current = setTimeout(() => {
+      periodHintTimerRef.current = null;
+      setPeriodHintActive(false);
+    }, PERIOD_REPOPULATE_HINT_DURATION_MS);
   };
 
   const handleSlotClick = (clickedDay: string, slotId: string): void => {
@@ -429,7 +470,18 @@ export default function EditAssignmentDialog({
               </Select>
             </FormControl>
 
-            <FormControl size="small" fullWidth disabled={periodsForDay.length === 0}>
+            <FormControl
+              size="small"
+              fullWidth
+              disabled={periodsForDay.length === 0}
+              sx={{
+                border: periodHintActive ? 2 : 0,
+                borderColor: periodHintActive ? 'info.main' : 'transparent',
+                borderRadius: 1,
+                transition: 'border-color 0.15s',
+                animation: periodHintActive ? `${pulsePeriodHint} 0.5s ease-in-out 2` : undefined,
+              }}
+            >
               <InputLabel id="edit-assignment-period-label">{intl.formatMessage(messages.period)}</InputLabel>
               <Select
                 labelId="edit-assignment-period-label"
@@ -442,6 +494,13 @@ export default function EditAssignmentDialog({
                   <MenuItem key={ts.id} value={ts.id}>{formatTimeSlotFull(ts.id)}</MenuItem>
                 ))}
               </Select>
+              {/* Non-visual equivalent of the flash above, for screen readers. */}
+              <Box
+                aria-live="polite"
+                sx={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}
+              >
+                {periodHintActive ? intl.formatMessage(messages.periodOptionsUpdatedAnnouncement, { day }) : ''}
+              </Box>
             </FormControl>
           </Stack>
 

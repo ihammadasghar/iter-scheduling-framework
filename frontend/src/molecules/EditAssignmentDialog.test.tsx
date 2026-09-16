@@ -159,6 +159,37 @@ describe('EditAssignmentDialog', () => {
     expect(screen.getByRole('button', { name: /apply changes/i })).toBeEnabled();
   });
 
+  it('announces to screen readers that Period options changed after a Day change', async () => {
+    const user = userEvent.setup();
+    renderDialog();
+    await user.click(screen.getByLabelText('Day'));
+    await user.click(await screen.findByRole('option', { name: 'Tuesday' }));
+
+    expect(await screen.findByText(/period options updated for tuesday/i)).toBeInTheDocument();
+  });
+
+  it('clears the Period-repopulated announcement after the hint duration elapses', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderDialog();
+    await user.click(screen.getByLabelText('Day'));
+    await user.click(await screen.findByRole('option', { name: 'Tuesday' }));
+
+    expect(await screen.findByText(/period options updated for tuesday/i)).toBeInTheDocument();
+
+    await vi.advanceTimersByTimeAsync(1200);
+
+    expect(screen.queryByText(/period options updated for tuesday/i)).not.toBeInTheDocument();
+  });
+
+  it('does not fire the Period-repopulated announcement for the calendar click-to-set shortcut', async () => {
+    const user = userEvent.setup();
+    renderDialog();
+    await user.click(screen.getByRole('button', { name: 'Use Monday Period 2' }));
+
+    expect(screen.queryByText(/period options updated for/i)).not.toBeInTheDocument();
+  });
+
   it('warns when the candidate time clashes with the selected room\'s existing booking', async () => {
     const user = userEvent.setup();
     renderDialog();
