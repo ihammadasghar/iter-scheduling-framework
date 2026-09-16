@@ -4,6 +4,7 @@ import {
   Dialog,
   DialogActions,
   DialogContent,
+  DialogContentText,
   DialogTitle,
   LinearProgress,
   TextField,
@@ -20,7 +21,11 @@ const messages = defineMessages({
   },
   title: {
     id: 'createSimulationDialog.title',
-    defaultMessage: 'Request Changes',
+    defaultMessage: 'Simulate a Change',
+  },
+  description: {
+    id: 'createSimulationDialog.description',
+    defaultMessage: "You'll edit the schedule directly — no need to describe changes in words.",
   },
   nameLabel: {
     id: 'createSimulationDialog.nameLabel',
@@ -44,7 +49,7 @@ const messages = defineMessages({
   },
   startRequest: {
     id: 'createSimulationDialog.startRequest',
-    defaultMessage: 'Start Request',
+    defaultMessage: 'Start Simulation',
   },
 });
 
@@ -91,6 +96,7 @@ export default function CreateSimulationDialog({
       {loading && <LinearProgress aria-label={intl.formatMessage(messages.creatingAriaLabel)} />}
       <DialogTitle>{intl.formatMessage(messages.title)}</DialogTitle>
       <DialogContent sx={{ pt: '16px !important', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <DialogContentText>{intl.formatMessage(messages.description)}</DialogContentText>
         <TextField
           label={intl.formatMessage(messages.nameLabel)}
           placeholder={intl.formatMessage(messages.namePlaceholder)}

@@ -23,7 +23,7 @@ const messages = defineMessages({
   },
   requestChanges: {
     id: 'simulationDashboardPage.requestChanges',
-    defaultMessage: 'Request Changes',
+    defaultMessage: 'Simulate a Change',
   },
   yourWeeklySchedule: {
     id: 'simulationDashboardPage.yourWeeklySchedule',

@@ -103,10 +103,10 @@ describe('SimulationDashboardPage', () => {
     expect(screen.getByRole('heading', { name: /dashboard/i })).toBeInTheDocument();
   });
 
-  it('renders "Request Changes" button', () => {
+  it('renders "Simulate a Change" button', () => {
     renderPage();
     expect(
-      screen.getByRole('button', { name: /request changes/i }),
+      screen.getByRole('button', { name: /simulate a change/i }),
     ).toBeInTheDocument();
   });
 
@@ -148,9 +148,9 @@ describe('SimulationDashboardPage', () => {
     expect(screen.getByRole('button', { name: /delete draft/i })).toBeInTheDocument();
   });
 
-  it('opens CreateSimulationDialog when "Request Changes" is clicked', () => {
+  it('opens CreateSimulationDialog when "Simulate a Change" is clicked', () => {
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: /request changes/i }));
+    fireEvent.click(screen.getByRole('button', { name: /simulate a change/i }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByLabelText(/your name/i)).toBeInTheDocument();
   });
