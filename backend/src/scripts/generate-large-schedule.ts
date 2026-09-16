@@ -4,7 +4,6 @@ import { pathToFileURL } from 'url';
 import { stringifyScheduleJson } from '../utils/ScheduleHydrator.js';
 import type {
   ScheduleJson,
-  RawRoom,
   RawProfessor,
   RawStudentGroup,
   RawCourse,
@@ -12,35 +11,18 @@ import type {
   RawClass,
 } from '../types/scheduleJson.js';
 import type { RulesJson } from '../types/rulesJson.js';
-import { FIRST_NAMES, LAST_NAMES, COURSE_TEMPLATES } from './nameCatalog.js';
+import { FIRST_NAMES, LAST_NAMES, ISCTE_PROGRAMS } from './nameCatalog.js';
+import { loadIsteRoomCatalog, padded } from './isteRoomCatalog.js';
+import { deriveCourseCode } from './courseCode.js';
 
 // ── Scale constants ──────────────────────────────────────────────────────────
 // Capacity math: 25 time slots require rooms >= 60 and studentGroups >= 60 to
 // place 1500 classes without a ROOM_DOUBLE_BOOK or GROUP_OVERLAP conflict.
-// 80 of each gives a realistic ~75% target utilization with margin.
-
-const DEPARTMENTS = [
-  { name: 'Biology', code: 'BIO' },
-  { name: 'Chemistry', code: 'CHE' },
-  { name: 'History', code: 'HIS' },
-  { name: 'Mathematics', code: 'MAT' },
-  { name: 'Physics', code: 'PHY' },
-  { name: 'Computer Science', code: 'COM' },
-  { name: 'English', code: 'ENG' },
-  { name: 'Economics', code: 'ECO' },
-  { name: 'Psychology', code: 'PSY' },
-  { name: 'Art', code: 'ART' },
-  { name: 'Sociology', code: 'SOC' },
-  { name: 'Philosophy', code: 'PHI' },
-  { name: 'Geology', code: 'GEO' },
-  { name: 'Statistics', code: 'STA' },
-  { name: 'Political Science', code: 'POL' },
-  { name: 'Music', code: 'MUS' },
-  { name: 'Anthropology', code: 'ANT' },
-  { name: 'Linguistics', code: 'LIN' },
-  { name: 'Environmental Science', code: 'ENV' },
-  { name: 'Astronomy', code: 'AST' },
-] as const;
+// 80 of each gives a realistic ~75% target utilization with margin. Rooms
+// and department/course/group vocabulary are real ISCTE data (see
+// isteRoomCatalog.ts and nameCatalog.ts's ISCTE_PROGRAMS) — only the class
+// scale and placement are synthetic, so this stays a controllable-size
+// dataset instead of the real import's full, uncurated ~5,700-class scale.
 
 const PROFESSORS_PER_DEPT = 4;
 const GROUPS_PER_DEPT = 4;
@@ -48,43 +30,33 @@ const COURSES_PER_DEPT = 8;
 const NUM_ROOMS = 80;
 const TARGET_CLASSES = 1500;
 
-const ROOM_BUILDINGS = ['Science Hall', 'Arts Block', 'Main Hall', 'Engineering Building', 'Library Annex'];
-const ROOM_CAPACITIES = [30, 40, 50, 60, 80, 100];
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 const DAY_CODES: Record<string, string> = {
   Monday: 'MON', Tuesday: 'TUE', Wednesday: 'WED', Thursday: 'THU', Friday: 'FRI',
 };
 const PERIODS = [
-  { name: 'Period 1', startTime: '08:30', endTime: '10:00' },
-  { name: 'Period 2', startTime: '10:15', endTime: '11:45' },
-  { name: 'Period 3', startTime: '12:00', endTime: '13:30' },
-  { name: 'Period 4', startTime: '13:45', endTime: '15:15' },
-  { name: 'Period 5', startTime: '15:30', endTime: '17:00' },
+  { startTime: '08:30', endTime: '10:00' },
+  { startTime: '10:15', endTime: '11:45' },
+  { startTime: '12:00', endTime: '13:30' },
+  { startTime: '13:45', endTime: '15:15' },
+  { startTime: '15:30', endTime: '17:00' },
 ];
 
 // ── Master data generation ───────────────────────────────────────────────────
 
-function buildRooms(): RawRoom[] {
-  return Array.from({ length: NUM_ROOMS }, (_, i) => ({
-    id: `RM_${String(101 + i).padStart(3, '0')}`,
-    name: `Room ${101 + i}`,
-    capacity: ROOM_CAPACITIES[i % ROOM_CAPACITIES.length]!,
-    building: ROOM_BUILDINGS[i % ROOM_BUILDINGS.length]!,
-  }));
-}
-
 function buildTimeSlots(): RawTimeSlot[] {
   const slots: RawTimeSlot[] = [];
   for (const day of DAYS) {
-    PERIODS.forEach((period, i) => {
+    for (const period of PERIODS) {
+      const id = `TS_${DAY_CODES[day]}_${period.startTime.replace(':', '')}_${period.endTime.replace(':', '')}`;
       slots.push({
-        id: `TS_${DAY_CODES[day]}_P${i + 1}`,
+        id,
         day,
-        name: period.name,
+        name: `${period.startTime}–${period.endTime}`,
         startTime: period.startTime,
         endTime: period.endTime,
       });
-    });
+    }
   }
   return slots;
 }
@@ -96,31 +68,39 @@ interface DeptEntities {
 }
 
 function buildDepartmentEntities(): DeptEntities[] {
-  return DEPARTMENTS.map((dept, deptIndex) => {
+  const codeCounts = new Map<string, number>();
+  return ISCTE_PROGRAMS.map((program, deptIndex) => {
     const professors: RawProfessor[] = Array.from({ length: PROFESSORS_PER_DEPT }, (_, i) => {
       const globalIndex = deptIndex * PROFESSORS_PER_DEPT + i;
       const firstName = FIRST_NAMES[globalIndex % FIRST_NAMES.length]!;
       const lastName = LAST_NAMES[globalIndex % LAST_NAMES.length]!;
       const title = i % 2 === 0 ? 'Dr.' : 'Prof.';
       return {
-        id: `PRF_${dept.code}_${i + 1}`,
+        id: padded('PRF_', globalIndex, 5),
         name: `${title} ${firstName} ${lastName}`,
-        department: dept.name,
+        department: program.code,
       };
     });
 
-    const studentGroups: RawStudentGroup[] = Array.from({ length: GROUPS_PER_DEPT }, (_, i) => ({
-      id: `GRP_${dept.code}_Y${i + 1}`,
-      name: `${dept.name} Year ${i + 1}`,
-      size: 20 + (i % 4) * 10,
-    }));
+    const studentGroups: RawStudentGroup[] = Array.from({ length: GROUPS_PER_DEPT }, (_, i) => {
+      const globalIndex = deptIndex * GROUPS_PER_DEPT + i;
+      return {
+        id: padded('GRP_', globalIndex, 5),
+        name: program.turmas[i % program.turmas.length]!,
+        size: 20 + (i % 4) * 10,
+      };
+    });
 
-    const courses: RawCourse[] = Array.from({ length: COURSES_PER_DEPT }, (_, i) => ({
-      id: `CRS_${dept.code}_${101 + i}`,
-      code: `${dept.code}${101 + i}`,
-      name: `${COURSE_TEMPLATES[i % COURSE_TEMPLATES.length]} ${dept.name}`,
-      department: dept.name,
-    }));
+    const courses: RawCourse[] = Array.from({ length: COURSES_PER_DEPT }, (_, i) => {
+      const globalIndex = deptIndex * COURSES_PER_DEPT + i;
+      const name = program.courses[i % program.courses.length]!;
+      return {
+        id: padded('CRS_', globalIndex, 4),
+        code: deriveCourseCode(name, codeCounts),
+        name,
+        department: program.code,
+      };
+    });
 
     return { professors, studentGroups, courses };
   });
@@ -130,7 +110,7 @@ function buildDepartmentEntities(): DeptEntities[] {
 
 function buildClasses(
   deptEntities: readonly DeptEntities[],
-  rooms: readonly RawRoom[],
+  rooms: readonly { id: string }[],
   timeSlots: readonly RawTimeSlot[],
 ): RawClass[] {
   const allCourses = deptEntities.flatMap((d, deptIndex) =>
@@ -190,7 +170,7 @@ function buildClasses(
     }
 
     classes.push({
-      id: `CLS_${String(i + 1).padStart(5, '0')}`,
+      id: padded('CLS_', i, 6),
       courseId: course.id,
       title: `${course.name} - Section ${sectionLetter}`,
       professorId: professor.id,
@@ -229,7 +209,7 @@ function buildRules(): RulesJson {
 // ── Public entry point ───────────────────────────────────────────────────────
 
 export function generateLargeSchedule(): { schedule: ScheduleJson; rules: RulesJson } {
-  const rooms = buildRooms();
+  const rooms = loadIsteRoomCatalog().rooms.slice(0, NUM_ROOMS);
   const timeSlots = buildTimeSlots();
   const deptEntities = buildDepartmentEntities();
   const classes = buildClasses(deptEntities, rooms, timeSlots);

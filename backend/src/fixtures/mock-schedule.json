@@ -17,45 +17,45 @@
     }
   },
   "timeSlots": [
-    { "id": "TS_MON_P1", "day": "Monday", "name": "Period 1", "startTime": "08:30", "endTime": "10:15" },
-    { "id": "TS_MON_P2", "day": "Monday", "name": "Period 2", "startTime": "10:30", "endTime": "12:15" },
-    { "id": "TS_TUE_P1", "day": "Tuesday", "name": "Period 1", "startTime": "09:00", "endTime": "11:30" },
-    { "id": "TS_WED_P1", "day": "Wednesday", "name": "Period 1", "startTime": "08:30", "endTime": "10:15" },
-    { "id": "TS_WED_P2", "day": "Wednesday", "name": "Period 2", "startTime": "10:30", "endTime": "12:15" }
+    { "id": "TS_MON_0830_1015", "day": "Monday", "name": "08:30–10:15", "startTime": "08:30", "endTime": "10:15" },
+    { "id": "TS_MON_1030_1215", "day": "Monday", "name": "10:30–12:15", "startTime": "10:30", "endTime": "12:15" },
+    { "id": "TS_TUE_0900_1130", "day": "Tuesday", "name": "09:00–11:30", "startTime": "09:00", "endTime": "11:30" },
+    { "id": "TS_WED_0830_1015", "day": "Wednesday", "name": "08:30–10:15", "startTime": "08:30", "endTime": "10:15" },
+    { "id": "TS_WED_1030_1215", "day": "Wednesday", "name": "10:30–12:15", "startTime": "10:30", "endTime": "12:15" }
   ],
   "rooms": [
-    { "id": "RM_101", "name": "Room 101", "capacity": 50, "building": "Science Hall" },
-    { "id": "RM_102", "name": "Room 102", "capacity": 30, "building": "Arts Block" },
-    { "id": "RM_103", "name": "Room 103", "capacity": 50, "building": "Science Hall" },
-    { "id": "RM_104", "name": "Room 104", "capacity": 60, "building": "Main Hall" }
+    { "id": "RM_0001", "name": "2E02", "capacity": 50, "building": "Edifício Sedas Nunes (ISCTE-IUL)" },
+    { "id": "RM_0002", "name": "AA2.24", "capacity": 30, "building": "Ala Autónoma (ISCTE-IUL)" },
+    { "id": "RM_0003", "name": "2E03", "capacity": 52, "building": "Edifício Sedas Nunes (ISCTE-IUL)" },
+    { "id": "RM_0004", "name": "Auditório Afonso de Barros", "capacity": 80, "building": "Ala Autónoma (ISCTE-IUL)" }
   ],
   "professors": [
-    { "id": "PRF_SMITH", "name": "Dr. Jane Smith", "department": "Biology" },
-    { "id": "PRF_JONES", "name": "Prof. Alan Jones", "department": "History" },
-    { "id": "PRF_CHEN", "name": "Dr. Bob Chen", "department": "Chemistry" }
+    { "id": "PRF_00001", "name": "Dr. Jane Smith", "department": "LETI" },
+    { "id": "PRF_00002", "name": "Prof. Alan Jones", "department": "LG" },
+    { "id": "PRF_00003", "name": "Dr. Bob Chen", "department": "MG" }
   ],
   "studentGroups": [
-    { "id": "GRP_BIO_Y1", "name": "Biology Year 1", "size": 45 },
-    { "id": "GRP_HIS_Y1", "name": "History Year 1", "size": 25 },
-    { "id": "GRP_CHEM_Y1", "name": "Chemistry Year 1", "size": 30 }
+    { "id": "GRP_00001", "name": "EI-A1", "size": 45 },
+    { "id": "GRP_00002", "name": "GA1", "size": 25 },
+    { "id": "GRP_00003", "name": "MGA1", "size": 30 }
   ],
   "courses": [
-    { "id": "CRS_BIO101", "code": "BIO101", "name": "Intro to Biology", "department": "Biology" },
-    { "id": "CRS_HIS201", "code": "HIS201", "name": "Modern History", "department": "History" },
-    { "id": "CRS_CHEM301", "code": "CHEM301", "name": "Organic Chemistry", "department": "Chemistry" },
-    { "id": "CRS_BIO102", "code": "BIO102", "name": "Cell Biology", "department": "Biology" },
-    { "id": "CRS_HIS202", "code": "HIS202", "name": "World War II", "department": "History" }
+    { "id": "CRS_0001", "code": "AR101", "name": "Arquitetura de Redes", "department": "LETI" },
+    { "id": "CRS_0002", "code": "EMPR101", "name": "Empreendedorismo", "department": "LG" },
+    { "id": "CRS_0003", "code": "CA101", "name": "Contabilidade Avançada", "department": "MG" },
+    { "id": "CRS_0004", "code": "BD101", "name": "Bases de Dados", "department": "LETI" },
+    { "id": "CRS_0005", "code": "FE101", "name": "Finanças de Empresa", "department": "LG" }
   ],
   "classes": [
-    { "id": "CLS_00001", "courseId": "CRS_BIO101", "title": "Intro to Biology Lecture - Section A", "professorId": "PRF_SMITH", "studentGroupId": "GRP_BIO_Y1", "roomId": "RM_101", "timeSlotIds": ["TS_MON_P1"] },
-    { "id": "CLS_00002", "courseId": "CRS_HIS201", "title": "Modern History Lecture - Section A", "professorId": "PRF_JONES", "studentGroupId": "GRP_HIS_Y1", "roomId": "RM_102", "timeSlotIds": ["TS_MON_P2"] },
-    { "id": "CLS_00003", "courseId": "CRS_CHEM301", "title": "Organic Chemistry Lab - Section A", "professorId": "PRF_CHEN", "studentGroupId": "GRP_CHEM_Y1", "roomId": "RM_103", "timeSlotIds": ["TS_TUE_P1"] },
-    { "id": "CLS_00004", "courseId": "CRS_HIS202", "title": "World War II Lecture - Section A", "professorId": "PRF_JONES", "studentGroupId": "GRP_HIS_Y1", "roomId": "RM_101", "timeSlotIds": ["TS_MON_P1"] },
-    { "id": "CLS_00005", "courseId": "CRS_CHEM301", "title": "Organic Chemistry Lecture - Section B", "professorId": "PRF_CHEN", "studentGroupId": "GRP_CHEM_Y1", "roomId": "RM_104", "timeSlotIds": ["TS_WED_P1"] },
-    { "id": "CLS_00006", "courseId": "CRS_BIO101", "title": "Intro to Biology Lab - Section A", "professorId": "PRF_SMITH", "studentGroupId": "GRP_BIO_Y1", "roomId": "RM_103", "timeSlotIds": ["TS_WED_P2"] },
-    { "id": "CLS_00007", "courseId": "CRS_HIS201", "title": "Modern History Seminar - Section A", "professorId": "PRF_JONES", "studentGroupId": "GRP_HIS_Y1", "roomId": "RM_102", "timeSlotIds": ["TS_TUE_P1"] },
-    { "id": "CLS_00008", "courseId": "CRS_BIO102", "title": "Cell Biology Lab - Section A", "professorId": "PRF_SMITH", "studentGroupId": "GRP_BIO_Y1", "roomId": "RM_101", "timeSlotIds": ["TS_WED_P1"] },
-    { "id": "CLS_00009", "courseId": "CRS_CHEM301", "title": "Organic Chemistry Tutorial - Section A", "professorId": "PRF_CHEN", "studentGroupId": "GRP_CHEM_Y1", "roomId": "RM_103", "timeSlotIds": ["TS_MON_P2"] },
-    { "id": "CLS_00010", "courseId": "CRS_CHEM301", "title": "Organic Chemistry Tutorial - Section B", "professorId": "PRF_CHEN", "studentGroupId": "GRP_CHEM_Y1", "roomId": "RM_101", "timeSlotIds": ["TS_WED_P2"] }
+    { "id": "CLS_000001", "courseId": "CRS_0001", "title": "Arquitetura de Redes Lecture - Section A", "professorId": "PRF_00001", "studentGroupId": "GRP_00001", "roomId": "RM_0001", "timeSlotIds": ["TS_MON_0830_1015"] },
+    { "id": "CLS_000002", "courseId": "CRS_0002", "title": "Empreendedorismo Lecture - Section A", "professorId": "PRF_00002", "studentGroupId": "GRP_00002", "roomId": "RM_0002", "timeSlotIds": ["TS_MON_1030_1215"] },
+    { "id": "CLS_000003", "courseId": "CRS_0003", "title": "Contabilidade Avançada Lab - Section A", "professorId": "PRF_00003", "studentGroupId": "GRP_00003", "roomId": "RM_0003", "timeSlotIds": ["TS_TUE_0900_1130"] },
+    { "id": "CLS_000004", "courseId": "CRS_0005", "title": "Finanças de Empresa Lecture - Section A", "professorId": "PRF_00002", "studentGroupId": "GRP_00002", "roomId": "RM_0001", "timeSlotIds": ["TS_MON_0830_1015"] },
+    { "id": "CLS_000005", "courseId": "CRS_0003", "title": "Contabilidade Avançada Lecture - Section B", "professorId": "PRF_00003", "studentGroupId": "GRP_00003", "roomId": "RM_0004", "timeSlotIds": ["TS_WED_0830_1015"] },
+    { "id": "CLS_000006", "courseId": "CRS_0001", "title": "Arquitetura de Redes Lab - Section A", "professorId": "PRF_00001", "studentGroupId": "GRP_00001", "roomId": "RM_0003", "timeSlotIds": ["TS_WED_1030_1215"] },
+    { "id": "CLS_000007", "courseId": "CRS_0002", "title": "Empreendedorismo Seminar - Section A", "professorId": "PRF_00002", "studentGroupId": "GRP_00002", "roomId": "RM_0002", "timeSlotIds": ["TS_TUE_0900_1130"] },
+    { "id": "CLS_000008", "courseId": "CRS_0004", "title": "Bases de Dados Lab - Section A", "professorId": "PRF_00001", "studentGroupId": "GRP_00001", "roomId": "RM_0001", "timeSlotIds": ["TS_WED_0830_1015"] },
+    { "id": "CLS_000009", "courseId": "CRS_0003", "title": "Contabilidade Avançada Tutorial - Section A", "professorId": "PRF_00003", "studentGroupId": "GRP_00003", "roomId": "RM_0003", "timeSlotIds": ["TS_MON_1030_1215"] },
+    { "id": "CLS_000010", "courseId": "CRS_0003", "title": "Contabilidade Avançada Tutorial - Section B", "professorId": "PRF_00003", "studentGroupId": "GRP_00003", "roomId": "RM_0001", "timeSlotIds": ["TS_WED_1030_1215"] }
   ]
 }

@@ -123,7 +123,7 @@ describe('ScheduleHydrator', () => {
     // roster metadata is a separate, already-flagged future task) — hold
     // that fixed so this test isolates the per-record array formatting.
     const output = stringifyScheduleJson({ ...fixtureSchedule, metadata: {} });
-    const classLine = output.split('\n').find((line) => line.includes('CLS_00001'));
+    const classLine = output.split('\n').find((line) => line.includes('CLS_000001'));
 
     expect(classLine).toBeDefined();
     expect(fixtureRaw).toContain(classLine!.trim());

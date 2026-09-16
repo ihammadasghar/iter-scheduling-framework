@@ -98,24 +98,25 @@ describe('scoring + CI-blocked/fixed proposal loop (e2e, mock GitHub + real Memg
     expect(conflictsBeforeRes.body).toHaveLength(1);
     expect(conflictsBeforeRes.body[0]).toMatchObject({
       type: 'ROOM_DOUBLE_BOOK',
-      classIds: ['CLS_00001', 'CLS_00004'],
+      classIds: ['CLS_000001', 'CLS_000004'],
     });
 
     // 3b. Submission is now gated (see ProposalService.assertImprovesOnPublished):
     //     a proposal is only accepted if it reduces conflicts vs. `main`, or
     //     — with conflicts unchanged — moves the weighted metric score. Leaving
     //     the seeded conflict untouched wouldn't satisfy either branch, so
-    //     move CLS_00009 to PRF_SMITH: it doesn't touch CLS_00001/CLS_00004 (the
-    //     conflicting pair stays exactly as-is) or create any new conflict
-    //     (SMITH has no class at MON_P2), but it does change the professor/day
-    //     grouping — CHEN loses their only Monday class, SMITH already teaches
-    //     Monday, so distinct (professor, day) pairs drops from 7 to 6 and the
-    //     "Average Classes per Professor per Day" metric moves from 1.43 to
-    //     1.67 — satisfying the gate's "conflicts unchanged, score changed"
-    //     branch without touching the conflict this step is meant to exercise.
+    //     move CLS_000009 to PRF_00001: it doesn't touch CLS_000001/CLS_000004
+    //     (the conflicting pair stays exactly as-is) or create any new conflict
+    //     (PRF_00001 has no class at MON_1030_1215), but it does change the
+    //     professor/day grouping — PRF_00003 loses their only Monday class,
+    //     PRF_00001 already teaches Monday, so distinct (professor, day) pairs
+    //     drops from 7 to 6 and the "Average Classes per Professor per Day"
+    //     metric moves from 1.43 to 1.67 — satisfying the gate's "conflicts
+    //     unchanged, score changed" branch without touching the conflict this
+    //     step is meant to exercise.
     await request(app)
-      .patch(`/api/v1/simulations/${simulationId}/classes/CLS_00009`)
-      .send({ professorId: 'PRF_SMITH' })
+      .patch(`/api/v1/simulations/${simulationId}/classes/CLS_000009`)
+      .send({ professorId: 'PRF_00001' })
       .expect(200);
 
     const conflictsStillPresentRes = await request(app)
@@ -124,7 +125,7 @@ describe('scoring + CI-blocked/fixed proposal loop (e2e, mock GitHub + real Memg
     expect(conflictsStillPresentRes.body).toHaveLength(1);
     expect(conflictsStillPresentRes.body[0]).toMatchObject({
       type: 'ROOM_DOUBLE_BOOK',
-      classIds: ['CLS_00001', 'CLS_00004'],
+      classIds: ['CLS_000001', 'CLS_000004'],
     });
 
     const scoreAfterReassignRes = await request(app)
@@ -162,7 +163,7 @@ describe('scoring + CI-blocked/fixed proposal loop (e2e, mock GitHub + real Memg
     //    metric score above changed even though conflicts didn't.
     const blockedProposalRes = await request(app)
       .post('/api/v1/proposals')
-      .send({ simulationId, description: 'Still has the Room 101 double-booking', baseScheduleVersion })
+      .send({ simulationId, description: 'Still has the 2E02 double-booking', baseScheduleVersion })
       .expect(201);
     expect(blockedProposalRes.body.status).toBe('BLOCKED');
     const blockedProposalId = blockedProposalRes.body.id as string;
@@ -193,11 +194,11 @@ describe('scoring + CI-blocked/fixed proposal loop (e2e, mock GitHub + real Memg
     //     whitelist already covered, now computed from parsed JSON rather
     //     than git-text diffing.
     const cls9Change = blockedDetailRes.body.comparison.classDiff.changed.find(
-      (c: { classId: string }) => c.classId === 'CLS_00009',
+      (c: { classId: string }) => c.classId === 'CLS_000009',
     );
     expect(cls9Change).toBeDefined();
     expect(cls9Change.fieldChanges).toContainEqual({
-      field: 'professorId', before: 'PRF_CHEN', after: 'PRF_SMITH',
+      field: 'professorId', before: 'PRF_00003', after: 'PRF_00001',
     });
     expect(blockedDetailRes.body.comparison.classDiff.added).toEqual([]);
     expect(blockedDetailRes.body.comparison.classDiff.removed).toEqual([]);
@@ -209,10 +210,10 @@ describe('scoring + CI-blocked/fixed proposal loop (e2e, mock GitHub + real Memg
     expect(rejectedMergeRes.body.error.code).toBe('CONFLICT');
     expect(rejectedMergeRes.body.error.message).toMatch(/not READY to merge/);
 
-    // 8. Fix the conflict — move CLS_00004 to a free room
+    // 8. Fix the conflict — move CLS_000004 to a free room
     await request(app)
-      .patch(`/api/v1/simulations/${simulationId}/classes/CLS_00004`)
-      .send({ roomId: 'RM_104' })
+      .patch(`/api/v1/simulations/${simulationId}/classes/CLS_000004`)
+      .send({ roomId: 'RM_0004' })
       .expect(200);
 
     // 9. Confirm the conflict is gone
@@ -237,7 +238,7 @@ describe('scoring + CI-blocked/fixed proposal loop (e2e, mock GitHub + real Memg
     //     branch (see top-of-file note); this one should be READY
     const readyProposalRes = await request(app)
       .post('/api/v1/proposals')
-      .send({ simulationId, description: 'Resolved the Room 101 double-booking', baseScheduleVersion })
+      .send({ simulationId, description: 'Resolved the 2E02 double-booking', baseScheduleVersion })
       .expect(201);
     expect(readyProposalRes.body.status).toBe('READY');
     const readyProposalId = readyProposalRes.body.id as string;
@@ -261,7 +262,7 @@ describe('scoring + CI-blocked/fixed proposal loop (e2e, mock GitHub + real Memg
     expect(readyDetailRes.body.comparison.conflictDelta.resolved).toHaveLength(1);
     expect(readyDetailRes.body.comparison.conflictDelta.resolved[0]).toMatchObject({
       type: 'ROOM_DOUBLE_BOOK',
-      classIds: ['CLS_00001', 'CLS_00004'],
+      classIds: ['CLS_000001', 'CLS_000004'],
     });
 
     // 14. Merge the ready proposal

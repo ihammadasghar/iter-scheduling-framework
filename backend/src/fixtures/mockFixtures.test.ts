@@ -38,7 +38,7 @@ describe('mock fixtures', () => {
     }
   });
 
-  it('contains exactly one deliberate room-double-booking conflict: CLS_00001 vs CLS_00004 in RM_101', () => {
+  it('contains exactly one deliberate room-double-booking conflict: CLS_000001 vs CLS_000004 in RM_0001', () => {
     const byRoomAndSlot = new Map<string, string[]>();
     for (const cls of schedule.classes) {
       for (const slotId of cls.timeSlotIds) {
@@ -49,7 +49,7 @@ describe('mock fixtures', () => {
       }
     }
     const collisions = [...byRoomAndSlot.entries()].filter(([, ids]) => ids.length > 1);
-    expect(collisions).toEqual([['RM_101::TS_MON_P1', ['CLS_00001', 'CLS_00004']]]);
+    expect(collisions).toEqual([['RM_0001::TS_MON_0830_1015', ['CLS_000001', 'CLS_000004']]]);
   });
 
   it('mock-schedule.json has no accidental professor or student-group double-bookings', () => {

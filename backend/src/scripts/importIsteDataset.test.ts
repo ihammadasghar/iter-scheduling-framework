@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { importIsteDataset } from './importIsteDataset.js';
 
 // Unlike generate-large-schedule.ts, this converts real, messy institution
-// data — it's expected to have gaps (most classes have no assigned room)
-// and even the occasional real-world double-booking. These tests assert
-// structural validity (every foreign key resolves) and the documented
-// data-quality shape, not conflict-free-ness.
+// data — most classes now have a real assigned room, but a residual gap
+// and even the occasional real-world double-booking are expected. These
+// tests assert structural validity (every foreign key resolves) and the
+// documented data-quality shape, not conflict-free-ness.
 describe('importIsteDataset', () => {
   const { schedule, rules } = importIsteDataset();
 
@@ -75,11 +75,11 @@ describe('importIsteDataset', () => {
     expect(Array.isArray(timeline.exclusionDates)).toBe(true);
   });
 
-  it('most classes have no real assigned room — documents the known gap, doesn\'t hide it', () => {
+  it('most classes have a real assigned room, but a residual gap remains — documents the shape, doesn\'t hide it', () => {
     const withRoom = schedule.classes.filter((c) => c.roomId !== '').length;
     const coverage = withRoom / schedule.classes.length;
-    expect(coverage).toBeGreaterThan(0);
-    expect(coverage).toBeLessThan(0.5);
+    expect(coverage).toBeGreaterThan(0.5);
+    expect(coverage).toBeLessThan(1);
   });
 
   it('rules.json metric rules use target/condition combinations supported by MetricRuleTranslator', () => {

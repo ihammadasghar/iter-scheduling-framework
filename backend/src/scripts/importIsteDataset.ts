@@ -1,32 +1,35 @@
-// Converts ISCTE's real 2022/23 2nd-semester export (docs/ISCTE-2nd-Semester-22-23-Schedule.xlsx
-// + docs/ISCTE-Typology-Rooms.xls) into a `ScheduleJson`/`RulesJson` pair —
+// Converts ISCTE's real 2022/23 1st-semester export
+// (docs/ISCTE-1st-Semester-22-23-Schedule-rooms-assigned.csv +
+// docs/ISCTE-Typology-Rooms.xls) into a `ScheduleJson`/`RulesJson` pair —
 // the same shape `generate-large-schedule.ts` produces, so this is a
 // drop-in alternative wherever that CLI contract is used. See
 // docs/iscte-dataset.md for the full column glossary and the data-quality
-// findings (sparse room assignment, no professor field, …) this transform
-// works around.
+// findings this transform works around.
 //
 // Source-data facts driving the choices below (see docs/iscte-dataset.md):
 //  - Each row is a single calendar occurrence, not a weekly template — we
 //    collapse rows into recurring weekly classes by (Turno, day, start, end).
 //  - No professor/instructor column exists anywhere in the export — one
 //    professor is synthesized per shift (Turno), flagged in metadata.
-//  - Only ~18% of shifts ever get a room; the rest keep roomId: "" — this
-//    matches the codebase's existing "no room" convention (see
-//    GraphService's `coalesce(c.roomId, r.id)` / `String(c['roomId'] ?? '')`).
+//  - Most shifts do get a room in this export, but ~21% of the rows that
+//    have *some* value in `Sala da aula` hold corrupted scientific-notation
+//    junk (e.g. "1,00E+02") rather than a real room code — a source-data
+//    artifact, not a parsing bug. `pickModeRoom()` below already only
+//    accepts names present in the room catalog, so these are silently
+//    skipped as candidates; shifts left with no valid room keep roomId: ""
+//    (the codebase's existing "no room" convention — see GraphService's
+//    `coalesce(c.roomId, r.id)` / `String(c['roomId'] ?? '')`).
 //  - A shift shared by several student cohorts (comma-separated `Turma`) is
 //    exploded into one class per cohort, since the schema allows only one
 //    `studentGroupId` per class.
 
-import { writeFileSync, mkdirSync } from 'fs';
+import { writeFileSync, mkdirSync, readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
-import XLSX from 'xlsx';
 import { stringifyScheduleJson } from '../utils/ScheduleHydrator.js';
 import type {
   ScheduleJson,
   RawTimeSlot,
-  RawRoom,
   RawProfessor,
   RawStudentGroup,
   RawCourse,
@@ -34,10 +37,11 @@ import type {
 } from '../types/scheduleJson.js';
 import type { RulesJson } from '../types/rulesJson.js';
 import { FIRST_NAMES, LAST_NAMES } from './nameCatalog.js';
+import { loadIsteRoomCatalog, headerIndex, type Row } from './isteRoomCatalog.js';
+import { deriveCourseCode } from './courseCode.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const SCHEDULE_XLSX = join(__dirname, '../../../docs/ISCTE-2nd-Semester-22-23-Schedule.xlsx');
-const ROOMS_XLS = join(__dirname, '../../../docs/ISCTE-Typology-Rooms.xls');
+const SCHEDULE_SOURCE = join(__dirname, '../../../docs/ISCTE-1st-Semester-22-23-Schedule-rooms-assigned.csv');
 
 const DAY_PT_TO_EN: Record<string, string> = {
   Seg: 'Monday', Ter: 'Tuesday', Qua: 'Wednesday', Qui: 'Thursday', Sex: 'Friday', Sáb: 'Saturday',
@@ -49,63 +53,37 @@ const DAY_CODE: Record<string, string> = {
 const padded = (prefix: string, i: number, width: number): string =>
   `${prefix}${String(i + 1).padStart(width, '0')}`;
 
-// ── Sheet reading helpers ────────────────────────────────────────────────
-
-type Row = readonly string[];
-
-function readSheetRows(path: string, sheetName: string): Row[] {
-  const workbook = XLSX.readFile(path);
-  const sheet = workbook.Sheets[sheetName];
-  if (!sheet) {
-    throw new Error(`Sheet '${sheetName}' not found in ${path} (found: ${workbook.SheetNames.join(', ')})`);
-  }
-  return XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' }) as Row[];
+// The schedule source is a plain semicolon-delimited CSV with a UTF-8 BOM
+// (ISCTE's own export, not run through Excel) — no quoting/escaping to
+// handle, fields never contain a literal ';'.
+function readCsvRows(path: string): Row[] {
+  const text = readFileSync(path, 'utf8').replace(/^﻿/, '');
+  return text
+    .split(/\r?\n/)
+    .filter((line) => line.length > 0)
+    .map((line) => line.split(';'));
 }
 
-// Resolves column indices by header name rather than hardcoded position, so
-// a reordered export doesn't silently scramble the mapping.
-function headerIndex(header: Row, name: string): number {
+// Like headerIndex, but returns undefined instead of throwing when the
+// column is absent — for columns that only some export shapes carry.
+function headerIndexOptional(header: Row, name: string): number | undefined {
   const idx = header.indexOf(name);
-  if (idx === -1) {
-    throw new Error(`Expected column '${name}' not found in schedule export header`);
-  }
-  return idx;
+  return idx === -1 ? undefined : idx;
 }
 
-// ── Rooms (ISCTE-Typology-Rooms.xls, 'Salas' sheet) ─────────────────────
-
-function buildRooms(): { rooms: RawRoom[]; roomIdByName: Map<string, string> } {
-  const rows = readSheetRows(ROOMS_XLS, 'Salas');
-  const header = rows[0]!;
-  const iBuilding = headerIndex(header, 'Edifício');
-  const iName = headerIndex(header, 'Nome sala');
-  const iActive = headerIndex(header, 'Activa');
-  const iCapacity = headerIndex(header, 'Capacidade Normal');
-
-  const rooms: RawRoom[] = [];
-  const roomIdByName = new Map<string, string>();
-
-  for (const row of rows.slice(1)) {
-    const name = row[iName]?.trim();
-    if (!name || row[iActive]?.toLowerCase() !== 'true') continue;
-    const id = padded('RM_', rooms.length, 4);
-    rooms.push({
-      id,
-      name,
-      capacity: Number(row[iCapacity]) || 0,
-      building: row[iBuilding]?.trim() || 'Unknown',
-    });
-    roomIdByName.set(name, id);
-  }
-
-  return { rooms, roomIdByName };
-}
-
-// ── Schedule rows (ISCTE-2nd-Semester-22-23-Schedule.xlsx, 'Turnos' sheet) ─
+// ── Schedule rows (ISCTE-1st-Semester-22-23-Schedule-rooms-assigned.csv) ──
 
 interface ScheduleCols {
   curso: number; unidade: number; turno: number; turma: number;
-  lotacaoTotal: number; inscritos: number; diaSemana: number; inicio: number; fim: number; dia: number; sala: number;
+  // 'Lotação total' (shift capacity) only exists in the older xlsx export —
+  // this CSV instead has a same-named-looking 'Lotação' column that is
+  // actually the *assigned room's* capacity (constant per room, blank
+  // exactly when 'Sala da aula' is blank — verified by inspection), not a
+  // shift capacity. Using it as a lotacaoTotal fallback would silently
+  // corrupt student-group sizing, so it is intentionally NOT aliased here —
+  // group size falls back to 'Inscritos no turno' alone when absent.
+  lotacaoTotal: number | undefined;
+  inscritos: number; diaSemana: number; inicio: number; fim: number; dia: number; sala: number;
 }
 
 function resolveScheduleCols(header: Row): ScheduleCols {
@@ -114,7 +92,7 @@ function resolveScheduleCols(header: Row): ScheduleCols {
     unidade: headerIndex(header, 'Unidade de execução'),
     turno: headerIndex(header, 'Turno'),
     turma: headerIndex(header, 'Turma'),
-    lotacaoTotal: headerIndex(header, 'Lotação total'),
+    lotacaoTotal: headerIndexOptional(header, 'Lotação total'),
     inscritos: headerIndex(header, 'Inscritos no turno'),
     diaSemana: headerIndex(header, 'Dia da Semana'),
     inicio: headerIndex(header, 'Início'),
@@ -124,14 +102,13 @@ function resolveScheduleCols(header: Row): ScheduleCols {
   };
 }
 
-// 'Dia' cells render as locale-formatted "M/D/YY" strings (e.g. "5/25/23")
-// under { raw: false } — parsed by hand into "YYYY-MM-DD" rather than via
-// `new Date(...)`, which would parse in local time and risk an off-by-one
-// day depending on the host timezone.
+// 'Dia' cells are plain "DD/MM/YYYY" text (e.g. "02/12/2022") — parsed by
+// hand into "YYYY-MM-DD" rather than via `new Date(...)`, which would parse
+// in local time and risk an off-by-one day depending on the host timezone.
 function parseIsoDate(cell: string | undefined): string | undefined {
   const parts = cell?.trim().split('/');
   if (!parts || parts.length !== 3) return undefined;
-  const [monthStr, dayStr, yearStr] = parts;
+  const [dayStr, monthStr, yearStr] = parts;
   const month = Number(monthStr);
   const day = Number(dayStr);
   let year = Number(yearStr);
@@ -165,7 +142,7 @@ interface ParsedSchedule {
 }
 
 function parseScheduleRows(): ParsedSchedule {
-  const rows = readSheetRows(SCHEDULE_XLSX, 'Turnos');
+  const rows = readCsvRows(SCHEDULE_SOURCE);
   const cols = resolveScheduleCols(rows[0]!);
 
   const turnoOrder: string[] = [];
@@ -215,7 +192,8 @@ function parseScheduleRows(): ParsedSchedule {
     const room = row[cols.sala]?.trim();
     if (room) pattern.roomCounts.set(room, (pattern.roomCounts.get(room) ?? 0) + 1);
 
-    const size = Math.max(Number(row[cols.lotacaoTotal]) || 0, Number(row[cols.inscritos]) || 0);
+    const lotacaoTotal = cols.lotacaoTotal !== undefined ? Number(row[cols.lotacaoTotal]) || 0 : 0;
+    const size = Math.max(lotacaoTotal, Number(row[cols.inscritos]) || 0);
     for (const token of turma.split(',').map((t) => t.trim()).filter(Boolean)) {
       groupSizeByToken.set(token, Math.max(groupSizeByToken.get(token) ?? 0, size));
     }
@@ -248,39 +226,6 @@ function buildTimeSlots(timeSlotKeys: ReadonlySet<string>): { slots: RawTimeSlot
     return { id, day, name: `${start.slice(0, 5)}–${end.slice(0, 5)}`, startTime: start.slice(0, 5), endTime: end.slice(0, 5) };
   });
   return { slots, idByKey };
-}
-
-const PT_STOPWORDS = new Set([
-  'de', 'da', 'do', 'das', 'dos', 'e', 'a', 'o', 'as', 'os', 'em', 'para',
-  'com', 'no', 'na', 'nos', 'nas', 'um', 'uma', 'ou', 'por', 'ao', 'aos',
-]);
-
-const stripAccents = (s: string): string => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
-// Builds a short, human-scannable course code from the real course name.
-// ISCTE's export has no course-code column at all (see
-// docs/iscte-dataset.md) — without this, the calendar/chip label (which
-// shows `course.code`, not `course.name`; see ClassChip.tsx) would fall
-// back to a meaningless id remnant like "C0001". Acronym from the
-// significant words (Portuguese stopwords dropped) + a sequential number
-// disambiguates collisions deterministically — courses are always
-// processed in the same sorted order, so a given export produces the same
-// codes every time.
-function deriveCourseCode(name: string, codeCounts: Map<string, number>): string {
-  const words = stripAccents(name)
-    .split(/[^A-Za-z]+/)
-    .filter((w) => w.length > 0 && !PT_STOPWORDS.has(w.toLowerCase()));
-
-  let acronym = words.map((w) => w[0]!.toUpperCase()).join('').slice(0, 4);
-  if (acronym.length < 2) {
-    // Degenerate name (all stopwords, or very short) — fall back to the
-    // first letters of the raw name instead of an unrecognizable acronym.
-    acronym = stripAccents(name).replace(/[^A-Za-z]/g, '').slice(0, 4).toUpperCase() || 'CRS';
-  }
-
-  const n = (codeCounts.get(acronym) ?? 0) + 1;
-  codeCounts.set(acronym, n);
-  return `${acronym}${100 + n}`;
 }
 
 function buildCourses(turnoInfo: ReadonlyMap<string, TurnoInfo>): { courses: RawCourse[]; idByUnidade: Map<string, string> } {
@@ -416,7 +361,7 @@ function buildRules(): RulesJson {
 // ── Public entry point ───────────────────────────────────────────────────
 
 export function importIsteDataset(): { schedule: ScheduleJson; rules: RulesJson } {
-  const { rooms, roomIdByName } = buildRooms();
+  const { rooms, roomIdByName } = loadIsteRoomCatalog();
   const parsed = parseScheduleRows();
   const { slots: timeSlots, idByKey: timeSlotIdByKey } = buildTimeSlots(parsed.timeSlotKeys);
   const { courses, idByUnidade } = buildCourses(parsed.turnoInfo);
@@ -429,8 +374,8 @@ export function importIsteDataset(): { schedule: ScheduleJson; rules: RulesJson 
   const schedule: ScheduleJson = {
     metadata: {
       source: 'iscte-2022-23',
-      semesterId: 'ISCTE_2022_2023_S2',
-      semesterName: '2nd Semester 2022/2023',
+      semesterId: 'ISCTE_2022_2023_S1',
+      semesterName: '1st Semester 2022/2023',
       academicYear: '2022/2023',
       professorsAreSynthetic: true,
       roomCoverage: `${classesWithRoom}/${classes.length} classes have a real assigned room`,
@@ -445,7 +390,7 @@ export function importIsteDataset(): { schedule: ScheduleJson; rules: RulesJson 
       },
       versioning: {
         lastModifiedBy: 'importIsteDataset@iter-scheduling.local',
-        // Fixed, not `new Date()` — the source xlsx files are static, so
+        // Fixed, not `new Date()` — the source files are static, so
         // re-running this import must produce byte-identical output (see
         // the determinism test).
         lastModifiedAt: '2023-01-06T00:00:00.000Z',

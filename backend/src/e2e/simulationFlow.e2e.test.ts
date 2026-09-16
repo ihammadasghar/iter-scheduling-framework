@@ -34,20 +34,20 @@ describe('simulation flow (e2e, mock GitHub + real Memgraph)', () => {
       .expect(200);
     expect(classesRes.body.total).toBe(10);
 
-    // 3. Confirm the deliberate seeded conflict (CLS_00001 vs CLS_00004 in RM_101) is detected
+    // 3. Confirm the deliberate seeded conflict (CLS_000001 vs CLS_000004 in RM_0001) is detected
     const conflictsBeforeRes = await request(app)
       .get(`/api/v1/simulations/${simulationId}/conflicts`)
       .expect(200);
     expect(conflictsBeforeRes.body).toHaveLength(1);
     expect(conflictsBeforeRes.body[0]).toMatchObject({
       type: 'ROOM_DOUBLE_BOOK',
-      classIds: ['CLS_00001', 'CLS_00004'],
+      classIds: ['CLS_000001', 'CLS_000004'],
     });
 
-    // 4. Move CLS_00004 to a free room (RM_104 is unused at TS_MON_P1) to resolve the conflict
+    // 4. Move CLS_000004 to a free room (RM_0004 is unused at TS_MON_0830_1015) to resolve the conflict
     await request(app)
-      .patch(`/api/v1/simulations/${simulationId}/classes/CLS_00004`)
-      .send({ roomId: 'RM_104' })
+      .patch(`/api/v1/simulations/${simulationId}/classes/CLS_000004`)
+      .send({ roomId: 'RM_0004' })
       .expect(200);
 
     // 5. Confirm the conflict is gone
@@ -64,13 +64,13 @@ describe('simulation flow (e2e, mock GitHub + real Memgraph)', () => {
     // 7. Submit as a proposal — runs the CI pipeline against the mock GitHub branch
     const proposalRes = await request(app)
       .post('/api/v1/proposals')
-      .send({ simulationId, description: 'Resolved the Room 101 double-booking', baseScheduleVersion })
+      .send({ simulationId, description: 'Resolved the 2E02 double-booking', baseScheduleVersion })
       .expect(201);
     expect(proposalRes.body.status).toBe('READY');
     const proposalId = proposalRes.body.id as string;
 
     // 7b. Regression guard for the "Changes in this Proposal" bug: the diff
-    // must contain the edited class (CLS_00004) as a single, complete JSON
+    // must contain the edited class (CLS_000004) as a single, complete JSON
     // line with its new room — both a `SimulationService.commit()` bug
     // (re-flattening the merged JSON via a plain `JSON.stringify(x, null, 2)`
     // after exportScheduleJson) and a `GraphService.exportScheduleJson` bug
@@ -80,13 +80,13 @@ describe('simulation flow (e2e, mock GitHub + real Memgraph)', () => {
     const detailRes = await request(app).get(`/api/v1/proposals/${proposalId}`).expect(200);
     const addedClassLine = (detailRes.body.diff as string)
       .split('\n')
-      .find((line) => line.startsWith('+') && line.includes('CLS_00004'));
+      .find((line) => line.startsWith('+') && line.includes('CLS_000004'));
     expect(addedClassLine).toBeDefined();
     const parsedClass = JSON.parse(addedClassLine!.replace(/^\+\s*/, '').trim().replace(/,$/, '')) as {
       id: string;
       roomId: string;
     };
-    expect(parsedClass).toMatchObject({ id: 'CLS_00004', roomId: 'RM_104' });
+    expect(parsedClass).toMatchObject({ id: 'CLS_000004', roomId: 'RM_0004' });
 
     // 7c. Regression guard for a third, independent bug in the same area:
     // GraphService.exportScheduleJson cast the driver's raw returned map
@@ -96,10 +96,10 @@ describe('simulation flow (e2e, mock GitHub + real Memgraph)', () => {
     // map literal, so every untouched class/timeSlot/etc. came back with
     // reordered keys and therefore a textually different line from main's,
     // turning every commit's diff into a near-total file rewrite. An
-    // untouched class (CLS_00001, not edited by this test) must appear on
+    // untouched class (CLS_000001, not edited by this test) must appear on
     // neither a `+` nor a `-` line.
     const diffLines = (detailRes.body.diff as string).split('\n');
-    expect(diffLines.some((line) => /^[+-]/.test(line) && line.includes('CLS_00001'))).toBe(false);
+    expect(diffLines.some((line) => /^[+-]/.test(line) && line.includes('CLS_000001'))).toBe(false);
 
     // 8. Merge the ready proposal
     const mergeRes = await request(app)
