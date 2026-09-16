@@ -32,8 +32,6 @@ const renderCard = (overrides: Partial<React.ComponentProps<typeof SuggestionCar
           suggestion={suggestion}
           currentClass={currentClass}
           onApply={vi.fn()}
-          applying={false}
-          loadingDelta={false}
           {...overrides}
         />
       </IntlProvider>
@@ -74,13 +72,6 @@ describe('SuggestionCard', () => {
     renderCard({ onApply });
     fireEvent.click(screen.getByRole('button', { name: /move biology 101 to room 204/i }));
     expect(onApply).toHaveBeenCalledOnce();
-  });
-
-  it('disables the button and shows "Applying…" while applying', () => {
-    renderCard({ applying: true });
-    const button = screen.getByRole('button', { name: /move biology 101 to room 204/i });
-    expect(button).toBeDisabled();
-    expect(screen.getByText('Applying…')).toBeInTheDocument();
   });
 
   it('falls back to "no time set" when the current class has no time slots', () => {

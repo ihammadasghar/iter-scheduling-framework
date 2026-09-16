@@ -1,10 +1,10 @@
-import { Box, Button, Chip, CircularProgress, Stack, Typography } from '@mui/material';
+import { Box, Button, Chip, Stack, Typography } from '@mui/material';
 import { CheckCircle, WarningAmber, ArrowDownward } from '@mui/icons-material';
 import { defineMessages, useIntl } from 'react-intl';
 import { formatTimeSlotFull } from '@/utils/scheduleFormatters';
 import { useScheduleNames } from '@/hooks/useScheduleNames';
 import type { ScoreDelta } from '@/hooks/useApplySuggestion';
-import type { Suggestion, MetricDelta, ScheduleClass } from '@/types';
+import type { MetricDelta, Suggestion, ScheduleClass } from '@/types';
 
 const messages = defineMessages({
   metricChangeAriaLabel: {
@@ -39,17 +39,9 @@ const messages = defineMessages({
     id: 'suggestionCard.mayStillConflict',
     defaultMessage: 'May still conflict',
   },
-  computingImpactAriaLabel: {
-    id: 'suggestionCard.computingImpactAriaLabel',
-    defaultMessage: 'Computing metric impact…',
-  },
   moveButtonAriaLabel: {
     id: 'suggestionCard.moveButtonAriaLabel',
     defaultMessage: 'Move {title} to {room} at {time}',
-  },
-  applying: {
-    id: 'suggestionCard.applying',
-    defaultMessage: 'Applying…',
   },
   moveToButton: {
     id: 'suggestionCard.moveToButton',
@@ -64,10 +56,6 @@ interface SuggestionCardProps {
   // isolation.
   readonly currentClass: ScheduleClass;
   readonly onApply: () => void;
-  readonly applying: boolean;
-  readonly metricDelta?: MetricDelta;
-  readonly scoreDelta?: ScoreDelta;
-  readonly loadingDelta: boolean;
 }
 
 export const DeltaChip = ({ delta }: { delta: MetricDelta }): React.ReactElement => {
@@ -109,10 +97,6 @@ export default function SuggestionCard({
   suggestion,
   currentClass,
   onApply,
-  applying,
-  metricDelta,
-  scoreDelta,
-  loadingDelta,
 }: SuggestionCardProps): React.ReactElement {
   const intl = useIntl();
   const { roomName } = useScheduleNames();
@@ -164,22 +148,16 @@ export default function SuggestionCard({
             variant="outlined"
           />
         )}
-
-        {loadingDelta && <CircularProgress size={16} aria-label={intl.formatMessage(messages.computingImpactAriaLabel)} />}
-        {!loadingDelta && metricDelta !== undefined && <DeltaChip delta={metricDelta} />}
-        {!loadingDelta && scoreDelta !== undefined && <ScoreDeltaChip delta={scoreDelta} />}
       </Box>
 
       <Button
         variant="contained"
         size="small"
         onClick={onApply}
-        disabled={applying}
-        startIcon={applying ? <CircularProgress size={14} color="inherit" /> : undefined}
         aria-label={intl.formatMessage(messages.moveButtonAriaLabel, { title: currentClass.title, room: roomLabel, time: timeLabels })}
         sx={{ alignSelf: 'flex-start', mt: 0.5 }}
       >
-        {applying ? intl.formatMessage(messages.applying) : intl.formatMessage(messages.moveToButton, { room: roomLabel })}
+        {intl.formatMessage(messages.moveToButton, { room: roomLabel })}
       </Button>
     </Box>
   );

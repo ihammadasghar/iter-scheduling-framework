@@ -15,11 +15,6 @@ import type { RawRoom, ScheduleClass, Suggestion } from '@/types';
 
 vi.mock('@/services/simulationService', () => ({
   simulationService: {
-    updateClass: vi.fn(),
-    previewClassUpdate: vi.fn(),
-    getConflicts: vi.fn().mockResolvedValue([]),
-    getMetrics: vi.fn().mockResolvedValue([]),
-    getScore: vi.fn().mockResolvedValue({ score: 0, breakdown: [] }),
     getClassSuggestions: vi.fn(),
   },
 }));
@@ -39,12 +34,10 @@ const currentClass: ScheduleClass = {
 
 const SUGGESTION_A: Suggestion = { roomId: 'RM_204', timeSlotIds: ['TS_TUE_P2'], conflictFree: true };
 const SUGGESTION_B: Suggestion = { roomId: 'RM_305', timeSlotIds: ['TS_WED_P3'], conflictFree: true };
-const SUGGESTION_C: Suggestion = { roomId: 'RM_410', timeSlotIds: ['TS_THU_P4'], conflictFree: true };
 
 const ROOMS: RawRoom[] = [
   { id: 'RM_204', name: 'Room 204', capacity: 30, building: 'Main' },
   { id: 'RM_305', name: 'Room 305', capacity: 30, building: 'Main' },
-  { id: 'RM_410', name: 'Room 410', capacity: 30, building: 'Main' },
 ];
 
 const makeStore = () =>
@@ -61,11 +54,16 @@ const makeStore = () =>
     },
   });
 
-const renderList = (store: ReturnType<typeof makeStore>) =>
+const renderList = (
+  store: ReturnType<typeof makeStore>,
+  onStageSuggestion: (suggestion: Suggestion) => void = vi.fn(),
+  classId: string = CLASS_ID,
+  cls: ScheduleClass = currentClass,
+) =>
   render(
     <Provider store={store}>
       <IntlProvider locale="en" messages={{}}>
-        <SuggestionsList simId={SIM_ID} classId={CLASS_ID} currentClass={currentClass} />
+        <SuggestionsList simId={SIM_ID} classId={classId} currentClass={cls} onStageSuggestion={onStageSuggestion} />
       </IntlProvider>
     </Provider>,
   );
@@ -73,94 +71,51 @@ const renderList = (store: ReturnType<typeof makeStore>) =>
 describe('SuggestionsList', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(simulationService.simulationService.getConflicts).mockResolvedValue([]);
-    vi.mocked(simulationService.simulationService.getMetrics).mockResolvedValue([]);
-    vi.mocked(simulationService.simulationService.getScore).mockResolvedValue({ score: 0, breakdown: [] });
   });
 
-  it('confirms exactly which combination was applied, independent of the other cards still shown', async () => {
+  it('clicking a suggestion card stages it via onStageSuggestion instead of committing', async () => {
     const user = userEvent.setup();
-    vi.mocked(simulationService.simulationService.getClassSuggestions)
-      .mockResolvedValueOnce([SUGGESTION_A, SUGGESTION_B, SUGGESTION_C])
-      // After applying A, the refreshed list no longer offers it.
-      .mockResolvedValueOnce([SUGGESTION_B, SUGGESTION_C]);
-    vi.mocked(simulationService.simulationService.previewClassUpdate).mockResolvedValue({
-      metrics: [], score: { score: 0, breakdown: [] },
-    });
-    vi.mocked(simulationService.simulationService.updateClass).mockResolvedValue({
-      ...currentClass, roomId: SUGGESTION_A.roomId, timeSlotIds: [...SUGGESTION_A.timeSlotIds],
-    });
+    const onStageSuggestion = vi.fn();
+    vi.mocked(simulationService.simulationService.getClassSuggestions).mockResolvedValue([SUGGESTION_A, SUGGESTION_B]);
 
     const store = makeStore();
-    renderList(store);
-
-    await screen.findByRole('button', { name: /move biology 101 to room 204/i });
-
-    await user.click(screen.getByRole('button', { name: /move biology 101 to room 204/i }));
-
-    // Persistent confirmation names Room 204 — the one actually clicked —
-    // not derived from a "Currently" line shared by every card.
-    expect(await screen.findByText(/moved to room 204/i)).toBeInTheDocument();
-
-    // The list was refreshed, not left stale.
-    await waitFor(() => {
-      expect(simulationService.simulationService.getClassSuggestions).toHaveBeenCalledTimes(2);
-    });
-    await waitFor(() => {
-      expect(screen.queryByRole('button', { name: /move biology 101 to room 204/i })).not.toBeInTheDocument();
-    });
-
-    // Confirmation is still there and still names Room 204, even after the
-    // refreshed grid renders different cards (Room 305 / Room 410).
-    expect(screen.getByText(/moved to room 204/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /move biology 101 to room 305/i })).toBeInTheDocument();
-  });
-
-  it('shows no confirmation and keeps the error alert when applying fails', async () => {
-    const user = userEvent.setup();
-    vi.mocked(simulationService.simulationService.getClassSuggestions).mockResolvedValue([SUGGESTION_A]);
-    vi.mocked(simulationService.simulationService.previewClassUpdate).mockRejectedValue(new Error('graph down'));
-
-    const store = makeStore();
-    renderList(store);
+    renderList(store, onStageSuggestion);
 
     await user.click(await screen.findByRole('button', { name: /move biology 101 to room 204/i }));
 
-    expect(await screen.findByText(/failed to apply suggestion/i)).toBeInTheDocument();
-    expect(screen.queryByText(/moved to room 204/i)).not.toBeInTheDocument();
-    // Not refreshed — nothing was actually applied.
+    expect(onStageSuggestion).toHaveBeenCalledTimes(1);
+    expect(onStageSuggestion).toHaveBeenCalledWith(SUGGESTION_A);
+    // Staging never commits or refetches — the list underneath is untouched.
+    expect(screen.getByRole('button', { name: /move biology 101 to room 204/i })).toBeInTheDocument();
     expect(simulationService.simulationService.getClassSuggestions).toHaveBeenCalledTimes(1);
   });
 
-  it('clears the confirmation once a different class is selected', async () => {
-    const user = userEvent.setup();
+  it('reloads suggestions when a different class is selected', async () => {
     vi.mocked(simulationService.simulationService.getClassSuggestions)
       .mockResolvedValueOnce([SUGGESTION_A])
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([SUGGESTION_B]);
-    vi.mocked(simulationService.simulationService.previewClassUpdate).mockResolvedValue({
-      metrics: [], score: { score: 0, breakdown: [] },
-    });
-    vi.mocked(simulationService.simulationService.updateClass).mockResolvedValue({
-      ...currentClass, roomId: SUGGESTION_A.roomId, timeSlotIds: [...SUGGESTION_A.timeSlotIds],
-    });
 
     const store = makeStore();
     const { rerender } = renderList(store);
 
-    await user.click(await screen.findByRole('button', { name: /move biology 101 to room 204/i }));
-    expect(await screen.findByText(/moved to room 204/i)).toBeInTheDocument();
+    await screen.findByRole('button', { name: /move biology 101 to room 204/i });
 
     rerender(
       <Provider store={store}>
         <IntlProvider locale="en" messages={{}}>
-          <SuggestionsList simId={SIM_ID} classId="CLS_002" currentClass={{ ...currentClass, id: 'CLS_002' }} />
+          <SuggestionsList
+            simId={SIM_ID}
+            classId="CLS_002"
+            currentClass={{ ...currentClass, id: 'CLS_002' }}
+            onStageSuggestion={vi.fn()}
+          />
         </IntlProvider>
       </Provider>,
     );
 
     await waitFor(() => {
-      expect(screen.queryByText(/moved to room 204/i)).not.toBeInTheDocument();
+      expect(simulationService.simulationService.getClassSuggestions).toHaveBeenCalledWith(SIM_ID, 'CLS_002');
     });
+    expect(await screen.findByRole('button', { name: /move biology 101 to room 305/i })).toBeInTheDocument();
   });
 });
