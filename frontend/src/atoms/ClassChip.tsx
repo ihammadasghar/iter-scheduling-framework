@@ -49,7 +49,13 @@ export default function ClassChip({
   const dispatch = useAppDispatch();
   const selectedId = useAppSelector((s) => s.ui.selectedClassId);
   const names = useScheduleNames();
-  const resolvedState: ChipVariant = state !== 'default' ? state : selectedId === classItem.id ? 'selected' : 'default';
+  const isSelected = selectedId === classItem.id;
+  const resolvedState: ChipVariant = state !== 'default' ? state : isSelected ? 'selected' : 'default';
+  // Fades every other block once a class is selected, so the Inspector's
+  // header text has one obvious block to tie back to instead of competing
+  // with a full grid of equally-weighted chips (cognitive-walkthrough
+  // finding, issue #7).
+  const dimmed = selectedId !== null && !isSelected;
 
   const buildTooltip = (cls: ScheduleClass, n: ScheduleNames): string =>
     intl.formatMessage(messages.tooltip, {
@@ -99,6 +105,8 @@ export default function ClassChip({
             overflow: 'hidden',
             whiteSpace: 'nowrap',
             textOverflow: 'ellipsis',
+            opacity: dimmed ? 0.4 : 1,
+            transition: 'opacity 0.15s',
           }}
         >
           {label}
@@ -124,7 +132,7 @@ export default function ClassChip({
           icon={<WarningAmber />}
           onClick={handleClick}
           aria-label={conflictAriaLabel}
-          sx={{ maxWidth: 140, minWidth: 44, minHeight: 44, cursor: 'pointer' }}
+          sx={{ maxWidth: 140, minWidth: 44, minHeight: 44, cursor: 'pointer', opacity: dimmed ? 0.4 : 1, transition: 'opacity 0.15s' }}
         />
       </Tooltip>
     );
@@ -137,7 +145,7 @@ export default function ClassChip({
         variant="filled"
         onClick={handleClick}
         aria-label={label}
-        sx={{ maxWidth: 140, minWidth: 44, minHeight: 44, cursor: 'pointer' }}
+        sx={{ maxWidth: 140, minWidth: 44, minHeight: 44, cursor: 'pointer', opacity: dimmed ? 0.4 : 1, transition: 'opacity 0.15s' }}
       />
     </Tooltip>
   );

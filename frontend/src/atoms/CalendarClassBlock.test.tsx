@@ -29,10 +29,17 @@ const makeClassItem = (roomId: string): ScheduleClass => ({
 const renderBlock = (
   props: Partial<React.ComponentProps<typeof CalendarClassBlock>> = {},
   roster: { courses?: RawCourse[]; rooms?: RawRoom[] } = {},
+  selectedClassId: string | null = null,
 ) => {
   const store = configureStore({
     reducer: { ui: uiReducer, schedule: scheduleReducer },
     preloadedState: {
+      ui: {
+        selectedClassId,
+        inspectorOpen: selectedClassId !== null,
+        viewBy: 'room' as const,
+        hasInteractedWithClass: selectedClassId !== null,
+      },
       schedule: {
         rooms: roster.rooms ?? [], studentGroups: [],
         courses: roster.courses ?? [],
@@ -87,5 +94,15 @@ describe('CalendarClassBlock', () => {
     renderBlock({}, { courses: [COURSE], rooms: [ROOM] });
     expect(screen.queryByLabelText('EMA101 — click to see details')).not.toBeInTheDocument();
     expect(screen.getByLabelText('EMA101')).toBeInTheDocument();
+  });
+
+  it('dims the block when a different class is selected, so the selected block stands out', () => {
+    renderBlock({}, { courses: [COURSE], rooms: [ROOM] }, 'CLS_OTHER');
+    expect(screen.getByLabelText('EMA101')).toHaveStyle({ opacity: '0.4' });
+  });
+
+  it('does not dim the block when it is itself the selected class', () => {
+    renderBlock({}, { courses: [COURSE], rooms: [ROOM] }, 'CLS_001');
+    expect(screen.getByLabelText('EMA101 — selected')).toHaveStyle({ opacity: '1' });
   });
 });
