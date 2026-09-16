@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
   Divider, FormControl, IconButton, InputLabel, MenuItem, Select, Stack, Typography,
@@ -15,7 +15,7 @@ import SuggestionsList from '@/organisms/SuggestionsList';
 import { deriveDayOrder, computeContiguousSlotIds, timeToMinutes } from '@/utils/calendarLayout';
 import { buildOverlayBlocks } from '@/utils/overlayLayout';
 import { formatTimeSlotFull } from '@/utils/scheduleFormatters';
-import type { ScheduleClass } from '@/types';
+import type { ScheduleClass, Suggestion } from '@/types';
 
 const messages = defineMessages({
   title: {
@@ -154,6 +154,19 @@ export default function EditAssignmentDialog({
   const [startSlotId, setStartSlotId] = useState(currentClass.timeSlotIds[0] ?? '');
   const [appliedSummary, setAppliedSummary] = useState<{ label: string; timeLabel: string } | null>(null);
 
+  // Holds the pending auto-close timer scheduled after a successful Apply
+  // Changes (see handleApply). Cleared on reopen/manual-close/unmount so a
+  // stale timer from a prior successful apply can never fire a second
+  // onClose() against a since-reused dialog instance.
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearCloseTimer = (): void => {
+    if (closeTimerRef.current !== null) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  };
+  useEffect(() => clearCloseTimer, []);
+
   // The useState calls above only seed their initial value once, on this
   // component's first-ever mount — but Inspector/ClassDetailSection don't
   // key their children by classId, so the same EditAssignmentDialog
@@ -175,6 +188,7 @@ export default function EditAssignmentDialog({
     setDay(firstSlot?.day ?? dayOrder[0] ?? '');
     setStartSlotId(currentClass.timeSlotIds[0] ?? '');
     setAppliedSummary(null);
+    clearCloseTimer();
   }, [open, classId]);
 
   const duration = currentClass.timeSlotIds.length || 1;
@@ -260,6 +274,7 @@ export default function EditAssignmentDialog({
   const canApply = targetSlotIds !== null && !isUnchanged && !loading;
 
   const handleClose = (): void => {
+    clearCloseTimer();
     setAppliedSummary(null);
     onClose();
   };
@@ -280,6 +295,19 @@ export default function EditAssignmentDialog({
     setAppliedSummary(null);
   };
 
+  // Mirrors handleSlotClick: a suggestion only ever stages the form fields
+  // (Suggestion never carries professorId/studentGroupId — see types/domain.ts)
+  // rather than committing anything itself. Apply Changes stays the single
+  // commit point.
+  const handleStageSuggestion = (suggestion: Suggestion): void => {
+    setRoomId(suggestion.roomId);
+    const firstSlot = timeSlotById.get(suggestion.timeSlotIds[0] ?? '');
+    if (firstSlot === undefined) return;
+    setDay(firstSlot.day);
+    setStartSlotId(suggestion.timeSlotIds[0]);
+    setAppliedSummary(null);
+  };
+
   const handleApply = async (): Promise<void> => {
     if (targetSlotIds === null) return;
     setAppliedSummary(null);
@@ -289,6 +317,10 @@ export default function EditAssignmentDialog({
       label: `${roomName(roomId)} · ${professorName(professorId)} · ${groupName(studentGroupId)}`,
       timeLabel: targetSlotIds.map(formatTimeSlotFull).join(', '),
     });
+    closeTimerRef.current = setTimeout(() => {
+      closeTimerRef.current = null;
+      onClose();
+    }, 1200);
   };
 
   return (
@@ -432,7 +464,12 @@ export default function EditAssignmentDialog({
           )}
 
           <Divider />
-          <SuggestionsList simId={simId} classId={classId} currentClass={currentClass} />
+          <SuggestionsList
+            simId={simId}
+            classId={classId}
+            currentClass={currentClass}
+            onStageSuggestion={handleStageSuggestion}
+          />
 
           {appliedSummary && (
             <Alert severity="success">

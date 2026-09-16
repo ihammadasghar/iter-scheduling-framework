@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
@@ -99,6 +99,10 @@ const renderDialog = (
 describe('EditAssignmentDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('defaults every selector to the class\'s current values', () => {
@@ -241,6 +245,9 @@ describe('EditAssignmentDialog', () => {
       );
     });
     expect(await screen.findByText(/moved to room 102 · dr\. jones · chem year 1/i)).toBeInTheDocument();
+    // The dialog stays open to show the confirmation — it doesn't close
+    // instantly, only after the auto-close delay (see the dedicated test).
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('shows an error and does not close when applying fails', async () => {
@@ -254,6 +261,65 @@ describe('EditAssignmentDialog', () => {
 
     expect(await screen.findByText(/failed to apply suggestion/i)).toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
+
+    // A failed apply never schedules an auto-close either.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.advanceTimersByTime(2000);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('auto-closes ~1.2s after a successful apply', async () => {
+    // shouldAdvanceTime keeps fake time ticking with real elapsed time, so
+    // Testing Library's internal waitFor/findBy polling still progresses —
+    // we only need to jump the clock forward for the 1.2s close delay itself.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    vi.mocked(simulationService.simulationService.previewClassUpdate).mockResolvedValue({
+      metrics: [], score: { score: 50, breakdown: [] },
+    });
+    vi.mocked(simulationService.simulationService.updateClass).mockResolvedValue({
+      ...currentClass, roomId: 'RM_102', timeSlotIds: ['TS_MON_P2'],
+    });
+    const onClose = vi.fn();
+    renderDialog(makeStore(), onClose);
+
+    await user.click(screen.getByLabelText('Room'));
+    await user.click(await screen.findByRole('option', { name: /^room 102/i }));
+    await user.click(screen.getByRole('button', { name: 'Use Monday Period 2' }));
+    await user.click(screen.getByRole('button', { name: /apply changes/i }));
+
+    expect(await screen.findByText(/moved to room 102/i)).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(1200);
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('a manual close right after a successful apply does not later double-fire onClose', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    vi.mocked(simulationService.simulationService.previewClassUpdate).mockResolvedValue({
+      metrics: [], score: { score: 50, breakdown: [] },
+    });
+    vi.mocked(simulationService.simulationService.updateClass).mockResolvedValue({
+      ...currentClass, roomId: 'RM_102', timeSlotIds: ['TS_MON_P2'],
+    });
+    const onClose = vi.fn();
+    renderDialog(makeStore(), onClose);
+
+    await user.click(screen.getByLabelText('Room'));
+    await user.click(await screen.findByRole('option', { name: /^room 102/i }));
+    await user.click(screen.getByRole('button', { name: 'Use Monday Period 2' }));
+    await user.click(screen.getByRole('button', { name: /apply changes/i }));
+    expect(await screen.findByText(/moved to room 102/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /close edit assignment dialog/i }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(1200);
+
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   // Regression test: Inspector/ClassDetailSection don't key their children
@@ -326,7 +392,21 @@ describe('EditAssignmentDialog', () => {
       expect(await screen.findByRole('button', { name: /move biology 101 to room 102/i })).toBeInTheDocument();
     });
 
-    it('applying a suggestion card commits it independently of the manual controls', async () => {
+    it('selecting a suggestion stages Room/Day/Period without committing', async () => {
+      vi.mocked(simulationService.simulationService.getClassSuggestions).mockResolvedValue([SUGGESTION]);
+      const user = userEvent.setup();
+      renderDialog();
+
+      await user.click(await screen.findByRole('button', { name: /move biology 101 to room 102/i }));
+
+      expect(screen.getByLabelText('Room')).toHaveTextContent('Room 102');
+      expect(screen.getByLabelText('Day')).toHaveTextContent('Tuesday');
+      expect(screen.getByLabelText('Period')).toHaveTextContent('Tuesday Period 1');
+      expect(simulationService.simulationService.updateClass).not.toHaveBeenCalled();
+      expect(screen.getByRole('button', { name: /apply changes/i })).toBeEnabled();
+    });
+
+    it('Apply Changes commits the staged suggestion, leaving professor/group unchanged', async () => {
       vi.mocked(simulationService.simulationService.getClassSuggestions).mockResolvedValue([SUGGESTION]);
       vi.mocked(simulationService.simulationService.previewClassUpdate).mockResolvedValue({
         metrics: [], score: { score: 0, breakdown: [] },
@@ -338,11 +418,15 @@ describe('EditAssignmentDialog', () => {
       renderDialog();
 
       await user.click(await screen.findByRole('button', { name: /move biology 101 to room 102/i }));
+      await user.click(screen.getByRole('button', { name: /apply changes/i }));
 
       await waitFor(() => {
         expect(simulationService.simulationService.updateClass).toHaveBeenCalledWith(
           SIM_ID, CLASS_ID,
-          { roomId: 'RM_102', timeSlotIds: ['TS_TUE_P1'] },
+          {
+            roomId: 'RM_102', timeSlotIds: ['TS_TUE_P1'],
+            professorId: currentClass.professorId, studentGroupId: currentClass.studentGroupId,
+          },
         );
       });
       expect(await screen.findByText(/moved to room 102/i)).toBeInTheDocument();
