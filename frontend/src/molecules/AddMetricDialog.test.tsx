@@ -150,7 +150,7 @@ describe('AddMetricDialog', () => {
     await waitFor(() => screen.getByRole('option', { name: /average idle gap/i }));
     fireEvent.click(screen.getByRole('option', { name: /average idle gap/i }));
 
-    expect(screen.getByLabelText(/^direction/i)).toHaveTextContent('Lower is better');
+    expect(screen.getByLabelText(/^prefer/i)).toHaveTextContent('Lower is better');
   });
 
   it('lets the user override the pre-filled direction, and submits the override', async () => {
@@ -171,7 +171,7 @@ describe('AddMetricDialog', () => {
     fireEvent.click(screen.getByRole('option', { name: /average idle gap/i }));
 
     // Pre-filled to "Lower is better" — override it to "Higher is better".
-    fireEvent.mouseDown(screen.getByLabelText(/^direction/i));
+    fireEvent.mouseDown(screen.getByLabelText(/^prefer/i));
     await waitFor(() => screen.getByRole('option', { name: /^higher is better/i }));
     fireEvent.click(screen.getByRole('option', { name: /^higher is better/i }));
 
@@ -210,7 +210,7 @@ describe('AddMetricDialog', () => {
       expect(screen.getByLabelText(/^name/i)).toHaveValue('Idle Gap');
       expect(screen.getByLabelText(/^weight/i)).toHaveValue(3);
       expect(screen.getByLabelText(/target value/i)).toHaveValue(2);
-      expect(screen.getByLabelText(/^direction/i)).toHaveTextContent('Lower is better');
+      expect(screen.getByLabelText(/^prefer/i)).toHaveTextContent('Lower is better');
       expect(screen.getByRole('button', { name: /save changes/i })).toBeInTheDocument();
     });
 

@@ -14,7 +14,7 @@
   "addMetricDialog.addThisMetric": "Add This Metric",
   "addMetricDialog.addTitle": "Add Metric Rule",
   "addMetricDialog.cancel": "Cancel",
-  "addMetricDialog.directionLabel": "Direction",
+  "addMetricDialog.directionLabel": "Prefer",
   "addMetricDialog.directionTooltip": "Whether a higher or lower value is preferable — leave as 'No preference' for a value that should stay close to the target",
   "addMetricDialog.editTitle": "Edit Metric Rule",
   "addMetricDialog.howToMeasureLabel": "How to measure it",

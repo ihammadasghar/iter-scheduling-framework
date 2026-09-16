@@ -65,7 +65,7 @@ const messages = defineMessages({
   },
   directionLabel: {
     id: 'addMetricDialog.directionLabel',
-    defaultMessage: 'Direction',
+    defaultMessage: 'Prefer',
   },
   noPreference: {
     id: 'addMetricDialog.noPreference',
