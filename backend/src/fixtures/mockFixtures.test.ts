@@ -52,19 +52,29 @@ describe('mock fixtures', () => {
     expect(collisions).toEqual([['RM_0001::TS_MON_0830_1015', ['CLS_000001', 'CLS_000004']]]);
   });
 
-  it('mock-schedule.json has no accidental professor or student-group double-bookings', () => {
+  it('mock-schedule.json has no accidental professor double-bookings', () => {
     const byProfAndSlot = new Map<string, string[]>();
-    const byGroupAndSlot = new Map<string, string[]>();
     for (const cls of schedule.classes) {
       for (const slotId of cls.timeSlotIds) {
         const profKey = `${cls.professorId}::${slotId}`;
-        const groupKey = `${cls.studentGroupId}::${slotId}`;
         byProfAndSlot.set(profKey, [...(byProfAndSlot.get(profKey) ?? []), cls.id]);
-        byGroupAndSlot.set(groupKey, [...(byGroupAndSlot.get(groupKey) ?? []), cls.id]);
       }
     }
     expect([...byProfAndSlot.values()].every((ids) => ids.length === 1)).toBe(true);
-    expect([...byGroupAndSlot.values()].every((ids) => ids.length === 1)).toBe(true);
+  });
+
+  it('contains exactly one deliberate student-group overlap conflict: CLS_000007 vs CLS_000011 in GRP_00002', () => {
+    const byGroupAndSlot = new Map<string, string[]>();
+    for (const cls of schedule.classes) {
+      for (const slotId of cls.timeSlotIds) {
+        const key = `${cls.studentGroupId}::${slotId}`;
+        const existing = byGroupAndSlot.get(key) ?? [];
+        existing.push(cls.id);
+        byGroupAndSlot.set(key, existing);
+      }
+    }
+    const collisions = [...byGroupAndSlot.entries()].filter(([, ids]) => ids.length > 1);
+    expect(collisions).toEqual([['GRP_00002::TS_TUE_0900_1130', ['CLS_000007', 'CLS_000011']]]);
   });
 
   it('mock-schedule.json has no accidental room-capacity conflicts (every class fits in its assigned room)', () => {

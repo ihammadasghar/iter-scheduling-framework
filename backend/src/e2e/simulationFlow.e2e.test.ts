@@ -32,16 +32,23 @@ describe('simulation flow (e2e, mock GitHub + real Memgraph)', () => {
     const classesRes = await request(app)
       .get(`/api/v1/simulations/${simulationId}/classes`)
       .expect(200);
-    expect(classesRes.body.total).toBe(10);
+    expect(classesRes.body.total).toBe(11);
 
-    // 3. Confirm the deliberate seeded conflict (CLS_000001 vs CLS_000004 in RM_0001) is detected
+    // 3. Confirm the deliberate seeded conflicts are detected: the room
+    //    double-booking this test resolves (CLS_000001 vs CLS_000004 in
+    //    RM_0001), plus a second, unrelated, permanent GROUP_OVERLAP
+    //    (CLS_000007/CLS_000011, group GA1) that this test never touches.
     const conflictsBeforeRes = await request(app)
       .get(`/api/v1/simulations/${simulationId}/conflicts`)
       .expect(200);
-    expect(conflictsBeforeRes.body).toHaveLength(1);
+    expect(conflictsBeforeRes.body).toHaveLength(2);
     expect(conflictsBeforeRes.body[0]).toMatchObject({
       type: 'ROOM_DOUBLE_BOOK',
       classIds: ['CLS_000001', 'CLS_000004'],
+    });
+    expect(conflictsBeforeRes.body[1]).toMatchObject({
+      type: 'GROUP_OVERLAP',
+      classIds: ['CLS_000007', 'CLS_000011'],
     });
 
     // 4. Move CLS_000004 to a free room (RM_0004 is unused at TS_MON_0830_1015) to resolve the conflict
@@ -50,11 +57,15 @@ describe('simulation flow (e2e, mock GitHub + real Memgraph)', () => {
       .send({ roomId: 'RM_0004' })
       .expect(200);
 
-    // 5. Confirm the conflict is gone
+    // 5. Confirm the room conflict is gone — the unrelated GROUP_OVERLAP remains.
     const conflictsAfterRes = await request(app)
       .get(`/api/v1/simulations/${simulationId}/conflicts`)
       .expect(200);
-    expect(conflictsAfterRes.body).toHaveLength(0);
+    expect(conflictsAfterRes.body).toHaveLength(1);
+    expect(conflictsAfterRes.body[0]).toMatchObject({
+      type: 'GROUP_OVERLAP',
+      classIds: ['CLS_000007', 'CLS_000011'],
+    });
 
     // 6. Commit the change back to the simulation's mock branch
     await request(app)

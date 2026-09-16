@@ -56,6 +56,7 @@
     { "id": "CLS_000007", "courseId": "CRS_0002", "title": "Empreendedorismo Seminar - Section A", "professorId": "PRF_00002", "studentGroupId": "GRP_00002", "roomId": "RM_0002", "timeSlotIds": ["TS_TUE_0900_1130"] },
     { "id": "CLS_000008", "courseId": "CRS_0004", "title": "Bases de Dados Lab - Section A", "professorId": "PRF_00001", "studentGroupId": "GRP_00001", "roomId": "RM_0001", "timeSlotIds": ["TS_WED_0830_1015"] },
     { "id": "CLS_000009", "courseId": "CRS_0003", "title": "Contabilidade Avançada Tutorial - Section A", "professorId": "PRF_00003", "studentGroupId": "GRP_00003", "roomId": "RM_0003", "timeSlotIds": ["TS_MON_1030_1215"] },
-    { "id": "CLS_000010", "courseId": "CRS_0003", "title": "Contabilidade Avançada Tutorial - Section B", "professorId": "PRF_00003", "studentGroupId": "GRP_00003", "roomId": "RM_0001", "timeSlotIds": ["TS_WED_1030_1215"] }
+    { "id": "CLS_000010", "courseId": "CRS_0003", "title": "Contabilidade Avançada Tutorial - Section B", "professorId": "PRF_00003", "studentGroupId": "GRP_00003", "roomId": "RM_0001", "timeSlotIds": ["TS_WED_1030_1215"] },
+    { "id": "CLS_000011", "courseId": "CRS_0004", "title": "Bases de Dados Seminar - Section A", "professorId": "PRF_00001", "studentGroupId": "GRP_00002", "roomId": "RM_0004", "timeSlotIds": ["TS_TUE_0900_1130"] }
   ]
 }
