@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Box, Chip, Stack, Typography } from '@mui/material';
+import { TouchApp } from '@mui/icons-material';
 import { defineMessages, useIntl } from 'react-intl';
 import OverlayClassBlock from '@/atoms/OverlayClassBlock';
 import { useScheduleNames } from '@/hooks/useScheduleNames';
@@ -31,6 +32,10 @@ const messages = defineMessages({
   blockTooltip: {
     id: 'assignmentOverlayCalendar.blockTooltip',
     defaultMessage: '{label}: {title}',
+  },
+  slotClickHint: {
+    id: 'assignmentOverlayCalendar.slotClickHint',
+    defaultMessage: 'Click an empty slot to set day & period.',
   },
   am: { id: 'assignmentOverlayCalendar.am', defaultMessage: 'AM' },
   pm: { id: 'assignmentOverlayCalendar.pm', defaultMessage: 'PM' },
@@ -126,6 +131,15 @@ export default function AssignmentOverlayCalendar({
           />
         ))}
       </Stack>
+
+      {onSlotClick !== undefined && (
+        <Stack direction="row" spacing={0.5} sx={{ mb: 1, alignItems: 'center' }}>
+          <TouchApp fontSize="small" color="action" />
+          <Typography variant="caption" color="text.secondary">
+            {intl.formatMessage(messages.slotClickHint)}
+          </Typography>
+        </Stack>
+      )}
 
       <Box
         aria-label={intl.formatMessage(messages.overlayAriaLabel)}
@@ -244,6 +258,7 @@ export default function AssignmentOverlayCalendar({
                       pixelsPerMinute={PIXELS_PER_MINUTE}
                       bgcolor={palette.bgcolor}
                       color={palette.color}
+                      animateMove={block.source === 'editing'}
                     />
                   );
                 })}

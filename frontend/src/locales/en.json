@@ -43,6 +43,7 @@
   "assignmentOverlayCalendar.pm": "PM",
   "assignmentOverlayCalendar.professor": "Professor",
   "assignmentOverlayCalendar.room": "Room",
+  "assignmentOverlayCalendar.slotClickHint": "Click an empty slot to set day & period.",
   "assignmentOverlayCalendar.useSlotAriaLabel": "Use {day} {slotName}",
   "backButton.backToProposals": "Back to Proposals",
   "browseSchedulePanel.emptyMessage": "No classes are scheduled for {resource} this week.",
