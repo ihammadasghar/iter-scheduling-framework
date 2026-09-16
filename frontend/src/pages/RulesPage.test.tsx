@@ -96,6 +96,11 @@ describe('RulesPage', () => {
     expect(screen.getByText(/blocks the proposal outright/i)).toBeInTheDocument();
   });
 
+  it('explains how metric weights compose into the overall score', () => {
+    renderPage();
+    expect(screen.getByText(/score = weighted average/i)).toBeInTheDocument();
+  });
+
   it('shows unavailable alert when service returns 501', () => {
     renderPage({ unavailable: true });
     expect(screen.getByText(/not available yet/i)).toBeInTheDocument();

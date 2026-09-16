@@ -46,6 +46,10 @@ const messages = defineMessages({
     id: 'rulesPage.metricRulesSubtitle',
     defaultMessage: "Influence the score — a proposal can still be submitted if it scores poorly on these.",
   },
+  scoreFormula: {
+    id: 'rulesPage.scoreFormula',
+    defaultMessage: 'Score = weighted average of how close each metric gets to its target (100 = right on target). Weight controls how much a metric counts relative to the others below.',
+  },
   addMetric: {
     id: 'rulesPage.addMetric',
     defaultMessage: '+ Add Metric',
@@ -158,6 +162,19 @@ export default function RulesPage(): React.ReactElement {
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
         {intl.formatMessage(messages.metricRulesSubtitle)}
+      </Typography>
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        sx={{
+          display: 'block',
+          mb: 2,
+          pl: 1.5,
+          borderLeft: '2px solid',
+          borderColor: 'divider',
+        }}
+      >
+        {intl.formatMessage(messages.scoreFormula)}
       </Typography>
       <Button
         variant="outlined"

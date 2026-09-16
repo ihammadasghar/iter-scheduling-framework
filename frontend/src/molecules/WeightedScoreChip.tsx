@@ -15,6 +15,10 @@ const messages = defineMessages({
     id: 'weightedScoreChip.tooltipTitle',
     defaultMessage: 'Institution-defined score',
   },
+  tooltipExplainer: {
+    id: 'weightedScoreChip.tooltipExplainer',
+    defaultMessage: 'A weighted average of how close each metric below is to its target — 100 means every metric is right on target.',
+  },
   breakdownLine: {
     id: 'weightedScoreChip.breakdownLine',
     defaultMessage: '{name}: {value}{unit} (target {threshold}{unit}, weight {weight})',
@@ -48,6 +52,9 @@ export default function WeightedScoreChip({ score }: WeightedScoreChipProps): Re
     <Box>
       <Typography variant="caption" component="div" sx={{ fontWeight: 600, mb: 0.5 }}>
         {intl.formatMessage(messages.tooltipTitle)}
+      </Typography>
+      <Typography variant="caption" component="div" sx={{ mb: 0.5 }}>
+        {intl.formatMessage(messages.tooltipExplainer)}
       </Typography>
       {score.breakdown.map((entry) => (
         <Typography key={entry.name} variant="caption" component="div">
