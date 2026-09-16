@@ -150,6 +150,7 @@
   "editAssignmentDialog.movedTo": "Moved to {label} · {timeLabel}",
   "editAssignmentDialog.notEnoughPeriods": "This day doesn't have enough consecutive periods left for a class this length. Try a different day or starting period.",
   "editAssignmentDialog.period": "Period",
+  "editAssignmentDialog.periodOptionsUpdatedAnnouncement": "Period options updated for {day}.",
   "editAssignmentDialog.professor": "Professor",
   "editAssignmentDialog.professorSubtitle": "{department} · {count, plural, one {# class taught} other {# classes taught}}",
   "editAssignmentDialog.room": "Room",
