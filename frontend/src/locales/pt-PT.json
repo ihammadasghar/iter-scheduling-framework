@@ -78,7 +78,7 @@
   "addMetricDialog.howToMeasureLabel": "Como medir",
   "addMetricDialog.selectConditionError": "Por favor selecione uma condição",
   "addMetricDialog.directionTooltip": "Se um valor mais alto ou mais baixo é preferível — deixe como \"Sem preferência\" para um valor que deve manter-se próximo do alvo",
-  "addMetricDialog.directionLabel": "Direção",
+  "addMetricDialog.directionLabel": "Preferir",
   "addMetricDialog.noPreference": "Sem preferência (simétrico)",
   "addMetricDialog.targetValueWithUnit": "Valor alvo ({unit})",
   "addMetricDialog.targetValue": "Valor alvo",
