@@ -78,6 +78,16 @@ describe('AssignmentOverlayCalendar', () => {
     expect(screen.queryByRole('button', { name: /use monday/i })).not.toBeInTheDocument();
   });
 
+  it('shows a hint that empty slots are clickable when onSlotClick is provided', () => {
+    renderCalendar({ onSlotClick: vi.fn() });
+    expect(screen.getByText('Click an empty slot to set day & period.')).toBeInTheDocument();
+  });
+
+  it('does not show the click-to-set hint when onSlotClick is omitted', () => {
+    renderCalendar();
+    expect(screen.queryByText('Click an empty slot to set day & period.')).not.toBeInTheDocument();
+  });
+
   it('widens day columns to fit multiple overlapping classes without cutting off labels', () => {
     const classA: ScheduleClass = { ...roomClass, id: 'CLS_A' };
     const classB: ScheduleClass = { ...roomClass, id: 'CLS_B' };
@@ -117,5 +127,24 @@ describe('AssignmentOverlayCalendar', () => {
     const block = screen.getByLabelText('This Class: Biology 101');
     expect(block).toBeInTheDocument();
     expect(block).toHaveTextContent('BIO101');
+  });
+
+  it('animates the "editing" block\'s position so it slides rather than pops when the slot changes', () => {
+    const editingClass: ScheduleClass = { ...roomClass, id: 'CLS_EDITING', timeSlotIds: ['TS_MON_P2'] };
+    const blocks = buildOverlayBlocks(
+      [{ source: 'editing', classes: [editingClass] }],
+      timeSlotById,
+    );
+    const classById = new Map([[editingClass.id, editingClass]]);
+    renderCalendar({ blocks, classById });
+
+    const block = screen.getByLabelText('This Class: Biology 101');
+    expect(block).toHaveStyle({ transition: 'top 0.2s ease-out,left 0.2s ease-out' });
+  });
+
+  it('does not animate busy blocks from other sources', () => {
+    renderCalendar();
+    const block = screen.getByLabelText('Room: Biology 101');
+    expect(block.style.transition).toBe('');
   });
 });

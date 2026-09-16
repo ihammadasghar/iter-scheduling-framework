@@ -15,6 +15,11 @@ interface OverlayClassBlockProps {
   readonly pixelsPerMinute: number;
   readonly bgcolor: string;
   readonly color: string;
+  // Set only for the 'editing' source block: animates its position so
+  // clicking a different slot (or changing Day/Period) slides the block
+  // there instead of popping, giving the click-to-set shortcut some of the
+  // direct-manipulation feel a drag would have had (issue #8).
+  readonly animateMove?: boolean;
 }
 
 const MIN_BLOCK_HEIGHT = 32;
@@ -27,6 +32,7 @@ export default function OverlayClassBlock({
   pixelsPerMinute,
   bgcolor,
   color,
+  animateMove = false,
 }: OverlayClassBlockProps): React.ReactElement {
   const top = (block.startMinutes - minMinutes) * pixelsPerMinute;
   const height = Math.max((block.endMinutes - block.startMinutes) * pixelsPerMinute, MIN_BLOCK_HEIGHT);
@@ -48,6 +54,7 @@ export default function OverlayClassBlock({
           pointerEvents: 'none',
           borderRadius: 1,
           boxShadow: 1,
+          transition: animateMove ? 'top 0.2s ease-out, left 0.2s ease-out' : undefined,
           px: 0.75,
           py: 0.25,
           fontSize: '0.7rem',

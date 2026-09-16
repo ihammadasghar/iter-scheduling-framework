@@ -311,6 +311,7 @@
   "assignmentOverlayCalendar.overlayAriaLabel": "Sobreposição do horário de sala, docente e turma",
   "assignmentOverlayCalendar.dayAvailabilityAriaLabel": "Disponibilidade de {day}",
   "assignmentOverlayCalendar.useSlotAriaLabel": "Usar {day} {slotName}",
+  "assignmentOverlayCalendar.slotClickHint": "Clique numa vaga vazia para definir o dia e o período.",
   "assignmentOverlayCalendar.blockTooltip": "{label}: {title}",
   "assignmentOverlayCalendar.am": "AM",
   "assignmentOverlayCalendar.pm": "PM",
