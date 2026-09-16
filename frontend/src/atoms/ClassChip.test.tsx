@@ -25,10 +25,17 @@ const PROFESSOR: RawProfessor = { id: 'PRF_00001', name: 'Dr. Jane Smith', depar
 const renderChip = (
   props: Partial<React.ComponentProps<typeof ClassChip>> = {},
   roster: { courses?: RawCourse[]; professors?: RawProfessor[] } = {},
+  selectedClassId: string | null = null,
 ) => {
   const store = configureStore({
     reducer: { ui: uiReducer, schedule: scheduleReducer },
     preloadedState: {
+      ui: {
+        selectedClassId,
+        inspectorOpen: selectedClassId !== null,
+        viewBy: 'room' as const,
+        hasInteractedWithClass: selectedClassId !== null,
+      },
       schedule: {
         rooms: [], studentGroups: [],
         courses: roster.courses ?? [],
@@ -94,5 +101,15 @@ describe('ClassChip', () => {
   it('renders the selected variant without crashing when a roster is loaded', () => {
     renderChip({ state: 'selected' }, { courses: [COURSE] });
     expect(screen.getByText('BIO101')).toBeInTheDocument();
+  });
+
+  it('dims a chip when a different class is selected, so the selected block stands out', () => {
+    renderChip({}, { courses: [COURSE] }, 'CLS_OTHER');
+    expect(screen.getByLabelText('BIO101')).toHaveStyle({ opacity: '0.4' });
+  });
+
+  it('does not dim the selected class itself', () => {
+    renderChip({}, { courses: [COURSE] }, classItem.id);
+    expect(screen.getByLabelText('BIO101 — selected')).toHaveStyle({ opacity: '1' });
   });
 });

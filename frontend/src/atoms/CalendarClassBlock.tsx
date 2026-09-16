@@ -89,6 +89,11 @@ export default function CalendarClassBlock({
   const selectedId = useAppSelector((s) => s.ui.selectedClassId);
   const names = useScheduleNames();
   const selected = selectedId === classItem.id;
+  // Fades every other block once a class is selected, so the Inspector's
+  // header text has one obvious block to tie back to instead of competing
+  // with a full calendar of equally-weighted blocks (cognitive-walkthrough
+  // finding, issue #7).
+  const dimmed = selectedId !== null && !selected;
 
   // Whether this block instance ever owns the hint, locked in at mount —
   // MUI's Tooltip must stay either controlled or uncontrolled for its whole
@@ -183,7 +188,8 @@ export default function CalendarClassBlock({
           border: selected ? 2 : isConflicted ? 1 : hintActive ? 2 : 0,
           borderColor: selected ? 'primary.main' : isConflicted ? 'warning.main' : hintActive ? 'info.main' : 'transparent',
           boxShadow: selected ? 4 : 1,
-          transition: 'box-shadow 0.15s, transform 0.15s',
+          opacity: dimmed ? 0.4 : 1,
+          transition: 'box-shadow 0.15s, transform 0.15s, opacity 0.15s',
           animation: hintActive ? `${pulseHint} 1.4s ease-in-out infinite` : undefined,
           '&:hover': { boxShadow: selected ? 6 : 3, transform: 'translateY(-1px)' },
           bgcolor: isConflicted ? 'transparent' : selected ? 'primary.light' : 'primary.main',
