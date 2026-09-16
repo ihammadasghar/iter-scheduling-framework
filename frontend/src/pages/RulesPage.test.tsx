@@ -90,6 +90,12 @@ describe('RulesPage', () => {
     expect(screen.getByRole('heading', { name: /rules.*constraints/i })).toBeInTheDocument();
   });
 
+  it('explains the difference between metric rules and hard constraints', () => {
+    renderPage();
+    expect(screen.getByText(/influence the score/i)).toBeInTheDocument();
+    expect(screen.getByText(/blocks the proposal outright/i)).toBeInTheDocument();
+  });
+
   it('shows unavailable alert when service returns 501', () => {
     renderPage({ unavailable: true });
     expect(screen.getByText(/not available yet/i)).toBeInTheDocument();
