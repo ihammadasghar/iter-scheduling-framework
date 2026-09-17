@@ -324,4 +324,44 @@ describe('ProposalReviewPage', () => {
     expect(screen.getByText('Old History Seminar')).toBeInTheDocument();
     expect(screen.getByText('Biology Lecture')).toBeInTheDocument();
   });
+
+  it('renders four tabs: Overview, Metrics, Conflicts, Changes', async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getAllByRole('tab')).toHaveLength(4));
+    expect(screen.getByRole('tab', { name: /overview/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /metrics/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /conflicts/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /changes/i })).toBeInTheDocument();
+  });
+
+  it('selects the Overview tab by default', async () => {
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: /overview/i })).toHaveAttribute('aria-selected', 'true'),
+    );
+    expect(screen.getByRole('tab', { name: /metrics/i })).toHaveAttribute('aria-selected', 'false');
+  });
+
+  it('clicking the Metrics tab hides the Overview panel and shows the Metrics panel', async () => {
+    renderPage();
+    await waitFor(() => screen.getByRole('tab', { name: /metrics/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /metrics/i }));
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: /metrics/i })).toHaveAttribute('aria-selected', 'true'),
+    );
+    const overviewContent = screen.getByText(/this proposal can be approved/i);
+    expect(overviewContent.closest('[role="tabpanel"]')).toHaveAttribute('hidden');
+    const metricsContent = screen.getByText(/score: 82\/100/i);
+    expect(metricsContent.closest('[role="tabpanel"]')).not.toHaveAttribute('hidden');
+  });
+
+  it('keeps the Approve and Close buttons visible after switching tabs', async () => {
+    renderPage();
+    await waitFor(() => screen.getByRole('tab', { name: /metrics/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /metrics/i }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /approve.*publish/i })).toBeInTheDocument(),
+    );
+    expect(screen.getByRole('button', { name: /close this proposal/i })).toBeInTheDocument();
+  });
 });

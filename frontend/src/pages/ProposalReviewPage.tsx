@@ -11,18 +11,19 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
-  Divider,
   Snackbar,
   Skeleton,
+  Tab,
+  Tabs,
   Typography,
 } from '@mui/material';
 import { defineMessages, useIntl } from 'react-intl';
 import AppShell from '@/templates/AppShell';
 import BackButton from '@/atoms/BackButton';
-import CIStatusBadge from '@/molecules/CIStatusBadge';
 import ClassDiffPanel from '@/organisms/ClassDiffPanel';
 import MetricsComparisonPanel from '@/organisms/MetricsComparisonPanel';
 import ConflictsComparisonPanel from '@/organisms/ConflictsComparisonPanel';
+import ProposalSummaryStrip from '@/organisms/ProposalSummaryStrip';
 import TechnicalDiffAccordion from '@/organisms/TechnicalDiffAccordion';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchProposalDetailThunk, mergeProposalThunk, rejectProposalThunk } from '@/store/reducers/proposalSlice';
@@ -69,9 +70,25 @@ const messages = defineMessages({
     id: 'proposalReviewPage.descriptionSuffix',
     defaultMessage: ' — "{description}"',
   },
-  automatedCheck: {
-    id: 'proposalReviewPage.automatedCheck',
-    defaultMessage: 'Automated Check',
+  tabsAriaLabel: {
+    id: 'proposalReviewPage.tabsAriaLabel',
+    defaultMessage: 'Proposal review sections',
+  },
+  tabOverview: {
+    id: 'proposalReviewPage.tabOverview',
+    defaultMessage: 'Overview',
+  },
+  tabMetrics: {
+    id: 'proposalReviewPage.tabMetrics',
+    defaultMessage: 'Metrics',
+  },
+  tabConflicts: {
+    id: 'proposalReviewPage.tabConflicts',
+    defaultMessage: 'Conflicts',
+  },
+  tabChanges: {
+    id: 'proposalReviewPage.tabChanges',
+    defaultMessage: 'Changes',
   },
   gateAcceptableReduced: {
     id: 'proposalReviewPage.gateAcceptableReduced',
@@ -136,9 +153,28 @@ const messages = defineMessages({
 });
 
 type ConfirmDialog = 'approve' | 'close' | null;
+type ReviewTab = 'overview' | 'metrics' | 'conflicts' | 'changes';
 
 const isCiStatus = (s: ProposalStatus): s is 'READY' | 'BLOCKED' | 'PENDING' =>
   s === 'READY' || s === 'BLOCKED' || s === 'PENDING';
+
+interface TabPanelProps {
+  readonly value: ReviewTab;
+  readonly active: ReviewTab;
+  readonly children: React.ReactNode;
+}
+
+// Always mounted, just hidden — keeps panel content queryable regardless of
+// which tab a reviewer currently has selected, so switching tabs never
+// refetches or re-renders panel-local state.
+function TabPanel({ value, active, children }: TabPanelProps): React.ReactElement {
+  const hidden = value !== active;
+  return (
+    <Box role="tabpanel" hidden={hidden} sx={{ display: hidden ? 'none' : 'block' }}>
+      {children}
+    </Box>
+  );
+}
 
 export default function ProposalReviewPage(): React.ReactElement {
   const intl = useIntl();
@@ -156,10 +192,12 @@ export default function ProposalReviewPage(): React.ReactElement {
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'info' }>({
     open: false, message: '', severity: 'success',
   });
+  const [tab, setTab] = useState<ReviewTab>('overview');
 
   useEffect(() => {
     if (id) dispatch(fetchProposalDetailThunk(id));
     dispatch(fetchPublishedScheduleThunk());
+    setTab('overview');
   }, [dispatch, id]);
 
   const names = buildScheduleNames(rooms, professors, courses, studentGroups);
@@ -222,78 +260,85 @@ export default function ProposalReviewPage(): React.ReactElement {
 
         {proposal && (
           <>
-            <Typography variant="h3" component="h1" sx={{ mt: 2, mb: 0.5 }}>
+            <Typography variant="h3" component="h1" sx={{ mt: 2, mb: 2 }}>
               {intl.formatMessage(messages.title)}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              {intl.formatMessage(messages.submitted, { date: format(new Date(proposal.createdAt), 'PP', { locale: dateFnsLocale }) })}
-              {proposal.description && intl.formatMessage(messages.descriptionSuffix, { description: proposal.description })}
-            </Typography>
 
-            {/* CI Status */}
-            {isCiStatus(proposal.status) && (
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="overline" color="text.secondary">
-                  {intl.formatMessage(messages.automatedCheck)}
-                </Typography>
-                <Box sx={{ mt: 0.5 }}>
-                  <CIStatusBadge status={proposal.status} />
-                </Box>
-              </Box>
-            )}
+            <ProposalSummaryStrip
+              ciStatus={isCiStatus(proposal.status) ? proposal.status : null}
+              baselineScore={proposal.comparison.baselineScore}
+              candidateScore={proposal.comparison.candidateScore}
+              baselineConflictCount={gate?.baselineConflictCount ?? 0}
+              candidateConflictCount={gate?.candidateConflictCount ?? 0}
+            />
 
-            <Divider sx={{ mb: 3 }} />
+            <Tabs
+              value={tab}
+              onChange={(_e, newValue: ReviewTab) => setTab(newValue)}
+              aria-label={intl.formatMessage(messages.tabsAriaLabel)}
+              sx={{ mb: 3 }}
+            >
+              <Tab value="overview" label={intl.formatMessage(messages.tabOverview)} />
+              <Tab value="metrics" label={intl.formatMessage(messages.tabMetrics)} />
+              <Tab value="conflicts" label={intl.formatMessage(messages.tabConflicts)} />
+              <Tab value="changes" label={intl.formatMessage(messages.tabChanges)} />
+            </Tabs>
 
-            {/* Metrics comparison */}
-            <Typography variant="h6" gutterBottom>
-              {intl.formatMessage(messages.metricsHeading)}
-            </Typography>
-            <Box sx={{ mb: 4 }}>
+            <TabPanel value="overview" active={tab}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                {intl.formatMessage(messages.submitted, { date: format(new Date(proposal.createdAt), 'PP', { locale: dateFnsLocale }) })}
+                {proposal.description && intl.formatMessage(messages.descriptionSuffix, { description: proposal.description })}
+              </Typography>
+
+              {/* Explicit gate-rule explanation, computed from the same live
+                  comparison data rendered in the Metrics/Conflicts tabs —
+                  surfaced up front so the real accept/reject rule doesn't
+                  only show up as a 409 after the user clicks Approve. */}
+              {gate && (
+                <Alert severity={gate.acceptable ? 'success' : 'warning'}>
+                  {gate.acceptable
+                    ? intl.formatMessage(
+                        gate.conflictsReduced ? messages.gateAcceptableReduced : messages.gateAcceptableScoreChanged,
+                        { candidate: gate.candidateConflictCount, baseline: gate.baselineConflictCount, count: gate.candidateConflictCount },
+                      )
+                    : intl.formatMessage(messages.gateBlocked, {
+                        candidate: gate.candidateConflictCount,
+                        baseline: gate.baselineConflictCount,
+                      })}
+                </Alert>
+              )}
+            </TabPanel>
+
+            <TabPanel value="metrics" active={tab}>
+              <Typography variant="h6" gutterBottom>
+                {intl.formatMessage(messages.metricsHeading)}
+              </Typography>
               <MetricsComparisonPanel
                 baselineScore={proposal.comparison.baselineScore}
                 candidateScore={proposal.comparison.candidateScore}
               />
-            </Box>
+            </TabPanel>
 
-            {/* Conflicts comparison */}
-            <Typography variant="h6" gutterBottom>
-              {intl.formatMessage(messages.conflictsHeading)}
-            </Typography>
-            <Box sx={{ mb: 4 }}>
+            <TabPanel value="conflicts" active={tab}>
+              <Typography variant="h6" gutterBottom>
+                {intl.formatMessage(messages.conflictsHeading)}
+              </Typography>
               <ConflictsComparisonPanel
                 baselineConflicts={proposal.comparison.baselineConflicts}
                 candidateConflicts={proposal.comparison.candidateConflicts}
                 conflictDelta={proposal.comparison.conflictDelta}
               />
-            </Box>
+            </TabPanel>
 
-            {/* Changes */}
-            <Typography variant="h6" gutterBottom>
-              {intl.formatMessage(messages.changesHeading)}
-            </Typography>
-            <Box sx={{ mb: 3 }}>
-              <ClassDiffPanel classDiff={proposal.comparison.classDiff} names={names} />
-            </Box>
-
-            <TechnicalDiffAccordion rawDiff={proposal.diff} />
-
-            {/* Explicit gate-rule explanation, computed from the same live
-                comparison data rendered above — surfaced up front so the
-                real accept/reject rule doesn't only show up as a 409 after
-                the user clicks Approve. */}
-            {gate && (
-              <Alert severity={gate.acceptable ? 'success' : 'warning'} sx={{ mt: 3 }}>
-                {gate.acceptable
-                  ? intl.formatMessage(
-                      gate.conflictsReduced ? messages.gateAcceptableReduced : messages.gateAcceptableScoreChanged,
-                      { candidate: gate.candidateConflictCount, baseline: gate.baselineConflictCount, count: gate.candidateConflictCount },
-                    )
-                  : intl.formatMessage(messages.gateBlocked, {
-                      candidate: gate.candidateConflictCount,
-                      baseline: gate.baselineConflictCount,
-                    })}
-              </Alert>
-            )}
+            <TabPanel value="changes" active={tab}>
+              <Typography variant="h6" gutterBottom>
+                {intl.formatMessage(messages.changesHeading)}
+              </Typography>
+              <Box sx={{ mb: 3 }}>
+                <ClassDiffPanel classDiff={proposal.comparison.classDiff} names={names} />
+              </Box>
+              <TechnicalDiffAccordion rawDiff={proposal.diff} />
+            </TabPanel>
 
             {/* Inline error */}
             {inlineError && (
@@ -302,8 +347,23 @@ export default function ProposalReviewPage(): React.ReactElement {
               </Alert>
             )}
 
-            {/* Action buttons */}
-            <Box sx={{ display: 'flex', gap: 2, mt: 4, flexWrap: 'wrap' }}>
+            {/* Action buttons — sticky so they stay reachable without
+                scrolling to the bottom of a long proposal. */}
+            <Box
+              sx={{
+                display: 'flex',
+                gap: 2,
+                flexWrap: 'wrap',
+                position: 'sticky',
+                bottom: 0,
+                zIndex: 10,
+                bgcolor: 'background.paper',
+                borderTop: '1px solid',
+                borderColor: 'divider',
+                mt: 4,
+                py: 2,
+              }}
+            >
               <Button
                 variant="contained"
                 color="success"
