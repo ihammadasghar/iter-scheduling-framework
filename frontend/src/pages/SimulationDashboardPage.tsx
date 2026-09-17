@@ -147,7 +147,10 @@ export default function SimulationDashboardPage(): React.ReactElement {
             mb: 4,
           }}
         >
-          <MyScheduleCalendar excludedDays={excludedDays} />
+          {/* This page never mounts Inspector, so the hinted click here
+              would dispatch selectClass/toggleInspector into nothing
+              (issue #28) — leave the hint to TimetablePage/BrowseSchedulePanel. */}
+          <MyScheduleCalendar excludedDays={excludedDays} eligibleForHint={false} />
         </Box>
 
         {/* Published schedule reference card */}

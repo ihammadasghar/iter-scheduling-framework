@@ -170,6 +170,18 @@ describe('MyScheduleCalendar', () => {
     expect(screen.queryByLabelText(/click to see details/i)).not.toBeInTheDocument();
   });
 
+  it('does not show the first-run hint when eligibleForHint is false, even on a fresh store', () => {
+    const store = makeStore();
+    render(
+      <Provider store={store}>
+        <IntlProvider locale="en" messages={{}}>
+          <MyScheduleCalendar eligibleForHint={false} />
+        </IntlProvider>
+      </Provider>,
+    );
+    expect(screen.queryByLabelText(/click to see details/i)).not.toBeInTheDocument();
+  });
+
   it('renders a custom emptyMessage when provided and the resource has no classes', () => {
     const store = makeStore();
     render(

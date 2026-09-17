@@ -30,6 +30,11 @@ interface MyScheduleCalendarProps {
   // weekNavigation.ts's excludedDaysForWeek). Those day columns don't render
   // this week — see filterExcludedDays.
   readonly excludedDays?: ReadonlyMap<string, string>;
+  // Whether this instance is allowed to claim the first-run discoverability
+  // hint (see hintBlockKey below). Defaults to true; set false on pages that
+  // don't mount an Inspector, where the hinted click would dispatch
+  // selectClass/toggleInspector into nothing (issue #28).
+  readonly eligibleForHint?: boolean;
 }
 
 const PIXELS_PER_MINUTE = 1.2;
@@ -58,6 +63,7 @@ export default function MyScheduleCalendar({
   resource,
   emptyMessage,
   excludedDays = new Map(),
+  eligibleForHint = true,
 }: MyScheduleCalendarProps): React.ReactElement {
   const intl = useIntl();
   const dispatch = useAppDispatch();
@@ -94,14 +100,14 @@ export default function MyScheduleCalendar({
   // pulsing the whole grid at once. Clears itself for good the moment the
   // user selects any class (see uiSlice's hasInteractedWithClass).
   const hintBlockKey = useMemo(() => {
-    if (hasInteractedWithClass || blocks.length === 0) return null;
+    if (!eligibleForHint || hasInteractedWithClass || blocks.length === 0) return null;
     const dayIndex = new Map(dayOrder.map((day, i) => [day, i]));
     const earliest = [...blocks].sort((a, b) => {
       const dayDiff = (dayIndex.get(a.day) ?? Infinity) - (dayIndex.get(b.day) ?? Infinity);
       return dayDiff !== 0 ? dayDiff : a.startMinutes - b.startMinutes;
     })[0];
     return earliest ? `${earliest.classId}-${earliest.day}` : null;
-  }, [blocks, dayOrder, hasInteractedWithClass]);
+  }, [blocks, dayOrder, eligibleForHint, hasInteractedWithClass]);
 
   if (loading && classes.length === 0) {
     return <GridSkeleton />;
