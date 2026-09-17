@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
@@ -139,12 +139,48 @@ describe('AssignmentOverlayCalendar', () => {
     renderCalendar({ blocks, classById });
 
     const block = screen.getByLabelText('This Class: Biology 101');
-    expect(block).toHaveStyle({ transition: 'top 0.2s ease-out,left 0.2s ease-out' });
+    expect(block).toHaveStyle({ transition: 'top 0.2s ease-out,left 0.2s ease-out,opacity 0.15s' });
   });
 
-  it('does not animate busy blocks from other sources', () => {
+  it('does not animate the position of busy blocks from other sources', () => {
     renderCalendar();
     const block = screen.getByLabelText('Room: Biology 101');
-    expect(block.style.transition).toBe('');
+    expect(block).toHaveStyle({ transition: 'opacity 0.15s' });
+  });
+
+  describe('focus toggling', () => {
+    it('dims non-editing blocks by default', () => {
+      renderCalendar();
+      expect(screen.getByLabelText('Room: Biology 101')).toHaveStyle({ opacity: '0.4' });
+    });
+
+    it('brings a source to full opacity when its legend chip is clicked', () => {
+      renderCalendar();
+      const chip = screen.getByRole('button', { name: /Room.*click to bring to focus/i });
+      fireEvent.click(chip);
+      expect(screen.getByLabelText('Room: Biology 101')).toHaveStyle({ opacity: '1' });
+      expect(chip).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('re-dims a source when its legend chip is clicked again', () => {
+      renderCalendar();
+      const chip = screen.getByRole('button', { name: /Room.*click to bring to focus/i });
+      fireEvent.click(chip);
+      fireEvent.click(chip);
+      expect(screen.getByLabelText('Room: Biology 101')).toHaveStyle({ opacity: '0.4' });
+      expect(chip).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('never dims the editing block regardless of focus toggle state', () => {
+      const editingClass: ScheduleClass = { ...roomClass, id: 'CLS_EDITING', timeSlotIds: ['TS_MON_P2'] };
+      const blocks = buildOverlayBlocks(
+        [{ source: 'room', classes: [roomClass] }, { source: 'editing', classes: [editingClass] }],
+        timeSlotById,
+      );
+      const classById = new Map([[roomClass.id, roomClass], [editingClass.id, editingClass]]);
+      renderCalendar({ blocks, classById });
+
+      expect(screen.getByLabelText('This Class: Biology 101')).toHaveStyle({ opacity: '1' });
+    });
   });
 });
