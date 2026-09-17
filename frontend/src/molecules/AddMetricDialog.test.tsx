@@ -202,6 +202,54 @@ describe('AddMetricDialog', () => {
     expect('direction' in payload).toBe(false);
   });
 
+  it('announces the Prefer reset via aria-live when a condition with a catalog default is selected', async () => {
+    renderDialog();
+
+    fireEvent.mouseDown(screen.getByLabelText(/what to measure/i));
+    await waitFor(() => screen.getByRole('option', { name: /lecturers/i }));
+    fireEvent.click(screen.getByRole('option', { name: /lecturers/i }));
+
+    fireEvent.mouseDown(screen.getByLabelText(/how to measure it/i));
+    await waitFor(() => screen.getByRole('option', { name: /average idle gap/i }));
+    fireEvent.click(screen.getByRole('option', { name: /average idle gap/i }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/prefer was pre-filled based on the selected condition/i)).toBeInTheDocument(),
+    );
+  });
+
+  it('does not announce a Prefer change for a condition with no catalog default', async () => {
+    renderDialog();
+
+    fireEvent.mouseDown(screen.getByLabelText(/how to measure it/i));
+    await waitFor(() => screen.getByRole('option', { name: /total number/i }));
+    fireEvent.click(screen.getByRole('option', { name: /total number/i }));
+
+    expect(screen.queryByText(/prefer was pre-filled based on the selected condition/i)).not.toBeInTheDocument();
+  });
+
+  it('announces the Condition/Prefer reset via aria-live when What to measure changes', async () => {
+    renderDialog();
+
+    fireEvent.mouseDown(screen.getByLabelText(/what to measure/i));
+    await waitFor(() => screen.getByRole('option', { name: /lecturers/i }));
+    fireEvent.click(screen.getByRole('option', { name: /lecturers/i }));
+
+    fireEvent.mouseDown(screen.getByLabelText(/how to measure it/i));
+    await waitFor(() => screen.getByRole('option', { name: /average idle gap/i }));
+    fireEvent.click(screen.getByRole('option', { name: /average idle gap/i }));
+
+    fireEvent.mouseDown(screen.getByLabelText(/what to measure/i));
+    await waitFor(() => screen.getByRole('option', { name: /classes/i }));
+    fireEvent.click(screen.getByRole('option', { name: /classes/i }));
+
+    await waitFor(() =>
+      expect(
+        screen.getAllByText(/condition and prefer were reset because what to measure changed/i).length,
+      ).toBeGreaterThan(0),
+    );
+  });
+
   describe('edit mode (existingRule set)', () => {
     it('pre-fills every field from the existing rule and shows the Edit title', () => {
       renderEditDialog(EXISTING_RULE);
