@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
+  Box,
   Button,
   CircularProgress,
   Dialog,
@@ -14,6 +15,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
+import { keyframes } from '@mui/material/styles';
 import { defineMessages, useIntl } from 'react-intl';
 import { useAppDispatch } from '@/store/hooks';
 import { createMetricRuleThunk, updateMetricRuleThunk } from '@/store/reducers/rulesSlice';
@@ -59,6 +61,10 @@ const messages = defineMessages({
     id: 'addMetricDialog.selectConditionError',
     defaultMessage: 'Please select a condition',
   },
+  targetChangedResetAnnouncement: {
+    id: 'addMetricDialog.targetChangedResetAnnouncement',
+    defaultMessage: 'Condition and Prefer were reset because What to measure changed.',
+  },
   directionTooltip: {
     id: 'addMetricDialog.directionTooltip',
     defaultMessage: "Whether a higher or lower value is preferable — leave as 'No preference' for a value that should stay close to the target",
@@ -70,6 +76,10 @@ const messages = defineMessages({
   noPreference: {
     id: 'addMetricDialog.noPreference',
     defaultMessage: 'No preference (symmetric)',
+  },
+  conditionPrefilledAnnouncement: {
+    id: 'addMetricDialog.conditionPrefilledAnnouncement',
+    defaultMessage: 'Prefer was pre-filled based on the selected condition.',
   },
   targetValueWithUnit: {
     id: 'addMetricDialog.targetValueWithUnit',
@@ -105,6 +115,18 @@ const messages = defineMessages({
   },
 });
 
+// Draws the eye to a downstream field when an upstream Select silently
+// resets or repopulates it (cognitive-walkthrough finding, issue #13). Same
+// idiom as EditAssignmentDialog's pulsePeriodHint / CalendarClassBlock's
+// pulseHint.
+const pulseDependentFieldHint = keyframes`
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+`;
+
+// How long a dependent-field flash + its aria-live announcement stay active.
+const DEPENDENT_FIELD_HINT_DURATION_MS = 1200;
+
 interface AddMetricDialogProps {
   readonly open: boolean;
   readonly onClose: () => void;
@@ -138,6 +160,31 @@ export default function AddMetricDialog({
   const [conditionError, setConditionError] = useState(false);
   const [weightError, setWeightError] = useState(false);
 
+  // Flashes the Condition field for DEPENDENT_FIELD_HINT_DURATION_MS whenever
+  // handleTargetChange resets it (and Direction). Timer-ref pattern mirrors
+  // EditAssignmentDialog's periodHintTimerRef.
+  const [targetHintActive, setTargetHintActive] = useState(false);
+  const targetHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearTargetHintTimer = (): void => {
+    if (targetHintTimerRef.current !== null) {
+      clearTimeout(targetHintTimerRef.current);
+      targetHintTimerRef.current = null;
+    }
+  };
+  useEffect(() => clearTargetHintTimer, []);
+
+  // Flashes the Direction field for DEPENDENT_FIELD_HINT_DURATION_MS whenever
+  // handleConditionChange auto-fills it with a catalog default.
+  const [conditionHintActive, setConditionHintActive] = useState(false);
+  const conditionHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearConditionHintTimer = (): void => {
+    if (conditionHintTimerRef.current !== null) {
+      clearTimeout(conditionHintTimerRef.current);
+      conditionHintTimerRef.current = null;
+    }
+  };
+  useEffect(() => clearConditionHintTimer, []);
+
   const conditionOptions = getConditionsByTarget(intl, target);
   const selectedCondition = conditionOptions.find((c) => c.value === condition);
   const unit = selectedCondition?.unit ?? '';
@@ -162,6 +209,17 @@ export default function AddMetricDialog({
     setTarget(newTarget);
     setCondition(''); // reset condition when target changes
     setDirection('');
+
+    // A new target invalidates any pending condition-autofill hint.
+    clearConditionHintTimer();
+    setConditionHintActive(false);
+
+    clearTargetHintTimer();
+    setTargetHintActive(true);
+    targetHintTimerRef.current = setTimeout(() => {
+      targetHintTimerRef.current = null;
+      setTargetHintActive(false);
+    }, DEPENDENT_FIELD_HINT_DURATION_MS);
   };
 
   // Pre-fills direction from the catalog default for the newly selected
@@ -169,7 +227,26 @@ export default function AddMetricDialog({
   // user's manual override afterward is never clobbered by a re-render.
   const handleConditionChange = (newCondition: string): void => {
     setCondition(newCondition);
-    setDirection(getDefaultDirection(newCondition) ?? '');
+    const defaultDirection = getDefaultDirection(newCondition) ?? '';
+    setDirection(defaultDirection);
+
+    // A condition pick supersedes any still-active target-reset hint, so
+    // Direction's announcement doesn't show a stale "target changed" message.
+    clearTargetHintTimer();
+    setTargetHintActive(false);
+
+    clearConditionHintTimer();
+    // Only flash Direction if it actually changed — some conditions (e.g.
+    // count) have no catalog default, so nothing visually happened.
+    if (defaultDirection !== '') {
+      setConditionHintActive(true);
+      conditionHintTimerRef.current = setTimeout(() => {
+        conditionHintTimerRef.current = null;
+        setConditionHintActive(false);
+      }, DEPENDENT_FIELD_HINT_DURATION_MS);
+    } else {
+      setConditionHintActive(false);
+    }
   };
 
   const handleClose = (): void => {
@@ -182,6 +259,10 @@ export default function AddMetricDialog({
     setNameError(false);
     setConditionError(false);
     setWeightError(false);
+    clearTargetHintTimer();
+    setTargetHintActive(false);
+    clearConditionHintTimer();
+    setConditionHintActive(false);
     onClose();
   };
 
@@ -250,7 +331,18 @@ export default function AddMetricDialog({
           </FormControl>
         </Tooltip>
 
-        <FormControl fullWidth required error={conditionError}>
+        <FormControl
+          fullWidth
+          required
+          error={conditionError}
+          sx={{
+            border: targetHintActive ? 2 : 0,
+            borderColor: targetHintActive ? 'info.main' : 'transparent',
+            borderRadius: 1,
+            transition: 'border-color 0.15s',
+            animation: targetHintActive ? `${pulseDependentFieldHint} 0.5s ease-in-out 2` : undefined,
+          }}
+        >
           <InputLabel id="metric-condition-label">{intl.formatMessage(messages.howToMeasureLabel)}</InputLabel>
           <Select
             labelId="metric-condition-label"
@@ -268,10 +360,26 @@ export default function AddMetricDialog({
               {intl.formatMessage(messages.selectConditionError)}
             </Typography>
           )}
+          {/* Non-visual equivalent of the flash above, for screen readers. */}
+          <Box
+            aria-live="polite"
+            sx={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}
+          >
+            {targetHintActive ? intl.formatMessage(messages.targetChangedResetAnnouncement) : ''}
+          </Box>
         </FormControl>
 
         <Tooltip title={intl.formatMessage(messages.directionTooltip)} placement="right">
-          <FormControl fullWidth>
+          <FormControl
+            fullWidth
+            sx={{
+              border: (targetHintActive || conditionHintActive) ? 2 : 0,
+              borderColor: (targetHintActive || conditionHintActive) ? 'info.main' : 'transparent',
+              borderRadius: 1,
+              transition: 'border-color 0.15s',
+              animation: (targetHintActive || conditionHintActive) ? `${pulseDependentFieldHint} 0.5s ease-in-out 2` : undefined,
+            }}
+          >
             <InputLabel id="metric-direction-label">{intl.formatMessage(messages.directionLabel)}</InputLabel>
             <Select
               labelId="metric-direction-label"
@@ -284,6 +392,17 @@ export default function AddMetricDialog({
                 <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
               ))}
             </Select>
+            {/* Non-visual equivalent of the flash above, for screen readers. */}
+            <Box
+              aria-live="polite"
+              sx={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}
+            >
+              {targetHintActive
+                ? intl.formatMessage(messages.targetChangedResetAnnouncement)
+                : conditionHintActive
+                  ? intl.formatMessage(messages.conditionPrefilledAnnouncement)
+                  : ''}
+            </Box>
           </FormControl>
         </Tooltip>
 
