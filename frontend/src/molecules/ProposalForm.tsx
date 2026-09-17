@@ -19,7 +19,7 @@ const messages = defineMessages({
   },
   conflictWarning: {
     id: 'proposalForm.conflictWarning',
-    defaultMessage: 'Your draft has {count, plural, one {# scheduling conflict} other {# scheduling conflicts}}. The scheduling office will see these and may ask you to fix them before approving.',
+    defaultMessage: "Your draft has {count, plural, one {# scheduling conflict} other {# scheduling conflicts}}. That alone won't block submission — a proposal is accepted if it has fewer conflicts than what's currently published, or the same number of conflicts with a different overall score.",
   },
   explainLabel: {
     id: 'proposalForm.explainLabel',
@@ -105,7 +105,7 @@ export default function ProposalForm({
         sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important' }}
       >
         {conflictCount > 0 && (
-          <Alert severity="warning">
+          <Alert severity="info">
             {intl.formatMessage(messages.conflictWarning, { count: conflictCount })}
           </Alert>
         )}
