@@ -20,6 +20,11 @@ interface OverlayClassBlockProps {
   // there instead of popping, giving the click-to-set shortcut some of the
   // direct-manipulation feel a drag would have had (issue #8).
   readonly animateMove?: boolean;
+  // De-emphasizes this block (opacity 0.4) when a different source is
+  // currently in focus — mirrors CalendarClassBlock.tsx/ClassChip.tsx's
+  // selection-dimming idiom (issue #7), applied here to "which source" is
+  // in focus instead of "which class is selected" (issue #29).
+  readonly dimmed?: boolean;
 }
 
 const MIN_BLOCK_HEIGHT = 32;
@@ -33,6 +38,7 @@ export default function OverlayClassBlock({
   bgcolor,
   color,
   animateMove = false,
+  dimmed = false,
 }: OverlayClassBlockProps): React.ReactElement {
   const top = (block.startMinutes - minMinutes) * pixelsPerMinute;
   const height = Math.max((block.endMinutes - block.startMinutes) * pixelsPerMinute, MIN_BLOCK_HEIGHT);
@@ -54,7 +60,10 @@ export default function OverlayClassBlock({
           pointerEvents: 'none',
           borderRadius: 1,
           boxShadow: 1,
-          transition: animateMove ? 'top 0.2s ease-out, left 0.2s ease-out' : undefined,
+          opacity: dimmed ? 0.4 : 1,
+          transition: animateMove
+            ? 'top 0.2s ease-out, left 0.2s ease-out, opacity 0.15s'
+            : 'opacity 0.15s',
           px: 0.75,
           py: 0.25,
           fontSize: '0.7rem',

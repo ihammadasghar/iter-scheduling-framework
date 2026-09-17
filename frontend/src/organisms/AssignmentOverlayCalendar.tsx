@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Box, Chip, Stack, Typography } from '@mui/material';
 import { TouchApp } from '@mui/icons-material';
 import { defineMessages, useIntl } from 'react-intl';
@@ -16,6 +16,14 @@ const messages = defineMessages({
   legendAriaLabel: {
     id: 'assignmentOverlayCalendar.legendAriaLabel',
     defaultMessage: 'Schedule color legend',
+  },
+  legendChipFocusedAriaLabel: {
+    id: 'assignmentOverlayCalendar.legendChipFocusedAriaLabel',
+    defaultMessage: '{label} — in focus, click to de-emphasize',
+  },
+  legendChipUnfocusedAriaLabel: {
+    id: 'assignmentOverlayCalendar.legendChipUnfocusedAriaLabel',
+    defaultMessage: '{label} — click to bring to focus',
   },
   overlayAriaLabel: {
     id: 'assignmentOverlayCalendar.overlayAriaLabel',
@@ -98,6 +106,21 @@ export default function AssignmentOverlayCalendar({
     [blocks],
   );
 
+  // Sources the user has explicitly clicked into focus — 'editing' is never
+  // dimmed regardless of this set's contents, so it's intentionally excluded
+  // from what's toggleable (cognitive-walkthrough finding, issue #29: a
+  // crowded overlay of three schedules made it hard to tell which block was
+  // actually being edited).
+  const [focusedSources, setFocusedSources] = useState<ReadonlySet<OverlaySource>>(new Set());
+  const toggleSource = (source: OverlaySource): void => {
+    if (source === 'editing') return;
+    setFocusedSources((prev) => {
+      const next = new Set(prev);
+      if (next.has(source)) next.delete(source); else next.add(source);
+      return next;
+    });
+  };
+
   const sourceLabels: Record<OverlaySource, string> = {
     room: intl.formatMessage(messages.room),
     professor: intl.formatMessage(messages.professor),
@@ -122,14 +145,34 @@ export default function AssignmentOverlayCalendar({
   return (
     <Box>
       <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: 'wrap', rowGap: 1 }} aria-label={intl.formatMessage(messages.legendAriaLabel)}>
-        {(Object.keys(SOURCE_COLORS) as OverlaySource[]).map((source) => (
-          <Chip
-            key={source}
-            size="small"
-            label={sourceLabels[source]}
-            sx={{ bgcolor: SOURCE_COLORS[source].bgcolor, color: SOURCE_COLORS[source].color }}
-          />
-        ))}
+        {(Object.keys(SOURCE_COLORS) as OverlaySource[]).map((source) => {
+          const isEditing = source === 'editing';
+          const isFocused = isEditing || focusedSources.has(source);
+          return (
+            <Chip
+              key={source}
+              size="small"
+              label={sourceLabels[source]}
+              onClick={isEditing ? undefined : () => toggleSource(source)}
+              aria-pressed={isEditing ? undefined : isFocused}
+              aria-label={
+                isEditing
+                  ? sourceLabels[source]
+                  : intl.formatMessage(
+                      isFocused ? messages.legendChipFocusedAriaLabel : messages.legendChipUnfocusedAriaLabel,
+                      { label: sourceLabels[source] },
+                    )
+              }
+              sx={{
+                bgcolor: SOURCE_COLORS[source].bgcolor,
+                color: SOURCE_COLORS[source].color,
+                cursor: isEditing ? 'default' : 'pointer',
+                opacity: isFocused ? 1 : 0.6,
+                transition: 'opacity 0.15s',
+              }}
+            />
+          );
+        })}
       </Stack>
 
       {onSlotClick !== undefined && (
@@ -248,6 +291,7 @@ export default function AssignmentOverlayCalendar({
                   const cls = classById.get(block.classId);
                   if (cls === undefined) return null;
                   const palette = SOURCE_COLORS[block.source];
+                  const dimmed = block.source !== 'editing' && !focusedSources.has(block.source);
                   return (
                     <OverlayClassBlock
                       key={`${block.source}-${block.classId}-${block.day}`}
@@ -259,6 +303,7 @@ export default function AssignmentOverlayCalendar({
                       bgcolor={palette.bgcolor}
                       color={palette.color}
                       animateMove={block.source === 'editing'}
+                      dimmed={dimmed}
                     />
                   );
                 })}

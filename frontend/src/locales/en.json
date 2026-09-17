@@ -41,6 +41,8 @@
   "assignmentOverlayCalendar.editing": "This Class",
   "assignmentOverlayCalendar.group": "Student Group",
   "assignmentOverlayCalendar.legendAriaLabel": "Schedule color legend",
+  "assignmentOverlayCalendar.legendChipFocusedAriaLabel": "{label} — in focus, click to de-emphasize",
+  "assignmentOverlayCalendar.legendChipUnfocusedAriaLabel": "{label} — click to bring to focus",
   "assignmentOverlayCalendar.overlayAriaLabel": "Room, professor, and student group schedule overlay",
   "assignmentOverlayCalendar.pm": "PM",
   "assignmentOverlayCalendar.professor": "Professor",
