@@ -129,6 +129,32 @@ describe('ProposalReviewPage', () => {
     );
   });
 
+  it('shows an explicit acceptable gate explanation before Approve is clicked', async () => {
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByText(/this proposal can be approved/i)).toBeInTheDocument(),
+    );
+  });
+
+  it('shows an explicit blocked gate explanation when conflicts are unchanged and the score is unchanged', async () => {
+    const conflict = {
+      id: 'c1', type: 'ROOM_DOUBLE_BOOK' as const, classIds: ['CLS_001', 'CLS_002'] as const, message: '',
+    };
+    vi.mocked(proposalService.proposalService.getProposal).mockResolvedValueOnce({
+      ...fakeProposal,
+      comparison: {
+        ...fakeProposal.comparison,
+        baselineScore: { score: 82, breakdown: [] },
+        baselineConflicts: [conflict],
+        candidateConflicts: [conflict],
+      },
+    });
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByText(/likely can't be approved yet/i)).toBeInTheDocument(),
+    );
+  });
+
   it('shows Approve & Publish button', async () => {
     renderPage();
     await waitFor(() =>

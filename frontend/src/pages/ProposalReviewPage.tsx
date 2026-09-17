@@ -28,6 +28,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchProposalDetailThunk, mergeProposalThunk, rejectProposalThunk } from '@/store/reducers/proposalSlice';
 import { fetchPublishedScheduleThunk } from '@/store/reducers/scheduleSlice';
 import { buildScheduleNames } from '@/utils/scheduleNames';
+import { evaluateProposalGate } from '@/utils/proposalGate';
 import { useDateFnsLocale } from '@/utils/useDateFnsLocale';
 import type { ProposalStatus } from '@/types';
 
@@ -71,6 +72,18 @@ const messages = defineMessages({
   automatedCheck: {
     id: 'proposalReviewPage.automatedCheck',
     defaultMessage: 'Automated Check',
+  },
+  gateAcceptableReduced: {
+    id: 'proposalReviewPage.gateAcceptableReduced',
+    defaultMessage: 'This proposal can be approved: it has {candidate} scheduling conflict(s), down from {baseline} currently published.',
+  },
+  gateAcceptableScoreChanged: {
+    id: 'proposalReviewPage.gateAcceptableScoreChanged',
+    defaultMessage: 'This proposal can be approved: it keeps the same number of scheduling conflicts as published ({count}), and changes the overall weighted score.',
+  },
+  gateBlocked: {
+    id: 'proposalReviewPage.gateBlocked',
+    defaultMessage: "This proposal likely can't be approved yet: it has {candidate} scheduling conflict(s) vs {baseline} currently published, with no change to the weighted score. Proposals are only accepted if they reduce conflicts or change the score.",
   },
   metricsHeading: {
     id: 'proposalReviewPage.metricsHeading',
@@ -150,6 +163,7 @@ export default function ProposalReviewPage(): React.ReactElement {
   }, [dispatch, id]);
 
   const names = buildScheduleNames(rooms, professors, courses, studentGroups);
+  const gate = proposal ? evaluateProposalGate(proposal.comparison) : null;
 
   const handleApprove = async (): Promise<void> => {
     if (!id) return;
@@ -262,6 +276,24 @@ export default function ProposalReviewPage(): React.ReactElement {
             </Box>
 
             <TechnicalDiffAccordion rawDiff={proposal.diff} />
+
+            {/* Explicit gate-rule explanation, computed from the same live
+                comparison data rendered above — surfaced up front so the
+                real accept/reject rule doesn't only show up as a 409 after
+                the user clicks Approve. */}
+            {gate && (
+              <Alert severity={gate.acceptable ? 'success' : 'warning'} sx={{ mt: 3 }}>
+                {gate.acceptable
+                  ? intl.formatMessage(
+                      gate.conflictsReduced ? messages.gateAcceptableReduced : messages.gateAcceptableScoreChanged,
+                      { candidate: gate.candidateConflictCount, baseline: gate.baselineConflictCount, count: gate.candidateConflictCount },
+                    )
+                  : intl.formatMessage(messages.gateBlocked, {
+                      candidate: gate.candidateConflictCount,
+                      baseline: gate.baselineConflictCount,
+                    })}
+              </Alert>
+            )}
 
             {/* Inline error */}
             {inlineError && (
