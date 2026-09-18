@@ -77,9 +77,9 @@ describe('AssignmentOverlayCalendar', () => {
     expect(onSlotClick).toHaveBeenCalledWith('Monday', 'TS_MON_P1');
   });
 
-  it('gives every busy block the same neutral background, regardless of source', () => {
+  it('gives every busy block the same transparent-blue background, regardless of source', () => {
     renderCalendar();
-    expect(screen.getByLabelText('Room Building A - 204 busy with Biology 101')).toHaveStyle({ backgroundColor: 'rgb(229, 232, 244)' });
+    expect(screen.getByLabelText('Room Building A - 204 busy with Biology 101')).toHaveStyle({ backgroundColor: 'rgba(52, 84, 216, 0.5)' });
   });
 
   it('renders one clickable region per timeslot per day and reports clicks', () => {

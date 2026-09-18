@@ -5,15 +5,15 @@ import type { WeightedScoreResult } from '@/types';
 const messages = defineMessages({
   scoreLabel: {
     id: 'weightedScoreChip.scoreLabel',
-    defaultMessage: 'Score: {score}/100',
+    defaultMessage: 'Schedule Quality: {score}/100',
   },
   noMetrics: {
     id: 'weightedScoreChip.noMetrics',
-    defaultMessage: 'Score: no metrics defined',
+    defaultMessage: 'Schedule Quality: no metrics defined',
   },
   tooltipTitle: {
     id: 'weightedScoreChip.tooltipTitle',
-    defaultMessage: 'Institution-defined score',
+    defaultMessage: 'Schedule Quality',
   },
   tooltipExplainer: {
     id: 'weightedScoreChip.tooltipExplainer',
@@ -21,11 +21,11 @@ const messages = defineMessages({
   },
   breakdownLine: {
     id: 'weightedScoreChip.breakdownLine',
-    defaultMessage: '{name}: {value}{unit} (target {threshold}{unit}, weight {weight})',
+    defaultMessage: '{name}: {value}{unit} (target {threshold}{unit}, Quality Score influence {weight})',
   },
   noMetricsTooltip: {
     id: 'weightedScoreChip.noMetricsTooltip',
-    defaultMessage: 'No institution metric rules are configured, so no score can be computed yet.',
+    defaultMessage: 'No institution metric rules are configured, so no Schedule Quality score can be computed yet.',
   },
 });
 
@@ -33,9 +33,9 @@ interface WeightedScoreChipProps {
   readonly score: WeightedScoreResult;
 }
 
-type ScoreColor = 'success' | 'warning' | 'error';
+export type ScoreColor = 'success' | 'warning' | 'error';
 
-const colorForScore = (score: number): ScoreColor => {
+export const colorForScore = (score: number): ScoreColor => {
   if (score >= 80) return 'success';
   if (score >= 50) return 'warning';
   return 'error';

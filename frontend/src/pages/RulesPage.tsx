@@ -44,11 +44,11 @@ const messages = defineMessages({
   },
   metricRulesSubtitle: {
     id: 'rulesPage.metricRulesSubtitle',
-    defaultMessage: "Influence the score — a proposal can still be submitted if it scores poorly on these.",
+    defaultMessage: "Influence the Schedule Quality score — a proposal can still be submitted if it scores poorly on these.",
   },
   scoreFormula: {
     id: 'rulesPage.scoreFormula',
-    defaultMessage: 'Score = weighted average of how close each metric gets to its target (100 = right on target). Weight controls how much a metric counts relative to the others below.',
+    defaultMessage: 'Schedule Quality = weighted average of how close each metric gets to its target (100 = right on target). Quality Score influence controls how much a metric counts relative to the others below.',
   },
   addMetric: {
     id: 'rulesPage.addMetric',

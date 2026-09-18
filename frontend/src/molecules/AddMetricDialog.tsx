@@ -91,15 +91,15 @@ const messages = defineMessages({
   },
   weightTooltip: {
     id: 'addMetricDialog.weightTooltip',
-    defaultMessage: 'How much this metric should count toward the overall institution score, relative to other metrics',
+    defaultMessage: 'How much this metric should count toward the overall Schedule Quality score, relative to other metrics',
   },
   weightLabel: {
     id: 'addMetricDialog.weightLabel',
-    defaultMessage: 'Weight',
+    defaultMessage: 'Quality Score influence',
   },
   weightError: {
     id: 'addMetricDialog.weightError',
-    defaultMessage: 'Weight must be a positive number',
+    defaultMessage: 'Quality Score influence must be a positive number',
   },
   cancel: {
     id: 'addMetricDialog.cancel',

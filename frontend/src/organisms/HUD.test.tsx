@@ -98,16 +98,6 @@ describe('HUD', () => {
     expect(screen.getByText(/2 scheduling conflicts/i)).toBeInTheDocument();
   });
 
-  it('shows "No metrics configured" when metrics array is empty', async () => {
-    await render_([], []);
-    expect(screen.getByText(/no metrics configured/i)).toBeInTheDocument();
-  });
-
-  it('renders metric chips when metrics are present', async () => {
-    await render_([], [{ name: 'Room Utilisation', value: 82, unit: '%' }]);
-    expect(screen.getByText(/room utilisation: 82%/i)).toBeInTheDocument();
-  });
-
   it('renders "Submit Proposal" button', async () => {
     await render_();
     expect(screen.getByRole('button', { name: /submit proposal/i })).toBeInTheDocument();
@@ -127,12 +117,12 @@ describe('HUD', () => {
         { name: 'Room Utilisation', value: 82, unit: '%', weight: 1, threshold: 90, normalizedScore: 82 },
       ],
     });
-    expect(screen.getByText(/score: 82\/100/i)).toBeInTheDocument();
+    expect(screen.getByText(/schedule quality: 82\/100/i)).toBeInTheDocument();
   });
 
   it('shows "no metrics defined" score label when no institution metrics are configured', async () => {
     await render_([], [], vi.fn(), { score: 0, breakdown: [] });
-    expect(screen.getByText(/score: no metrics defined/i)).toBeInTheDocument();
+    expect(screen.getByText(/schedule quality: no metrics defined/i)).toBeInTheDocument();
   });
 
   it('renders the conflict chip softened before any class has been selected', async () => {

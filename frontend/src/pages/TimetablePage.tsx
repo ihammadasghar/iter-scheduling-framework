@@ -14,6 +14,7 @@ import ScheduleUpdatedModal from '@/organisms/ScheduleUpdatedModal';
 import SubmitProposalModal from '@/organisms/SubmitProposalModal';
 import ViewBySelector from '@/molecules/ViewBySelector';
 import SaveChangesButton from '@/molecules/SaveChangesButton';
+import MetricsToolbar from '@/molecules/MetricsToolbar';
 import InactivityBanner from '@/molecules/InactivityBanner';
 import WorkspaceTabs, { type WorkspaceTabValue } from '@/molecules/WorkspaceTabs';
 import WeekNavigator from '@/molecules/WeekNavigator';
@@ -167,7 +168,9 @@ export default function TimetablePage(): React.ReactElement {
           {tab !== 'overview' && metadata !== null && weekStart !== null && (
             <WeekNavigator weekStart={weekStart} onWeekChange={setWeekStart} timeline={metadata.timeline} />
           )}
-          <Box sx={{ flex: 1 }} />
+          <Box sx={{ flex: '1 1 auto', minWidth: 0, display: 'flex', justifyContent: 'flex-end' }}>
+            <MetricsToolbar />
+          </Box>
           <SaveChangesButton simId={simId} />
         </Box>
 

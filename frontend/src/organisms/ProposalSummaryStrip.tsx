@@ -1,32 +1,12 @@
 import { Box, Chip, Stack, Typography } from '@mui/material';
 import { defineMessages, useIntl } from 'react-intl';
 import CIStatusBadge from '@/molecules/CIStatusBadge';
-import type { ProposalStatus, WeightedScoreResult } from '@/types';
+import type { ProposalStatus } from '@/types';
 
 const messages = defineMessages({
   automatedCheck: {
     id: 'proposalSummaryStrip.automatedCheck',
     defaultMessage: 'Automated Check',
-  },
-  scoreDeltaLabel: {
-    id: 'proposalSummaryStrip.scoreDeltaLabel',
-    defaultMessage: 'Score Change',
-  },
-  scoreDeltaImproved: {
-    id: 'proposalSummaryStrip.scoreDeltaImproved',
-    defaultMessage: 'Score: +{delta}',
-  },
-  scoreDeltaWorsened: {
-    id: 'proposalSummaryStrip.scoreDeltaWorsened',
-    defaultMessage: 'Score: {delta}',
-  },
-  scoreDeltaUnchanged: {
-    id: 'proposalSummaryStrip.scoreDeltaUnchanged',
-    defaultMessage: 'Score: no change',
-  },
-  scoreDeltaUnavailable: {
-    id: 'proposalSummaryStrip.scoreDeltaUnavailable',
-    defaultMessage: 'Score: not available',
   },
   conflictDeltaLabel: {
     id: 'proposalSummaryStrip.conflictDeltaLabel',
@@ -48,30 +28,16 @@ const messages = defineMessages({
 
 interface ProposalSummaryStripProps {
   readonly ciStatus: Extract<ProposalStatus, 'READY' | 'BLOCKED' | 'PENDING'> | null;
-  readonly baselineScore: WeightedScoreResult;
-  readonly candidateScore: WeightedScoreResult;
   readonly baselineConflictCount: number;
   readonly candidateConflictCount: number;
 }
 
 export default function ProposalSummaryStrip({
   ciStatus,
-  baselineScore,
-  candidateScore,
   baselineConflictCount,
   candidateConflictCount,
 }: ProposalSummaryStripProps): React.ReactElement {
   const intl = useIntl();
-
-  const hasMetrics = baselineScore.breakdown.length > 0 && candidateScore.breakdown.length > 0;
-  const scoreDelta = candidateScore.score - baselineScore.score;
-  const scoreChip = !hasMetrics
-    ? { color: 'default' as const, label: intl.formatMessage(messages.scoreDeltaUnavailable) }
-    : scoreDelta > 0
-      ? { color: 'success' as const, label: intl.formatMessage(messages.scoreDeltaImproved, { delta: scoreDelta }) }
-      : scoreDelta < 0
-        ? { color: 'error' as const, label: intl.formatMessage(messages.scoreDeltaWorsened, { delta: scoreDelta }) }
-        : { color: 'default' as const, label: intl.formatMessage(messages.scoreDeltaUnchanged) };
 
   const conflictsResolved = baselineConflictCount - candidateConflictCount;
   const conflictChip = conflictsResolved > 0
@@ -90,12 +56,6 @@ export default function ProposalSummaryStrip({
           <CIStatusBadge status={ciStatus} />
         </Box>
       )}
-      <Box>
-        <Typography variant="overline" color="text.secondary" component="div">
-          {intl.formatMessage(messages.scoreDeltaLabel)}
-        </Typography>
-        <Chip variant="outlined" color={scoreChip.color} label={scoreChip.label} aria-label={scoreChip.label} />
-      </Box>
       <Box>
         <Typography variant="overline" color="text.secondary" component="div">
           {intl.formatMessage(messages.conflictDeltaLabel)}

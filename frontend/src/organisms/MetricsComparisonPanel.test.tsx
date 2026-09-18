@@ -22,8 +22,8 @@ describe('MetricsComparisonPanel', () => {
 
     renderPanel({ baselineScore: baseline, candidateScore: candidate });
 
-    expect(screen.getByText('Score: 40/100')).toBeInTheDocument();
-    expect(screen.getByText('Score: 60/100')).toBeInTheDocument();
+    expect(screen.getByText('Schedule Quality: 40/100')).toBeInTheDocument();
+    expect(screen.getByText('Schedule Quality: 60/100')).toBeInTheDocument();
   });
 
   it('renders a delta tile per metric', () => {
