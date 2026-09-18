@@ -19,11 +19,11 @@ const messages = defineMessages({
   },
   body: {
     id: 'commitGate.body',
-    defaultMessage: 'You have unsaved changes in this draft. Save them before submitting so nothing is lost.',
+    defaultMessage: 'You have unsaved changes in this draft. Save them before submitting so the review reflects your latest changes.',
   },
-  submitWithoutSaving: {
-    id: 'commitGate.submitWithoutSaving',
-    defaultMessage: 'Submit Without Saving',
+  cancel: {
+    id: 'commitGate.cancel',
+    defaultMessage: 'Cancel',
   },
   saving: {
     id: 'commitGate.saving',
@@ -39,7 +39,6 @@ interface CommitGateProps {
   readonly open: boolean;
   readonly simId: string;
   readonly onSaved: () => void;
-  readonly onSkip: () => void;
   readonly onClose: () => void;
 }
 
@@ -47,7 +46,6 @@ export default function CommitGate({
   open,
   simId,
   onSaved,
-  onSkip,
   onClose,
 }: CommitGateProps): React.ReactElement {
   const intl = useIntl();
@@ -78,8 +76,8 @@ export default function CommitGate({
         </Typography>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 3, gap: 1, flexWrap: 'wrap' }}>
-        <Button variant="text" onClick={onSkip} disabled={saving}>
-          {intl.formatMessage(messages.submitWithoutSaving)}
+        <Button variant="text" onClick={onClose} disabled={saving}>
+          {intl.formatMessage(messages.cancel)}
         </Button>
         <Button
           variant="contained"

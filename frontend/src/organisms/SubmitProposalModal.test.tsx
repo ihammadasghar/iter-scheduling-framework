@@ -103,10 +103,11 @@ describe('SubmitProposalModal', () => {
       expect(screen.getByRole('heading', { name: /submit proposal for review/i })).toBeInTheDocument();
     });
 
-    it('advances to proposal form when "Submit Without Saving" is clicked', () => {
-      render_({ hasUnsavedChanges: true });
-      fireEvent.click(screen.getByRole('button', { name: /submit without saving/i }));
-      expect(screen.getByRole('heading', { name: /submit proposal for review/i })).toBeInTheDocument();
+    it('closes the modal without advancing when "Cancel" is clicked', () => {
+      const { onClose } = render_({ hasUnsavedChanges: true });
+      fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+      expect(onClose).toHaveBeenCalled();
+      expect(screen.queryByRole('heading', { name: /submit proposal for review/i })).not.toBeInTheDocument();
     });
 
     it('advances to proposal form after successful save', async () => {

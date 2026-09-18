@@ -67,7 +67,6 @@ export default function SubmitProposalModal({
           open={open}
           simId={simId}
           onSaved={advanceToForm}
-          onSkip={advanceToForm}
           onClose={onClose}
         />
       )}
