@@ -135,6 +135,7 @@
   "classDetailSection.conflictsWith": "Em conflito com {otherLabel}",
   "classDetailSection.currentAssignment": "Atribuição Atual",
   "classDetailSection.edit": "Editar",
+  "classDetailSection.editHint": "Clique em Editar para mover esta aula ou alterar a sala, o docente ou a turma",
   "classDetailSection.professor": "Docente",
   "classDetailSection.room": "Sala",
   "classDetailSection.studentGroup": "Turma",

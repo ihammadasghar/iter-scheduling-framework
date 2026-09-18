@@ -33,6 +33,10 @@ const messages = defineMessages({
     id: 'classDetailSection.currentAssignment',
     defaultMessage: 'Current Assignment',
   },
+  editHint: {
+    id: 'classDetailSection.editHint',
+    defaultMessage: 'Click Edit to move this class or change its room, professor, or group',
+  },
   edit: {
     id: 'classDetailSection.edit',
     defaultMessage: 'Edit',
@@ -203,6 +207,7 @@ export default function ClassDetailSection({
         {simId !== undefined && (
           <Button
             size="small"
+            variant="outlined"
             startIcon={<Edit fontSize="small" />}
             onClick={() => navigate(`/simulations/${simId}/classes/${classItem.id}/edit`)}
           >
@@ -210,6 +215,11 @@ export default function ClassDetailSection({
           </Button>
         )}
       </Box>
+      {simId !== undefined && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', px: 2, pb: 1 }}>
+          {intl.formatMessage(messages.editHint)}
+        </Typography>
+      )}
       <Divider />
       <List disablePadding sx={{ px: 2 }}>
         <DetailRow
