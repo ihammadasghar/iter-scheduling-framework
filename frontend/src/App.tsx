@@ -17,6 +17,7 @@ import { hydrateLocale } from '@/store/reducers/languageSlice';
 import { fetchPublishedScheduleThunk } from '@/store/reducers/scheduleSlice';
 import HomeRedirect from '@/pages/HomeRedirect';
 import TimetablePage from '@/pages/TimetablePage';
+import EditClassPage from '@/pages/EditClassPage';
 import PublishedSchedulePage from '@/pages/PublishedSchedulePage';
 import ProposalsDashboardPage from '@/pages/ProposalsDashboardPage';
 import ProposalReviewPage from '@/pages/ProposalReviewPage';
@@ -53,6 +54,7 @@ function AppProviders(): React.ReactElement {
             {/* User routes */}
             <Route path="/" element={<HomeRedirect />} />
             <Route path="/simulations/:id" element={<TimetablePage />} />
+            <Route path="/simulations/:id/classes/:classId/edit" element={<EditClassPage />} />
             <Route path="/schedule" element={<PublishedSchedulePage />} />
 
             {/* Admin routes — guarded by role check */}
