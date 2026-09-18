@@ -22,13 +22,13 @@ const renderChip = (score: WeightedScoreResult) =>
 describe('WeightedScoreChip', () => {
   it('shows the score out of 100', () => {
     renderChip(SCORE);
-    expect(screen.getByText(/score: 82\/100/i)).toBeInTheDocument();
+    expect(screen.getByText(/schedule quality: 82\/100/i)).toBeInTheDocument();
   });
 
   it('explains what the score means and how metrics compose into it, on hover', async () => {
     const user = userEvent.setup();
     renderChip(SCORE);
-    await user.hover(screen.getByText(/score: 82\/100/i));
+    await user.hover(screen.getByText(/schedule quality: 82\/100/i));
     const tooltip = await screen.findByRole('tooltip');
     expect(tooltip).toHaveTextContent(/weighted average/i);
     expect(tooltip).toHaveTextContent(/room utilisation/i);

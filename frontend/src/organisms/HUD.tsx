@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Box, Button, Chip, CircularProgress, Paper, Tooltip, Typography } from '@mui/material';
+import { Box, Button, Chip, CircularProgress, Paper, Tooltip } from '@mui/material';
 import { Send } from '@mui/icons-material';
 import { defineMessages, useIntl } from 'react-intl';
 import ConflictChip from '@/molecules/ConflictChip';
-import MetricChip from '@/molecules/MetricChip';
 import WeightedScoreChip from '@/molecules/WeightedScoreChip';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchConflictsThunk } from '@/store/reducers/conflictSlice';
@@ -13,19 +12,11 @@ import { fetchScoreThunk } from '@/store/reducers/scoreSlice';
 const messages = defineMessages({
   ariaLabel: {
     id: 'hud.ariaLabel',
-    defaultMessage: 'Metrics and conflicts HUD',
+    defaultMessage: 'Conflicts and Schedule Quality HUD',
   },
   loadingScoreAriaLabel: {
     id: 'hud.loadingScoreAriaLabel',
     defaultMessage: 'Loading score…',
-  },
-  loadingMetrics: {
-    id: 'hud.loadingMetrics',
-    defaultMessage: 'Loading metrics…',
-  },
-  noMetrics: {
-    id: 'hud.noMetrics',
-    defaultMessage: 'No metrics configured',
   },
   submitTooltip: {
     id: 'hud.submitTooltip',
@@ -54,8 +45,6 @@ export default function HUD({ simId, onSubmitProposal }: HUDProps): React.ReactE
   const dispatch = useAppDispatch();
   const conflicts = useAppSelector((s) => s.conflict.conflicts);
   const conflictLoading = useAppSelector((s) => s.conflict.loading);
-  const metrics = useAppSelector((s) => s.metric.metrics);
-  const metricLoading = useAppSelector((s) => s.metric.loading);
   const score = useAppSelector((s) => s.score.current);
   const scoreLoading = useAppSelector((s) => s.score.loading);
   const lastPatchAt = useAppSelector((s) => s.session.lastPatchAt);
@@ -106,7 +95,8 @@ export default function HUD({ simId, onSubmitProposal }: HUDProps): React.ReactE
       }}
       aria-label={intl.formatMessage(messages.ariaLabel)}
     >
-      {/* Zone 1 — Conflicts and institution-defined score */}
+      {/* Conflicts and Schedule Quality score — per-metric chips live in the
+          toolbar next to Save Changes instead (MetricsToolbar). */}
       <ConflictChip conflicts={conflicts} loading={conflictLoading} softened={!hasInteractedWithClass} />
 
       {scoreLoading && score === null && (
@@ -119,27 +109,9 @@ export default function HUD({ simId, onSubmitProposal }: HUDProps): React.ReactE
       )}
       {score !== null && <WeightedScoreChip score={score} />}
 
-      <Box sx={{ width: '1px', height: 28, bgcolor: 'divider', mx: 0.5 }} aria-hidden />
+      <Box sx={{ flex: 1 }} />
 
-      {/* Zone 2 — Metrics */}
-      <Box sx={{ display: 'flex', gap: 1, flex: 1, overflowX: 'auto', alignItems: 'center' }}>
-        {metricLoading && metrics.length === 0 && (
-          // Placeholder chips while loading for the first time
-          <Typography variant="caption" color="text.secondary">
-            {intl.formatMessage(messages.loadingMetrics)}
-          </Typography>
-        )}
-        {!metricLoading && metrics.length === 0 && (
-          <Typography variant="caption" color="text.secondary">
-            {intl.formatMessage(messages.noMetrics)}
-          </Typography>
-        )}
-        {metrics.map((m) => (
-          <MetricChip key={m.name} metric={m} loading={metricLoading} />
-        ))}
-      </Box>
-
-      {/* Zone 3 — Submit proposal */}
+      {/* Submit proposal */}
       <Tooltip title={intl.formatMessage(messages.submitTooltip)}>
         <Button
           variant="contained"

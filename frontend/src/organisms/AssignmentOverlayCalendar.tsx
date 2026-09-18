@@ -80,11 +80,14 @@ const MIN_LANE_WIDTH = 130;
 // Busy blocks (room/professor/group) all share one neutral style now that
 // the tile's own text ("Room 204 busy") identifies its source instead of a
 // color/icon a user had to learn from a legend (cognitive-walkthrough
-// finding, issue #29). The 'editing' block keeps the app-wide blue used by
+// finding, issue #29) — this is still a shared style, not per-source
+// color-coding. A transparent tint of the app-wide blue (rather than flat
+// gray) reads with more contrast against the page background. The 'editing'
+// block keeps a solid version of that same blue, used by
 // CalendarClassBlock.tsx/ClassChip.tsx for "the class I'm currently working
-// with" — that's a distinct "which block am I editing" signal, not source
-// color-coding, so it's kept separate from the busy-block style.
-const BUSY_BGCOLOR = '#e5e8f4'; // theme.palette.surfaceContainerHigh — literal so it renders correctly without a ThemeProvider in tests
+// with" — that's a distinct "which block am I editing" signal, so busy tiles
+// stay a lighter, transparent variant to keep the editing block dominant.
+const BUSY_BGCOLOR = 'rgba(52, 84, 216, 0.5)'; // transparent tint of theme.palette.primary.main — literal so it renders correctly without a ThemeProvider in tests
 const BUSY_COLOR = 'text.primary';
 const EDITING_BGCOLOR = 'primary.light';
 const EDITING_COLOR = 'primary.contrastText';

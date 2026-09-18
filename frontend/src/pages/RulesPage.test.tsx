@@ -92,13 +92,13 @@ describe('RulesPage', () => {
 
   it('explains the difference between metric rules and hard constraints', () => {
     renderPage();
-    expect(screen.getByText(/influence the score/i)).toBeInTheDocument();
+    expect(screen.getByText(/influence the schedule quality score/i)).toBeInTheDocument();
     expect(screen.getByText(/blocks the proposal outright/i)).toBeInTheDocument();
   });
 
   it('explains how metric weights compose into the overall score', () => {
     renderPage();
-    expect(screen.getByText(/score = weighted average/i)).toBeInTheDocument();
+    expect(screen.getByText(/schedule quality = weighted average/i)).toBeInTheDocument();
   });
 
   it('shows unavailable alert when service returns 501', () => {

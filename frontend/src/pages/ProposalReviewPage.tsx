@@ -24,6 +24,7 @@ import ClassDiffPanel from '@/organisms/ClassDiffPanel';
 import MetricsComparisonPanel from '@/organisms/MetricsComparisonPanel';
 import ConflictsComparisonPanel from '@/organisms/ConflictsComparisonPanel';
 import ProposalSummaryStrip from '@/organisms/ProposalSummaryStrip';
+import ScheduleQualityCard from '@/molecules/ScheduleQualityCard';
 import TechnicalDiffAccordion from '@/organisms/TechnicalDiffAccordion';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchProposalDetailThunk, mergeProposalThunk, rejectProposalThunk } from '@/store/reducers/proposalSlice';
@@ -96,11 +97,11 @@ const messages = defineMessages({
   },
   gateAcceptableScoreChanged: {
     id: 'proposalReviewPage.gateAcceptableScoreChanged',
-    defaultMessage: 'This proposal can be approved: it keeps the same number of scheduling conflicts as published ({count}), and changes the overall weighted score.',
+    defaultMessage: 'This proposal can be approved: it keeps the same number of scheduling conflicts as published ({count}), and changes the overall Schedule Quality score.',
   },
   gateBlocked: {
     id: 'proposalReviewPage.gateBlocked',
-    defaultMessage: "This proposal likely can't be approved yet: it has {candidate} scheduling conflict(s) vs {baseline} currently published, with no change to the weighted score. Proposals are only accepted if they reduce conflicts or change the score.",
+    defaultMessage: "This proposal likely can't be approved yet: it has {candidate} scheduling conflict(s) vs {baseline} currently published, with no change to the Schedule Quality score. Proposals are only accepted if they reduce conflicts or change the Schedule Quality score.",
   },
   metricsHeading: {
     id: 'proposalReviewPage.metricsHeading',
@@ -264,10 +265,13 @@ export default function ProposalReviewPage(): React.ReactElement {
               {intl.formatMessage(messages.title)}
             </Typography>
 
-            <ProposalSummaryStrip
-              ciStatus={isCiStatus(proposal.status) ? proposal.status : null}
+            <ScheduleQualityCard
               baselineScore={proposal.comparison.baselineScore}
               candidateScore={proposal.comparison.candidateScore}
+            />
+
+            <ProposalSummaryStrip
+              ciStatus={isCiStatus(proposal.status) ? proposal.status : null}
               baselineConflictCount={gate?.baselineConflictCount ?? 0}
               candidateConflictCount={gate?.candidateConflictCount ?? 0}
             />

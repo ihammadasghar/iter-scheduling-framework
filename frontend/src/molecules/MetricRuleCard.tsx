@@ -24,7 +24,7 @@ const messages = defineMessages({
   },
   weight: {
     id: 'metricRuleCard.weight',
-    defaultMessage: 'Weight: {value}',
+    defaultMessage: 'Quality Score influence: {value}',
   },
   editTooltip: {
     id: 'metricRuleCard.editTooltip',
