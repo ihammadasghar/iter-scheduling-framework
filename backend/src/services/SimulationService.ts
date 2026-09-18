@@ -16,12 +16,14 @@ import type {
   Suggestion,
   RoomAvailability,
   Conflict,
+  Constraint,
   MetricResult,
   MetricRule,
   WeightedScoreResult,
   RebaseResult,
 } from '../types/domain.js';
 import { parseRulesJson } from '../types/rulesJson.js';
+import { isPolicyConstraint } from '../utils/ConstraintTranslator.js';
 import type { ScheduleJson } from '../types/scheduleJson.js';
 
 const SOURCE_BRANCH = 'main';
@@ -239,13 +241,24 @@ export class SimulationService implements ISimulationService {
     return this.graph.getRoomAvailability(simulationId, classId);
   }
 
+  // Structural conflicts plus institution-authored policy-constraint
+  // violations (consecutive_limit/gap_limit) — the same two sources
+  // ProposalGate.computeConflictsAndScore combines for the submit-time
+  // "does this improve on published" gate, so the live count shown here
+  // never disagrees with what submission will check.
   async getConflicts(simulationId: string): Promise<readonly Conflict[]> {
     const touched = this.registry.touch(simulationId);
     if (!touched) {
       throw ApiError.notFound('Simulation not found or expired');
     }
 
-    return this.graph.queryConflicts(simulationId);
+    const policyConstraints = await this.readPolicyConstraints();
+    const [structuralConflicts, constraintViolations] = await Promise.all([
+      this.graph.queryConflicts(simulationId),
+      this.graph.queryConstraintViolations(simulationId, policyConstraints),
+    ]);
+
+    return [...structuralConflicts, ...constraintViolations];
   }
 
   async getMetrics(simulationId: string): Promise<readonly MetricResult[]> {
@@ -343,5 +356,12 @@ export class SimulationService implements ISimulationService {
   private async readMetricRules(): Promise<readonly MetricRule[]> {
     const rulesJson = await this.github.readFile(SOURCE_BRANCH, RULES_JSON_PATH);
     return parseRulesJson(rulesJson).metrics;
+  }
+
+  // Only consecutive_limit/gap_limit are wired up as CI-gating policy
+  // constraints — mirrors ProposalService.listPolicyConstraints.
+  private async readPolicyConstraints(): Promise<readonly Constraint[]> {
+    const rulesJson = await this.github.readFile(SOURCE_BRANCH, RULES_JSON_PATH);
+    return parseRulesJson(rulesJson).constraints.filter((c) => isPolicyConstraint(c.violationCondition));
   }
 }

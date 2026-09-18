@@ -22,10 +22,18 @@ const sessionSlice = createSlice({
   name: 'session',
   initialState,
   reducers: {
+    // Re-entering the *same* simulation (e.g. navigating back from the
+    // full-page class editor to the timetable, which remounts this effect)
+    // must not discard an hasUnsavedChanges=true set moments earlier by an
+    // edit that hasn't been committed yet — doing so silently skips the
+    // CommitGate on submit, so the proposal gets validated against a stale,
+    // pre-edit branch. Only a genuine switch to a different simulation
+    // resets the flag.
     setSession(state, action: PayloadAction<string>) {
+      const isSameSession = state.simulationId === action.payload;
       state.simulationId = action.payload;
       state.expired = false;
-      state.hasUnsavedChanges = false;
+      state.hasUnsavedChanges = isSameSession ? state.hasUnsavedChanges : false;
       state.lastHeartbeat = Date.now();
     },
     clearSession(state) {

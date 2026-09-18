@@ -42,6 +42,28 @@ describe('sessionSlice', () => {
     expect(state.hasUnsavedChanges).toBe(false);
   });
 
+  it('re-entering the same simulation preserves an existing hasUnsavedChanges=true', () => {
+    const store = makeStore();
+    store.dispatch(setSession('sim-1'));
+    store.dispatch(setHasUnsavedChanges(true));
+
+    // Simulates TimetablePage's mount effect re-firing after navigating back
+    // from EditClassPage for the same draft, before it's been committed.
+    store.dispatch(setSession('sim-1'));
+
+    expect(store.getState().session.hasUnsavedChanges).toBe(true);
+  });
+
+  it('switching to a different simulation still resets hasUnsavedChanges', () => {
+    const store = makeStore();
+    store.dispatch(setSession('sim-1'));
+    store.dispatch(setHasUnsavedChanges(true));
+
+    store.dispatch(setSession('sim-2'));
+
+    expect(store.getState().session.hasUnsavedChanges).toBe(false);
+  });
+
   it('clearSession nulls out simulationId and flags', () => {
     const store = makeStore();
     store.dispatch(setSession('sim-1'));

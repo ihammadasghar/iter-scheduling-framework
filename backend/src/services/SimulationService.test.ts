@@ -601,6 +601,39 @@ describe('SimulationService.getConflicts()', () => {
 
     expect(result).toEqual([]);
   });
+
+  // Regression: the submit-time gate (ProposalGate.computeConflictsAndScore)
+  // counts structural conflicts plus policy-constraint violations. If
+  // getConflicts only returned the structural half, the live HUD count could
+  // read lower than what submission actually validates against.
+  it('merges policy-constraint violations from rules.json into the result', async () => {
+    const constraintViolation = {
+      id: 'CONSECUTIVE_LIMIT_CLS_003_CLS_004',
+      type: 'CONSECUTIVE_LIMIT' as const,
+      classIds: ['CLS_003', 'CLS_004'] as [string, string],
+      message: 'Exceeds consecutive class limit',
+    };
+    (github.readFile as ReturnType<typeof vi.fn>).mockImplementation((_branch: string, path: string) => {
+      if (path === 'rules.json') {
+        return Promise.resolve(JSON.stringify({
+          metrics: [],
+          constraints: [
+            { id: 'c1', name: 'Max consecutive', target: 'professor', violationCondition: 'consecutive_limit', limit: 3 },
+          ],
+        }));
+      }
+      return Promise.resolve('{"metadata":[],"timeSlots":[],"rooms":[],"professors":[],"studentGroups":[],"courses":[],"classes":[]}');
+    });
+    (graph.queryConstraintViolations as ReturnType<typeof vi.fn>).mockResolvedValue([constraintViolation]);
+
+    const result = await service.getConflicts(SIM_ID);
+
+    expect(graph.queryConstraintViolations).toHaveBeenCalledWith(
+      SIM_ID,
+      [expect.objectContaining({ violationCondition: 'consecutive_limit' })],
+    );
+    expect(result).toEqual([...FAKE_CONFLICTS, constraintViolation]);
+  });
 });
 
 describe('SimulationService.getMetrics()', () => {
