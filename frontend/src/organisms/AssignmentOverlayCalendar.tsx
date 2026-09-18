@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Box, Chip, Stack, Typography } from '@mui/material';
-import { TouchApp } from '@mui/icons-material';
+import { TouchApp, MeetingRoom, Person, Groups, Edit } from '@mui/icons-material';
+import type { SvgIconComponent } from '@mui/icons-material';
 import { defineMessages, useIntl } from 'react-intl';
 import OverlayClassBlock from '@/atoms/OverlayClassBlock';
 import { useScheduleNames } from '@/hooks/useScheduleNames';
@@ -73,16 +74,21 @@ const HOUR_GUTTER_WIDTH = 56;
 const MIN_DAY_COLUMN_WIDTH = 110;
 const MIN_LANE_WIDTH = 70;
 
-// Four fixed, legend-labeled colors — deliberately distinct from the app's
-// semantic warning (conflict) / success (available) colors used elsewhere,
-// so this palette reads as "whose schedule" rather than "good/bad". Only
-// two of MUI's named roles are otherwise unclaimed (secondary, info); the
-// rest are plain literals since there's no unused semantic slot left.
-const SOURCE_COLORS: Record<OverlaySource, { bgcolor: string; color: string }> = {
-  room: { bgcolor: 'info.main', color: 'info.contrastText' },
-  professor: { bgcolor: 'secondary.main', color: 'secondary.contrastText' },
-  group: { bgcolor: '#6a1b9a', color: '#ffffff' },
-  editing: { bgcolor: '#ffab00', color: '#000000' },
+// Four fixed, legend-labeled colors, each paired with an icon so a block's
+// source is recognizable by shape as well as color (cognitive-walkthrough
+// finding, issue #29 follow-up: memorizing four arbitrary hues took users a
+// few seconds every time). Blue (primary.light) is reserved for 'editing'
+// specifically because that's the color CalendarClassBlock.tsx/ClassChip.tsx
+// already use app-wide for "the class I'm currently working with" — room
+// moves off blue (it previously sat on info.main) so there's no collision
+// with that existing convention. Deliberately distinct from the app's
+// semantic warning (conflict) / success (available) colors elsewhere, so
+// this palette reads as "whose schedule" rather than "good/bad".
+const SOURCE_STYLES: Record<OverlaySource, { bgcolor: string; color: string; Icon: SvgIconComponent }> = {
+  room: { bgcolor: '#ffab00', color: '#000000', Icon: MeetingRoom },
+  professor: { bgcolor: 'secondary.main', color: 'secondary.contrastText', Icon: Person },
+  group: { bgcolor: '#6a1b9a', color: '#ffffff', Icon: Groups },
+  editing: { bgcolor: 'primary.light', color: 'primary.contrastText', Icon: Edit },
 };
 
 /**
@@ -145,13 +151,15 @@ export default function AssignmentOverlayCalendar({
   return (
     <Box>
       <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: 'wrap', rowGap: 1 }} aria-label={intl.formatMessage(messages.legendAriaLabel)}>
-        {(Object.keys(SOURCE_COLORS) as OverlaySource[]).map((source) => {
+        {(Object.keys(SOURCE_STYLES) as OverlaySource[]).map((source) => {
           const isEditing = source === 'editing';
           const isFocused = isEditing || focusedSources.has(source);
+          const { Icon } = SOURCE_STYLES[source];
           return (
             <Chip
               key={source}
               size="small"
+              icon={<Icon fontSize="small" />}
               label={sourceLabels[source]}
               onClick={isEditing ? undefined : () => toggleSource(source)}
               aria-pressed={isEditing ? undefined : isFocused}
@@ -164,11 +172,12 @@ export default function AssignmentOverlayCalendar({
                     )
               }
               sx={{
-                bgcolor: SOURCE_COLORS[source].bgcolor,
-                color: SOURCE_COLORS[source].color,
+                bgcolor: SOURCE_STYLES[source].bgcolor,
+                color: SOURCE_STYLES[source].color,
                 cursor: isEditing ? 'default' : 'pointer',
                 opacity: isFocused ? 1 : 0.6,
                 transition: 'opacity 0.15s',
+                '& .MuiChip-icon': { color: 'inherit' },
               }}
             />
           );
@@ -290,7 +299,7 @@ export default function AssignmentOverlayCalendar({
                 {blocks.filter((block) => block.day === day).map((block) => {
                   const cls = classById.get(block.classId);
                   if (cls === undefined) return null;
-                  const palette = SOURCE_COLORS[block.source];
+                  const palette = SOURCE_STYLES[block.source];
                   const dimmed = block.source !== 'editing' && !focusedSources.has(block.source);
                   return (
                     <OverlayClassBlock
@@ -302,8 +311,10 @@ export default function AssignmentOverlayCalendar({
                       pixelsPerMinute={PIXELS_PER_MINUTE}
                       bgcolor={palette.bgcolor}
                       color={palette.color}
+                      Icon={palette.Icon}
                       animateMove={block.source === 'editing'}
                       dimmed={dimmed}
+                      highlighted={block.source === 'editing'}
                     />
                   );
                 })}
