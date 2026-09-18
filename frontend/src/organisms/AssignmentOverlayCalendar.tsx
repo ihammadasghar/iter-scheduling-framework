@@ -1,30 +1,26 @@
-import { useMemo, useState } from 'react';
-import { Box, Chip, Stack, Typography } from '@mui/material';
-import { TouchApp, MeetingRoom, Person, Groups, Edit } from '@mui/icons-material';
-import type { SvgIconComponent } from '@mui/icons-material';
+import { useMemo } from 'react';
+import { Box, Stack, Typography } from '@mui/material';
+import { TouchApp, Edit } from '@mui/icons-material';
 import { defineMessages, useIntl } from 'react-intl';
 import OverlayClassBlock from '@/atoms/OverlayClassBlock';
 import { useScheduleNames } from '@/hooks/useScheduleNames';
 import { deriveDayOrder, computeCalendarBounds, timeToMinutes } from '@/utils/calendarLayout';
-import type { OverlayBlock, OverlaySource } from '@/utils/overlayLayout';
+import type { OverlayBlock } from '@/utils/overlayLayout';
 import type { RawTimeSlot, ScheduleClass } from '@/types';
 
 const messages = defineMessages({
-  room: { id: 'assignmentOverlayCalendar.room', defaultMessage: 'Room' },
-  professor: { id: 'assignmentOverlayCalendar.professor', defaultMessage: 'Professor' },
-  group: { id: 'assignmentOverlayCalendar.group', defaultMessage: 'Student Group' },
   editing: { id: 'assignmentOverlayCalendar.editing', defaultMessage: 'This Class' },
-  legendAriaLabel: {
-    id: 'assignmentOverlayCalendar.legendAriaLabel',
-    defaultMessage: 'Schedule color legend',
+  roomBusyLabel: {
+    id: 'assignmentOverlayCalendar.roomBusyLabel',
+    defaultMessage: 'Room {name} busy',
   },
-  legendChipFocusedAriaLabel: {
-    id: 'assignmentOverlayCalendar.legendChipFocusedAriaLabel',
-    defaultMessage: '{label} — in focus, click to de-emphasize',
+  professorBusyLabel: {
+    id: 'assignmentOverlayCalendar.professorBusyLabel',
+    defaultMessage: 'Professor {name} busy',
   },
-  legendChipUnfocusedAriaLabel: {
-    id: 'assignmentOverlayCalendar.legendChipUnfocusedAriaLabel',
-    defaultMessage: '{label} — click to bring to focus',
+  groupBusyLabel: {
+    id: 'assignmentOverlayCalendar.groupBusyLabel',
+    defaultMessage: 'Student group {name} busy',
   },
   overlayAriaLabel: {
     id: 'assignmentOverlayCalendar.overlayAriaLabel',
@@ -41,6 +37,10 @@ const messages = defineMessages({
   blockTooltip: {
     id: 'assignmentOverlayCalendar.blockTooltip',
     defaultMessage: '{label}: {title}',
+  },
+  busyTooltip: {
+    id: 'assignmentOverlayCalendar.busyTooltip',
+    defaultMessage: '{label} with {title}',
   },
   slotClickHint: {
     id: 'assignmentOverlayCalendar.slotClickHint',
@@ -67,35 +67,31 @@ interface AssignmentOverlayCalendarProps {
 
 const PIXELS_PER_MINUTE = 1;
 const HOUR_GUTTER_WIDTH = 56;
-// Each side-by-side lane needs enough width for a short course code
-// ("BIO101") not to be squeezed unreadable — day columns widen with the
-// busiest overlap on record instead of staying at a fixed width regardless
-// of how many classes stack up on the same slot.
-const MIN_DAY_COLUMN_WIDTH = 110;
-const MIN_LANE_WIDTH = 70;
+// Each side-by-side lane needs enough width for an entity-name label
+// ("Professor Jane Smith busy") not to be squeezed unreadable — day columns
+// widen with the busiest overlap on record instead of staying at a fixed
+// width regardless of how many classes stack up on the same slot.
+const MIN_DAY_COLUMN_WIDTH = 160;
+const MIN_LANE_WIDTH = 130;
 
-// Four fixed, legend-labeled colors, each paired with an icon so a block's
-// source is recognizable by shape as well as color (cognitive-walkthrough
-// finding, issue #29 follow-up: memorizing four arbitrary hues took users a
-// few seconds every time). Blue (primary.light) is reserved for 'editing'
-// specifically because that's the color CalendarClassBlock.tsx/ClassChip.tsx
-// already use app-wide for "the class I'm currently working with" — room
-// moves off blue (it previously sat on info.main) so there's no collision
-// with that existing convention. Deliberately distinct from the app's
-// semantic warning (conflict) / success (available) colors elsewhere, so
-// this palette reads as "whose schedule" rather than "good/bad".
-const SOURCE_STYLES: Record<OverlaySource, { bgcolor: string; color: string; Icon: SvgIconComponent }> = {
-  room: { bgcolor: '#ffab00', color: '#000000', Icon: MeetingRoom },
-  professor: { bgcolor: 'secondary.main', color: 'secondary.contrastText', Icon: Person },
-  group: { bgcolor: '#6a1b9a', color: '#ffffff', Icon: Groups },
-  editing: { bgcolor: 'primary.light', color: 'primary.contrastText', Icon: Edit },
-};
+// Busy blocks (room/professor/group) all share one neutral style now that
+// the tile's own text ("Room 204 busy") identifies its source instead of a
+// color/icon a user had to learn from a legend (cognitive-walkthrough
+// finding, issue #29). The 'editing' block keeps the app-wide blue used by
+// CalendarClassBlock.tsx/ClassChip.tsx for "the class I'm currently working
+// with" — that's a distinct "which block am I editing" signal, not source
+// color-coding, so it's kept separate from the busy-block style.
+const BUSY_BGCOLOR = '#e5e8f4'; // theme.palette.surfaceContainerHigh — literal so it renders correctly without a ThemeProvider in tests
+const BUSY_COLOR = 'text.primary';
+const EDITING_BGCOLOR = 'primary.light';
+const EDITING_COLOR = 'primary.contrastText';
 
 /**
  * Overlays the room's, professor's, and student group's weekly schedules on
  * one calendar for the Edit Assignment dialog — a sibling to
- * MyScheduleCalendar.tsx (same grid geometry) but for three color-coded
- * sources instead of one signed-in identity's own classes.
+ * MyScheduleCalendar.tsx (same grid geometry) but for three busy sources,
+ * each labeled with an "<entity name> busy" tile, instead of one signed-in
+ * identity's own classes.
  */
 export default function AssignmentOverlayCalendar({
   blocks,
@@ -112,26 +108,21 @@ export default function AssignmentOverlayCalendar({
     [blocks],
   );
 
-  // Sources the user has explicitly clicked into focus — 'editing' is never
-  // dimmed regardless of this set's contents, so it's intentionally excluded
-  // from what's toggleable (cognitive-walkthrough finding, issue #29: a
-  // crowded overlay of three schedules made it hard to tell which block was
-  // actually being edited).
-  const [focusedSources, setFocusedSources] = useState<ReadonlySet<OverlaySource>>(new Set());
-  const toggleSource = (source: OverlaySource): void => {
-    if (source === 'editing') return;
-    setFocusedSources((prev) => {
-      const next = new Set(prev);
-      if (next.has(source)) next.delete(source); else next.add(source);
-      return next;
-    });
-  };
-
-  const sourceLabels: Record<OverlaySource, string> = {
-    room: intl.formatMessage(messages.room),
-    professor: intl.formatMessage(messages.professor),
-    group: intl.formatMessage(messages.group),
-    editing: intl.formatMessage(messages.editing),
+  // Room/professor/group blocks read as "<entity name> busy" instead of the
+  // course code, so the tile's own text identifies its source without a
+  // color legend. The 'editing' block isn't a "busy" conflict — it's the
+  // class being placed — so it keeps the course code.
+  const busyLabel = (block: OverlayBlock, cls: ScheduleClass): string => {
+    switch (block.source) {
+      case 'room':
+        return intl.formatMessage(messages.roomBusyLabel, { name: names.roomName(cls.roomId) });
+      case 'professor':
+        return intl.formatMessage(messages.professorBusyLabel, { name: names.professorName(cls.professorId) });
+      case 'group':
+        return intl.formatMessage(messages.groupBusyLabel, { name: names.groupName(cls.studentGroupId) });
+      case 'editing':
+        return names.courseCode(cls.courseId);
+    }
   };
 
   /** 630 → "10 AM" */
@@ -150,40 +141,6 @@ export default function AssignmentOverlayCalendar({
 
   return (
     <Box>
-      <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: 'wrap', rowGap: 1 }} aria-label={intl.formatMessage(messages.legendAriaLabel)}>
-        {(Object.keys(SOURCE_STYLES) as OverlaySource[]).map((source) => {
-          const isEditing = source === 'editing';
-          const isFocused = isEditing || focusedSources.has(source);
-          const { Icon } = SOURCE_STYLES[source];
-          return (
-            <Chip
-              key={source}
-              size="small"
-              icon={<Icon fontSize="small" />}
-              label={sourceLabels[source]}
-              onClick={isEditing ? undefined : () => toggleSource(source)}
-              aria-pressed={isEditing ? undefined : isFocused}
-              aria-label={
-                isEditing
-                  ? sourceLabels[source]
-                  : intl.formatMessage(
-                      isFocused ? messages.legendChipFocusedAriaLabel : messages.legendChipUnfocusedAriaLabel,
-                      { label: sourceLabels[source] },
-                    )
-              }
-              sx={{
-                bgcolor: SOURCE_STYLES[source].bgcolor,
-                color: SOURCE_STYLES[source].color,
-                cursor: isEditing ? 'default' : 'pointer',
-                opacity: isFocused ? 1 : 0.6,
-                transition: 'opacity 0.15s',
-                '& .MuiChip-icon': { color: 'inherit' },
-              }}
-            />
-          );
-        })}
-      </Stack>
-
       {onSlotClick !== undefined && (
         <Stack direction="row" spacing={0.5} sx={{ mb: 1, alignItems: 'center' }}>
           <TouchApp fontSize="small" color="action" />
@@ -293,28 +250,44 @@ export default function AssignmentOverlayCalendar({
 
                 {/* Busy blocks from all three resources, plus the class
                     being edited itself (source 'editing') at whichever slot
-                    is currently selected — it's just another colored block
-                    here, so it moves like any other event would when the
-                    caller re-derives it from a new Day/Period selection. */}
+                    is currently selected — it's just another block here, so
+                    it moves like any other event would when the caller
+                    re-derives it from a new Day/Period selection. */}
                 {blocks.filter((block) => block.day === day).map((block) => {
                   const cls = classById.get(block.classId);
                   if (cls === undefined) return null;
-                  const palette = SOURCE_STYLES[block.source];
-                  const dimmed = block.source !== 'editing' && !focusedSources.has(block.source);
+                  const isEditing = block.source === 'editing';
+                  const label = busyLabel(block, cls);
+                  // Editing block's tooltip names the class ("This Class:
+                  // Biology 101"); busy blocks say what the room/professor/
+                  // student group is busy with ("Room 204 busy with Biology
+                  // 101"), reusing the same text already on the tile.
+                  const tooltip = isEditing
+                    ? intl.formatMessage(messages.blockTooltip, { label: intl.formatMessage(messages.editing), title: cls.title })
+                    : intl.formatMessage(messages.busyTooltip, { label, title: cls.title });
+                  // The block can't rely on pointer-events: none to let
+                  // clicks fall through to the slot underneath anymore
+                  // (that also blocked the hover the Tooltip needs), so it
+                  // re-triggers the same slot itself — the one whose start
+                  // matches this block's, i.e. the slot the class starts in.
+                  const underlyingSlot = daySlots.find(
+                    (slot) => timeToMinutes(slot.startTime) === block.startMinutes,
+                  );
                   return (
                     <OverlayClassBlock
                       key={`${block.source}-${block.classId}-${block.day}`}
-                      label={names.courseCode(cls.courseId)}
-                      tooltip={intl.formatMessage(messages.blockTooltip, { label: sourceLabels[block.source], title: cls.title })}
+                      label={label}
+                      tooltip={tooltip}
                       block={block}
                       minMinutes={bounds.minMinutes}
                       pixelsPerMinute={PIXELS_PER_MINUTE}
-                      bgcolor={palette.bgcolor}
-                      color={palette.color}
-                      Icon={palette.Icon}
-                      animateMove={block.source === 'editing'}
-                      dimmed={dimmed}
-                      highlighted={block.source === 'editing'}
+                      bgcolor={isEditing ? EDITING_BGCOLOR : BUSY_BGCOLOR}
+                      color={isEditing ? EDITING_COLOR : BUSY_COLOR}
+                      Icon={isEditing ? Edit : undefined}
+                      onClick={onSlotClick && underlyingSlot ? () => onSlotClick(day, underlyingSlot.id) : undefined}
+                      animateMove={isEditing}
+                      dimmed={!isEditing}
+                      highlighted={isEditing}
                     />
                   );
                 })}

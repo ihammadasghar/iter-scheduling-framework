@@ -4,10 +4,9 @@ import type { OverlayBlock } from '@/utils/overlayLayout';
 
 // Sibling to CalendarClassBlock.tsx, for the Edit Assignment dialog's
 // multi-source overlay rather than the main app's personal-schedule
-// calendar — purely informational here (no click-to-select-class
-// navigation), colored by which resource's schedule it came from instead of
-// conflict/selection state, so `pointerEvents: 'none'` lets every click pass
-// through to the day column's per-timeslot click-to-set region underneath.
+// calendar. The label text itself (e.g. "Room 204 busy") is what identifies
+// which resource a block came from now, rather than color/icon — every
+// non-editing block shares one neutral style.
 interface OverlayClassBlockProps {
   readonly label: string;
   readonly tooltip: string;
@@ -16,16 +15,22 @@ interface OverlayClassBlockProps {
   readonly pixelsPerMinute: number;
   readonly bgcolor: string;
   readonly color: string;
-  readonly Icon: SvgIconComponent;
+  // Only the 'editing' block passes an icon (Edit) — busy blocks omit it to
+  // leave more width for the entity-name label text.
+  readonly Icon?: SvgIconComponent;
+  // Forwards to the same click-to-set-slot shortcut as clicking the empty
+  // slot underneath would — the block can't be `pointer-events: none` to
+  // pass clicks through on its own, since that would also block the hover
+  // needed for the Tooltip below, so it explicitly re-triggers the same
+  // slot instead.
+  readonly onClick?: () => void;
   // Set only for the 'editing' source block: animates its position so
   // clicking a different slot (or changing Day/Period) slides the block
   // there instead of popping, giving the click-to-set shortcut some of the
   // direct-manipulation feel a drag would have had (issue #8).
   readonly animateMove?: boolean;
-  // De-emphasizes this block (opacity 0.4) when a different source is
-  // currently in focus — mirrors CalendarClassBlock.tsx/ClassChip.tsx's
-  // selection-dimming idiom (issue #7), applied here to "which source" is
-  // in focus instead of "which class is selected" (issue #29).
+  // De-emphasizes every non-editing block (opacity 0.4) so the block being
+  // edited stands out against the busy blocks around it (issue #29).
   readonly dimmed?: boolean;
   // Set only for the 'editing' source block: reuses
   // CalendarClassBlock.tsx/ClassChip.tsx's selected-class border/shadow
@@ -34,7 +39,7 @@ interface OverlayClassBlockProps {
   readonly highlighted?: boolean;
 }
 
-const MIN_BLOCK_HEIGHT = 32;
+const MIN_BLOCK_HEIGHT = 36;
 
 export default function OverlayClassBlock({
   label,
@@ -45,6 +50,7 @@ export default function OverlayClassBlock({
   bgcolor,
   color,
   Icon,
+  onClick,
   animateMove = false,
   dimmed = false,
   highlighted = false,
@@ -58,6 +64,7 @@ export default function OverlayClassBlock({
     <Tooltip title={tooltip} enterDelay={300}>
       <Box
         aria-label={tooltip}
+        onClick={onClick}
         sx={{
           position: 'absolute',
           top: `${top}px`,
@@ -66,7 +73,7 @@ export default function OverlayClassBlock({
           width: `calc(${widthPct}% - 4px)`,
           boxSizing: 'border-box',
           overflow: 'hidden',
-          pointerEvents: 'none',
+          cursor: onClick ? 'pointer' : 'default',
           borderRadius: 1,
           border: highlighted ? 2 : 0,
           borderColor: highlighted ? 'primary.main' : 'transparent',
@@ -84,7 +91,7 @@ export default function OverlayClassBlock({
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <Icon fontSize="inherit" sx={{ flexShrink: 0 }} />
+          {Icon && <Icon fontSize="inherit" sx={{ flexShrink: 0 }} />}
           <Box
             component="span"
             sx={{
