@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
@@ -63,6 +63,26 @@ describe('AssignmentOverlayCalendar', () => {
   it('renders a busy block labelled with the course code', () => {
     renderCalendar();
     expect(screen.getByText('BIO101')).toBeInTheDocument();
+  });
+
+  it('shows an icon on each legend chip', () => {
+    renderCalendar();
+    const legend = screen.getByLabelText('Schedule color legend');
+    expect(within(legend).getByTestId('MeetingRoomIcon')).toBeInTheDocument();
+    expect(within(legend).getByTestId('PersonIcon')).toBeInTheDocument();
+    expect(within(legend).getByTestId('GroupsIcon')).toBeInTheDocument();
+    expect(within(legend).getByTestId('EditIcon')).toBeInTheDocument();
+  });
+
+  it('shows the room block colored amber, not blue, so it does not collide with the editing block', () => {
+    renderCalendar();
+    expect(screen.getByLabelText('Room: Biology 101')).toHaveStyle({ backgroundColor: '#ffab00' });
+  });
+
+  it('shows the room source icon on its block', () => {
+    renderCalendar();
+    const block = screen.getByLabelText('Room: Biology 101');
+    expect(within(block).getByTestId('MeetingRoomIcon')).toBeInTheDocument();
   });
 
   it('renders one clickable region per timeslot per day and reports clicks', () => {
@@ -146,6 +166,25 @@ describe('AssignmentOverlayCalendar', () => {
     renderCalendar();
     const block = screen.getByLabelText('Room: Biology 101');
     expect(block).toHaveStyle({ transition: 'opacity 0.15s' });
+  });
+
+  it('highlights the "editing" block with a colored border like a selected class elsewhere in the app', () => {
+    const editingClass: ScheduleClass = { ...roomClass, id: 'CLS_EDITING', timeSlotIds: ['TS_MON_P2'] };
+    const blocks = buildOverlayBlocks(
+      [{ source: 'editing', classes: [editingClass] }],
+      timeSlotById,
+    );
+    const classById = new Map([[editingClass.id, editingClass]]);
+    renderCalendar({ blocks, classById });
+
+    const block = screen.getByLabelText('This Class: Biology 101');
+    expect(block).toHaveStyle({ borderWidth: '2px' });
+  });
+
+  it('does not highlight busy blocks from other sources with a border', () => {
+    renderCalendar();
+    const block = screen.getByLabelText('Room: Biology 101');
+    expect(block).toHaveStyle({ borderWidth: '0px' });
   });
 
   describe('focus toggling', () => {
