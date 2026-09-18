@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Box,
   Button,
@@ -11,13 +10,13 @@ import {
   Typography,
 } from '@mui/material';
 import { Edit, WarningAmber } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { defineMessages, useIntl, type IntlShape } from 'react-intl';
 import { useAppDispatch } from '@/store/hooks';
 import { selectClass, toggleInspector } from '@/store/reducers/uiSlice';
 import { formatTimeSlotFull } from '@/utils/scheduleFormatters';
 import { getConflictMessage, resolveConflictResourceName } from '@/utils/conflictMessages';
 import { useScheduleNames } from '@/hooks/useScheduleNames';
-import EditAssignmentDialog from '@/molecules/EditAssignmentDialog';
 import type { ScheduleNames } from '@/utils/scheduleNames';
 import type { Conflict, ConflictType, ScheduleClass } from '@/types';
 
@@ -172,13 +171,12 @@ export default function ClassDetailSection({
 }: ClassDetailSectionProps): React.ReactElement {
   const intl = useIntl();
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const names = useScheduleNames();
   const { professorName, roomName, groupName } = names;
   const timeSlotLabels = [...classItem.timeSlotIds]
     .map(formatTimeSlotFull)
     .join(', ');
-
-  const [editOpen, setEditOpen] = useState(false);
 
   const relevant = conflicts.filter((c) => c.classIds.includes(classItem.id));
   const professorConflicts = resolveRowConflicts(
@@ -203,7 +201,11 @@ export default function ClassDetailSection({
           {intl.formatMessage(messages.currentAssignment)}
         </Typography>
         {simId !== undefined && (
-          <Button size="small" startIcon={<Edit fontSize="small" />} onClick={() => setEditOpen(true)}>
+          <Button
+            size="small"
+            startIcon={<Edit fontSize="small" />}
+            onClick={() => navigate(`/simulations/${simId}/classes/${classItem.id}/edit`)}
+          >
             {intl.formatMessage(messages.edit)}
           </Button>
         )}
@@ -230,15 +232,6 @@ export default function ClassDetailSection({
         />
         <DetailRow label={intl.formatMessage(messages.time)} value={timeSlotLabels || intl.formatMessage(messages.emptyValue)} />
       </List>
-      {simId !== undefined && (
-        <EditAssignmentDialog
-          open={editOpen}
-          onClose={() => setEditOpen(false)}
-          simId={simId}
-          classId={classItem.id}
-          currentClass={classItem}
-        />
-      )}
     </Box>
   );
 }

@@ -63,6 +63,9 @@ interface AssignmentOverlayCalendarProps {
   // sits under the (pointer-events: none) busy blocks, so a click always
   // reaches it regardless of what's drawn on top.
   readonly onSlotClick?: (day: string, slotId: string) => void;
+  // Caps the scrollable grid's height — defaults to the dialog-era 360px;
+  // callers with more vertical room (e.g. a full page) can raise it.
+  readonly maxHeight?: number;
 }
 
 const PIXELS_PER_MINUTE = 1;
@@ -98,6 +101,7 @@ export default function AssignmentOverlayCalendar({
   classById,
   timeSlots,
   onSlotClick,
+  maxHeight = 360,
 }: AssignmentOverlayCalendarProps): React.ReactElement {
   const intl = useIntl();
   const names = useScheduleNames();
@@ -152,7 +156,7 @@ export default function AssignmentOverlayCalendar({
 
       <Box
         aria-label={intl.formatMessage(messages.overlayAriaLabel)}
-        sx={{ overflow: 'auto', maxHeight: 360, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}
+        sx={{ overflow: 'auto', maxHeight, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}
       >
         <Box
           sx={{

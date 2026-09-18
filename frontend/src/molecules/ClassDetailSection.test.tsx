@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
@@ -74,12 +76,22 @@ const renderSection = (options: {
     ...render(
       <Provider store={store}>
         <IntlProvider locale="en" messages={{}}>
-          <ClassDetailSection
-            classItem={options.classItem ?? classA}
-            conflicts={options.conflicts ?? []}
-            classes={options.classes ?? [classA, classB]}
-            simId={options.simId}
-          />
+          <MemoryRouter initialEntries={['/simulations/sim-1']}>
+            <Routes>
+              <Route
+                path="/simulations/:id"
+                element={(
+                  <ClassDetailSection
+                    classItem={options.classItem ?? classA}
+                    conflicts={options.conflicts ?? []}
+                    classes={options.classes ?? [classA, classB]}
+                    simId={options.simId}
+                  />
+                )}
+              />
+              <Route path="/simulations/:id/classes/:classId/edit" element={<div>Edit Class Page</div>} />
+            </Routes>
+          </MemoryRouter>
         </IntlProvider>
       </Provider>,
     ),
@@ -187,6 +199,15 @@ describe('ClassDetailSection', () => {
   it('shows an Edit button next to Current Assignment when simId is given', () => {
     renderSection({ simId: 'sim-1' });
     expect(screen.getByRole('button', { name: /^edit$/i })).toBeInTheDocument();
+  });
+
+  it('clicking Edit navigates to the class edit page', async () => {
+    const user = userEvent.setup();
+    renderSection({ simId: 'sim-1', classItem: classA });
+
+    await user.click(screen.getByRole('button', { name: /^edit$/i }));
+
+    expect(await screen.findByText('Edit Class Page')).toBeInTheDocument();
   });
 
   it('does not render a raw conflict type code anywhere', () => {
