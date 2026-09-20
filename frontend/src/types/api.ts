@@ -1,6 +1,6 @@
 // API request and response shapes for all backend endpoints.
 
-import type { MetricDirection } from './domain';
+import type { MetricDirection, ProposalRole } from './domain';
 
 // --- Generic ---
 
@@ -36,6 +36,7 @@ export interface CreateProposalRequest {
   readonly simulationId: string;
   readonly description: string;
   readonly baseScheduleVersion: string;
+  readonly role?: ProposalRole;
 }
 
 // --- Rebase (updating a stale draft onto the latest published schedule) ---

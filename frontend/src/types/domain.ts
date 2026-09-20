@@ -69,12 +69,17 @@ export interface RoomAvailability {
 
 export type ProposalStatus = 'PENDING' | 'READY' | 'BLOCKED' | 'MERGED' | 'REJECTED';
 
+// Who submitted the proposal — mirrors backend/src/types/domain.ts's
+// ProposalRole (stamped onto the underlying PR as a label at submit time).
+export type ProposalRole = 'student' | 'professor';
+
 export interface Proposal {
   readonly id: string;
   readonly simulationId: string;
   readonly status: ProposalStatus;
   readonly createdAt: string;
   readonly description?: string;
+  readonly role?: ProposalRole;
 }
 
 // Mirrors backend/src/types/domain.ts's MetricDirection — see its comment

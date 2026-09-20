@@ -346,6 +346,34 @@ describe('ProposalService.submit()', () => {
 
     expect(github.setPullRequestLabels).toHaveBeenCalledWith('42', ['ci:blocked']);
   });
+
+  it('is undefined on the returned Proposal when no role is given', async () => {
+    const proposal = await service.submit(VALID_PARAMS);
+
+    expect(proposal.role).toBeUndefined();
+  });
+
+  it('adds a role:student label alongside the CI label and returns role on the Proposal', async () => {
+    const proposal = await service.submit({ ...VALID_PARAMS, role: 'student' });
+
+    expect(github.setPullRequestLabels).toHaveBeenCalledWith('42', ['ci:ready', 'role:student']);
+    expect(proposal.role).toBe('student');
+  });
+
+  it('adds a role:professor label alongside the CI label and returns role on the Proposal', async () => {
+    const proposal = await service.submit({ ...VALID_PARAMS, role: 'professor' });
+
+    expect(github.setPullRequestLabels).toHaveBeenCalledWith('42', ['ci:ready', 'role:professor']);
+    expect(proposal.role).toBe('professor');
+  });
+
+  it('throws 400 when role is not "student" or "professor"', async () => {
+    await expect(
+      service.submit({ ...VALID_PARAMS, role: 'admin' as never }),
+    ).rejects.toMatchObject({ statusCode: 400, message: 'role must be "student" or "professor"' });
+
+    expect(github.createPullRequest).not.toHaveBeenCalled();
+  });
 });
 
 describe('ProposalService.submit() — improvement gate', () => {
@@ -667,6 +695,29 @@ describe('ProposalService.list()', () => {
 
   it('throws 400 for an unrecognized status value', async () => {
     await expect(service.list('bogus')).rejects.toMatchObject({ statusCode: 400 });
+  });
+
+  it('derives role from a role:student/role:professor label alongside the CI label', async () => {
+    (github.listOpenPullRequests as ReturnType<typeof vi.fn>).mockResolvedValue(['1', '2']);
+    (github.getPullRequest as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ title: 'P1', head: 'sim-1', labels: ['ci:ready', 'role:student'], createdAt: '2026-01-01T00:00:00.000Z' })
+      .mockResolvedValueOnce({ title: 'P2', head: 'sim-2', labels: ['ci:ready', 'role:professor'], createdAt: '2026-01-02T00:00:00.000Z' });
+
+    const proposals = await service.list('all');
+
+    expect(proposals.find((p) => p.id === '1')?.role).toBe('student');
+    expect(proposals.find((p) => p.id === '2')?.role).toBe('professor');
+  });
+
+  it('leaves role undefined when no role label is present', async () => {
+    (github.listOpenPullRequests as ReturnType<typeof vi.fn>).mockResolvedValue(['1']);
+    (github.getPullRequest as ReturnType<typeof vi.fn>).mockResolvedValue({
+      title: 'P1', head: 'sim-1', labels: ['ci:ready'], createdAt: '2026-01-01T00:00:00.000Z',
+    });
+
+    const proposals = await service.list('all');
+
+    expect(proposals[0]?.role).toBeUndefined();
   });
 });
 

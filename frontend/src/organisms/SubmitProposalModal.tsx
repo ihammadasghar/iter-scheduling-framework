@@ -34,6 +34,8 @@ export default function SubmitProposalModal({
   const baseScheduleVersion = useAppSelector(
     (s) => s.simulation.simulations.find((sim) => sim.id === simId)?.baseScheduleVersion ?? '',
   );
+  const identityRole = useAppSelector((s) => s.identity.identity?.role);
+  const role = identityRole === 'student' || identityRole === 'professor' ? identityRole : undefined;
 
   const [stage, setStage] = useState<Stage>('proposal-form');
 
@@ -49,7 +51,7 @@ export default function SubmitProposalModal({
   const handleSubmit = async (description: string): Promise<void> => {
     onClose();
     const result = await dispatch(
-      createProposalThunk({ simulationId: simId, description, baseScheduleVersion }),
+      createProposalThunk({ simulationId: simId, description, baseScheduleVersion, role }),
     );
     // Only leave the editor once the submission actually went through — a
     // rejection (including the "published schedule changed" case, handled
