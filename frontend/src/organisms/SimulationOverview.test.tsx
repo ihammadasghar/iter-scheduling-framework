@@ -89,7 +89,7 @@ describe('SimulationOverview', () => {
         </IntlProvider>
       </Provider>,
     );
-    screen.getByRole('button', { name: /go to grid view/i }).click();
+    screen.getByRole('button', { name: /back to schedule/i }).click();
     expect(onGoToGridView).toHaveBeenCalledOnce();
   });
 

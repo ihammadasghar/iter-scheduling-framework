@@ -3,7 +3,6 @@ import { useParams } from 'react-router-dom';
 import { Box, Typography } from '@mui/material';
 import { defineMessages, useIntl } from 'react-intl';
 import AppShell from '@/templates/AppShell';
-import TimetableGrid from '@/organisms/TimetableGrid';
 import MyScheduleCalendar from '@/organisms/MyScheduleCalendar';
 import BrowseSchedulePanel from '@/organisms/BrowseSchedulePanel';
 import SimulationOverview from '@/organisms/SimulationOverview';
@@ -12,7 +11,6 @@ import HUD from '@/organisms/HUD';
 import SessionExpiryModal from '@/organisms/SessionExpiryModal';
 import ScheduleUpdatedModal from '@/organisms/ScheduleUpdatedModal';
 import SubmitProposalModal from '@/organisms/SubmitProposalModal';
-import ViewBySelector from '@/molecules/ViewBySelector';
 import SaveChangesButton from '@/molecules/SaveChangesButton';
 import MetricsToolbar from '@/molecules/MetricsToolbar';
 import InactivityBanner from '@/molecules/InactivityBanner';
@@ -40,10 +38,11 @@ const PAGE_SIZE = 1000; // must match PAGE_SIZE in classSlice
 
 // A professor/student's default landing tab is their own calendar; anyone
 // else (admin, or no identity chosen at all — e.g. in isolated tests) lands
-// on the unfiltered Full Schedule grid, since "My Schedule" is meaningless
-// without a professorId/studentGroupId to filter by.
+// on Browse, the role-independent "look up anyone's schedule" view — "My
+// Schedule" is meaningless without a professorId/studentGroupId to filter
+// by, and the Full Schedule grid is no longer part of this workspace.
 const defaultTabFor = (role: UserRole | undefined): WorkspaceTabValue =>
-  role === 'professor' || role === 'student' ? 'myschedule' : 'grid';
+  role === 'professor' || role === 'student' ? 'myschedule' : 'browse';
 
 export default function TimetablePage(): React.ReactElement {
   const intl = useIntl();
@@ -59,9 +58,9 @@ export default function TimetablePage(): React.ReactElement {
     [conflicts],
   );
 
-  // Week navigation — shared across the My Schedule/Full Schedule/Browse
-  // tabs so switching tabs preserves the selected week. null until the
-  // roster's metadata (and thus semester bounds) has loaded.
+  // Week navigation — shared across the My Schedule/Browse tabs so switching
+  // tabs preserves the selected week. null until the roster's metadata (and
+  // thus semester bounds) has loaded.
   const metadata = useAppSelector((s) => s.schedule.metadata);
   const [weekStart, setWeekStart] = useState<string | null>(null);
   useEffect(() => {
@@ -73,7 +72,6 @@ export default function TimetablePage(): React.ReactElement {
     () => (metadata && weekStart ? excludedDaysForWeek(weekStart, metadata.timeline) : new Map<string, string>()),
     [metadata, weekStart],
   );
-  const excludedDaySet = useMemo(() => new Set(excludedDays.keys()), [excludedDays]);
 
   // Session lifecycle hooks
   useHeartbeat(simId ?? null);
@@ -126,7 +124,7 @@ export default function TimetablePage(): React.ReactElement {
       dispatch(selectClass(match.classIds[0]));
       dispatch(toggleInspector(true));
     }
-    setTab('grid');
+    setTab('myschedule');
   };
 
   if (!simId) {
@@ -160,9 +158,6 @@ export default function TimetablePage(): React.ReactElement {
             flexShrink: 0,
           }}
         >
-          {/* Only meaningful on the Full Schedule grid — it re-groups rows by
-              resource type, which doesn't apply to the single-person calendar. */}
-          {tab === 'grid' && <ViewBySelector />}
           {/* Week-agnostic — the Overview tab summarizes conflicts/metrics across
               the whole simulation, not one week. */}
           {tab !== 'overview' && metadata !== null && weekStart !== null && (
@@ -179,16 +174,11 @@ export default function TimetablePage(): React.ReactElement {
           <WorkspaceTabs value={tab} onChange={setTab} />
         </Box>
 
-        {/* Main area: grid + inspector overlay, or overview */}
+        {/* Main area: calendar/browse + inspector overlay, or overview */}
         <Box sx={{ flex: 1, overflow: 'hidden', position: 'relative', display: 'flex' }}>
           {tab === 'myschedule' ? (
             <>
               <MyScheduleCalendar conflictedClassIds={conflictedClassIds} excludedDays={excludedDays} />
-              <Inspector simId={simId} />
-            </>
-          ) : tab === 'grid' ? (
-            <>
-              <TimetableGrid conflictedClassIds={conflictedClassIds} excludedDays={excludedDaySet} />
               <Inspector simId={simId} />
             </>
           ) : tab === 'browse' ? (
@@ -199,7 +189,7 @@ export default function TimetablePage(): React.ReactElement {
           ) : (
             <Box sx={{ flex: 1, overflow: 'auto' }}>
               <SimulationOverview
-                onGoToGridView={() => setTab('grid')}
+                onGoToGridView={() => setTab(defaultTabFor(identity?.role))}
                 onSelectConflictType={handleSelectConflictType}
               />
             </Box>

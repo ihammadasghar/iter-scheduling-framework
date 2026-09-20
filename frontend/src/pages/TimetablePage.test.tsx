@@ -21,16 +21,13 @@ vi.mock('@/hooks/useHeartbeat', () => ({ useHeartbeat: vi.fn() }));
 vi.mock('@/hooks/useInactivityWarning', () => ({
   useInactivityWarning: vi.fn().mockReturnValue({ showWarning: false, dismiss: vi.fn() }),
 }));
-vi.mock('@/organisms/TimetableGrid', () => ({
-  default: (props: { conflictedClassIds?: ReadonlySet<string>; excludedDays?: ReadonlySet<string> }) => (
+vi.mock('@/organisms/MyScheduleCalendar', () => ({
+  default: (props: { conflictedClassIds?: ReadonlySet<string>; excludedDays?: ReadonlyMap<string, string> }) => (
     <>
-      <div>Grid View Content — conflictedClassIds: {[...(props.conflictedClassIds ?? [])].join(',')}</div>
-      <div>excludedDays: {[...(props.excludedDays ?? [])].join(',')}</div>
+      <div>My Schedule Content — conflictedClassIds: {[...(props.conflictedClassIds ?? [])].join(',')}</div>
+      <div>excludedDays: {[...(props.excludedDays?.keys() ?? [])].join(',')}</div>
     </>
   ),
-}));
-vi.mock('@/organisms/MyScheduleCalendar', () => ({
-  default: () => <div>My Schedule Content</div>,
 }));
 vi.mock('@/organisms/BrowseSchedulePanel', () => ({
   default: () => <div>Browse Content</div>,
@@ -104,9 +101,9 @@ const renderPage = (preloadedState?: Partial<RootState>) => {
 };
 
 describe('TimetablePage — workspace tabs', () => {
-  it('shows Grid View content by default', () => {
+  it('shows Browse content by default', () => {
     renderPage();
-    expect(screen.getByText(/Grid View Content/)).toBeInTheDocument();
+    expect(screen.getByText(/Browse Content/)).toBeInTheDocument();
   });
 
   it('switches to Overview content when the Overview tab is clicked', async () => {
@@ -114,19 +111,29 @@ describe('TimetablePage — workspace tabs', () => {
     renderPage();
     await user.click(screen.getByRole('tab', { name: 'Overview' }));
     expect(screen.getByText(/Overview Content/)).toBeInTheDocument();
-    expect(screen.queryByText(/Grid View Content/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Browse Content/)).not.toBeInTheDocument();
   });
 
   it('switches to Browse content when the Browse tab is clicked', async () => {
     const user = userEvent.setup();
-    renderPage();
+    renderPage({
+      identity: {
+        identity: { role: 'professor', professorId: 'PRF_SMITH', studentGroupId: null },
+        hydrated: true,
+      },
+    });
+    expect(screen.getByText(/My Schedule Content/)).toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: 'Browse' }));
     expect(screen.getByText(/Browse Content/)).toBeInTheDocument();
-    expect(screen.queryByText(/Grid View Content/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/My Schedule Content/)).not.toBeInTheDocument();
   });
 
-  it('computes conflictedClassIds from the conflict slice and passes it to TimetableGrid', () => {
+  it('computes conflictedClassIds from the conflict slice and passes it to MyScheduleCalendar', () => {
     renderPage({
+      identity: {
+        identity: { role: 'professor', professorId: 'PRF_SMITH', studentGroupId: null },
+        hydrated: true,
+      },
       conflict: {
         conflicts: [
           { id: 'c1', type: 'ROOM_DOUBLE_BOOK', classIds: ['CLS_001', 'CLS_002'], message: '' },
@@ -137,11 +144,11 @@ describe('TimetablePage — workspace tabs', () => {
       },
     });
     expect(
-      screen.getByText('Grid View Content — conflictedClassIds: CLS_001,CLS_002'),
+      screen.getByText('My Schedule Content — conflictedClassIds: CLS_001,CLS_002'),
     ).toBeInTheDocument();
   });
 
-  it('handleSelectConflictType selects the class, opens the inspector, and switches to the grid tab', async () => {
+  it('handleSelectConflictType selects the class, opens the inspector, and switches to the My Schedule tab', async () => {
     const user = userEvent.setup();
     const { store } = renderPage({
       conflict: {
@@ -161,7 +168,7 @@ describe('TimetablePage — workspace tabs', () => {
 
     expect(store.getState().ui.selectedClassId).toBe('CLS_001');
     expect(store.getState().ui.inspectorOpen).toBe(true);
-    expect(screen.getByText(/Grid View Content/)).toBeInTheDocument();
+    expect(screen.getByText(/My Schedule Content/)).toBeInTheDocument();
     expect(screen.queryByText(/Overview Content/)).not.toBeInTheDocument();
   });
 
@@ -193,7 +200,6 @@ describe('TimetablePage — default tab by identity', () => {
       },
     });
     expect(screen.getByText(/My Schedule Content/)).toBeInTheDocument();
-    expect(screen.queryByText(/Grid View Content/)).not.toBeInTheDocument();
   });
 
   it('defaults to My Schedule for a student', () => {
@@ -206,19 +212,19 @@ describe('TimetablePage — default tab by identity', () => {
     expect(screen.getByText(/My Schedule Content/)).toBeInTheDocument();
   });
 
-  it('defaults to the Full Schedule grid for an admin', () => {
+  it('defaults to Browse for an admin', () => {
     renderPage({
       identity: {
         identity: { role: 'admin', professorId: null, studentGroupId: null },
         hydrated: true,
       },
     });
-    expect(screen.getByText(/Grid View Content/)).toBeInTheDocument();
+    expect(screen.getByText(/Browse Content/)).toBeInTheDocument();
   });
 
-  it('defaults to the Full Schedule grid when no identity is set', () => {
+  it('defaults to Browse when no identity is set', () => {
     renderPage();
-    expect(screen.getByText(/Grid View Content/)).toBeInTheDocument();
+    expect(screen.getByText(/Browse Content/)).toBeInTheDocument();
   });
 });
 
@@ -240,9 +246,14 @@ describe('TimetablePage — week navigation', () => {
     expect(screen.queryByText('Sep 7 – Sep 13, 2026')).not.toBeInTheDocument();
   });
 
-  it('clicking Next week advances the week and passes the new excludedDays down to TimetableGrid', async () => {
+  it('clicking Next week advances the week and passes the new excludedDays down to MyScheduleCalendar', async () => {
     const user = userEvent.setup();
-    renderPage();
+    renderPage({
+      identity: {
+        identity: { role: 'professor', professorId: 'PRF_SMITH', studentGroupId: null },
+        hydrated: true,
+      },
+    });
     await screen.findByText('Sep 7 – Sep 13, 2026');
 
     // Step from the semester's first week to the Thanksgiving week (Nov 23–29).
@@ -255,7 +266,7 @@ describe('TimetablePage — week navigation', () => {
     expect(screen.getByText('excludedDays: Thursday')).toBeInTheDocument();
   });
 
-  it('preserves the selected week when switching from Full Schedule to My Schedule', async () => {
+  it('preserves the selected week when switching from Browse to My Schedule', async () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findByText('Sep 7 – Sep 13, 2026');
@@ -263,7 +274,7 @@ describe('TimetablePage — week navigation', () => {
     await screen.findByText('Sep 14 – Sep 20, 2026');
 
     await user.click(screen.getByRole('tab', { name: 'My Schedule' }));
-    await user.click(screen.getByRole('tab', { name: 'Full Schedule' }));
+    await user.click(screen.getByRole('tab', { name: 'Browse' }));
 
     expect(screen.getByText('Sep 14 – Sep 20, 2026')).toBeInTheDocument();
   });
