@@ -56,11 +56,17 @@ const messages = defineMessages({
 interface CreateSimulationDialogProps {
   readonly open: boolean;
   readonly onClose: () => void;
+  // Set when this dialog was opened from a specific class's "Edit in a
+  // Simulation" action (e.g. ClassDetailModal on the dashboard) — on success,
+  // carries the class through so the new simulation can jump straight into
+  // editing it instead of landing on the plain workspace view.
+  readonly targetClassId?: string;
 }
 
 export default function CreateSimulationDialog({
   open,
   onClose,
+  targetClassId,
 }: CreateSimulationDialogProps): React.ReactElement {
   const intl = useIntl();
   const dispatch = useAppDispatch();
@@ -87,7 +93,9 @@ export default function CreateSimulationDialog({
     const result = await dispatch(createSimulationThunk(trimmed));
     if (createSimulationThunk.fulfilled.match(result)) {
       handleClose();
-      navigate(`/simulations/${result.payload.id}`);
+      navigate(`/simulations/${result.payload.id}`, {
+        state: targetClassId !== undefined ? { autoEditClassId: targetClassId } : undefined,
+      });
     }
   };
 
