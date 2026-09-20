@@ -91,11 +91,16 @@ export interface MetricResult {
   readonly direction?: MetricDirection;
 }
 
+// Who submitted the proposal — stamped onto the PR as a label at submit
+// time (see ProposalService), since proposals have no persisted user model.
+export type ProposalRole = 'student' | 'professor';
+
 export interface Proposal {
   readonly id: string;
   readonly simulationId: string;
   readonly status: 'PENDING' | 'READY' | 'BLOCKED' | 'MERGED' | 'REJECTED';
   readonly createdAt: string;
+  readonly role?: ProposalRole;
 }
 
 export interface CreateProposalParams {
@@ -105,6 +110,7 @@ export interface CreateProposalParams {
   // submitting — compared against main's current schedule.json SHA to
   // detect a draft that's gone stale (see ProposalService.submit).
   readonly baseScheduleVersion: string;
+  readonly role?: ProposalRole;
 }
 
 // Result of rebasing a simulation's draft onto the latest published

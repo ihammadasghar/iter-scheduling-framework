@@ -12,6 +12,7 @@ import { isPolicyConstraint } from '../utils/ConstraintTranslator.js';
 import type {
   Proposal,
   ProposalDetail,
+  ProposalRole,
   CreateProposalParams,
   ScheduleComparison,
   MetricRule,
@@ -20,6 +21,8 @@ import type {
 
 const CI_LABEL_READY = 'ci:ready';
 const CI_LABEL_BLOCKED = 'ci:blocked';
+const ROLE_LABEL_STUDENT = 'role:student';
+const ROLE_LABEL_PROFESSOR = 'role:professor';
 const SCHEDULE_JSON_PATH = 'schedule.json';
 const SOURCE_BRANCH = 'main';
 
@@ -35,12 +38,12 @@ export class ProposalService implements IProposalService {
   ) {}
 
   async submit(params: CreateProposalParams): Promise<Proposal> {
-    const { simulationId, description, baseScheduleVersion } = this.validateSubmitParams(params);
+    const { simulationId, description, baseScheduleVersion, role } = this.validateSubmitParams(params);
 
     await this.assertNotStale(baseScheduleVersion);
     await this.assertImprovesOnPublished(simulationId);
 
-    return this.createProposalAndRunCi(simulationId, description);
+    return this.createProposalAndRunCi(simulationId, description, role);
   }
 
   // Facilitator/demo-only: creates a real, reviewable proposal without the
@@ -53,15 +56,15 @@ export class ProposalService implements IProposalService {
   // GITHUB_PROVIDER=mock (see routes/proposals.ts) — never wired against a
   // real repo.
   async submitUnchecked(params: CreateProposalParams): Promise<Proposal> {
-    const { simulationId, description, baseScheduleVersion } = this.validateSubmitParams(params);
+    const { simulationId, description, baseScheduleVersion, role } = this.validateSubmitParams(params);
 
     await this.assertNotStale(baseScheduleVersion);
 
-    return this.createProposalAndRunCi(simulationId, description);
+    return this.createProposalAndRunCi(simulationId, description, role);
   }
 
   private validateSubmitParams(params: CreateProposalParams): CreateProposalParams {
-    const { simulationId, description, baseScheduleVersion } = params;
+    const { simulationId, description, baseScheduleVersion, role } = params;
 
     if (!simulationId || simulationId.trim() === '') {
       throw ApiError.badRequest('simulationId is required');
@@ -72,11 +75,18 @@ export class ProposalService implements IProposalService {
     if (!baseScheduleVersion || baseScheduleVersion.trim() === '') {
       throw ApiError.badRequest('baseScheduleVersion is required');
     }
+    if (role !== undefined && role !== 'student' && role !== 'professor') {
+      throw ApiError.badRequest('role must be "student" or "professor"');
+    }
 
     return params;
   }
 
-  private async createProposalAndRunCi(simulationId: string, description: string): Promise<Proposal> {
+  private async createProposalAndRunCi(
+    simulationId: string,
+    description: string,
+    role?: ProposalRole,
+  ): Promise<Proposal> {
     const prId = await this.github.createPullRequest(
       simulationId,
       SOURCE_BRANCH,
@@ -85,10 +95,14 @@ export class ProposalService implements IProposalService {
     );
 
     const ciResult = await this.ciPipeline.run({ proposalId: prId, simulationId });
+    const roleLabel = roleToLabel(role);
 
     await Promise.all([
       this.github.addPullRequestComment(prId, formatCiComment(ciResult.status, ciResult.conflicts.length)),
-      this.github.setPullRequestLabels(prId, [ciResult.status === 'READY' ? CI_LABEL_READY : CI_LABEL_BLOCKED]),
+      this.github.setPullRequestLabels(prId, [
+        ciResult.status === 'READY' ? CI_LABEL_READY : CI_LABEL_BLOCKED,
+        ...(roleLabel ? [roleLabel] : []),
+      ]),
     ]);
 
     return {
@@ -96,6 +110,7 @@ export class ProposalService implements IProposalService {
       simulationId,
       status: ciResult.status,
       createdAt: new Date().toISOString(),
+      ...(role !== undefined ? { role } : {}),
     };
   }
 
@@ -142,11 +157,13 @@ export class ProposalService implements IProposalService {
 
     await this.github.mergePullRequest(proposalId);
 
+    const role = labelsToRole(pr.labels);
     return {
       id: proposalId,
       simulationId: pr.head,
       status: 'MERGED',
       createdAt: pr.createdAt,
+      ...(role !== undefined ? { role } : {}),
     };
   }
 
@@ -155,11 +172,13 @@ export class ProposalService implements IProposalService {
 
     await this.github.closePullRequest(proposalId);
 
+    const role = labelsToRole(pr.labels);
     return {
       id: proposalId,
       simulationId: pr.head,
       status: 'REJECTED',
       createdAt: pr.createdAt,
+      ...(role !== undefined ? { role } : {}),
     };
   }
 
@@ -265,11 +284,13 @@ function toProposal(
   labels: readonly string[],
   createdAt: string,
 ): Proposal {
+  const role = labelsToRole(labels);
   return {
     id,
     simulationId: head,
     status: labelsToStatus(labels),
     createdAt,
+    ...(role !== undefined ? { role } : {}),
   };
 }
 
@@ -287,6 +308,18 @@ function labelsToStatus(labels: readonly string[]): Proposal['status'] {
   if (labels.includes(CI_LABEL_READY)) return 'READY';
   if (labels.includes(CI_LABEL_BLOCKED)) return 'BLOCKED';
   return 'PENDING';
+}
+
+function roleToLabel(role?: ProposalRole): string | undefined {
+  if (role === 'student') return ROLE_LABEL_STUDENT;
+  if (role === 'professor') return ROLE_LABEL_PROFESSOR;
+  return undefined;
+}
+
+function labelsToRole(labels: readonly string[]): ProposalRole | undefined {
+  if (labels.includes(ROLE_LABEL_STUDENT)) return 'student';
+  if (labels.includes(ROLE_LABEL_PROFESSOR)) return 'professor';
+  return undefined;
 }
 
 function formatCiComment(status: 'READY' | 'BLOCKED', conflictCount: number): string {

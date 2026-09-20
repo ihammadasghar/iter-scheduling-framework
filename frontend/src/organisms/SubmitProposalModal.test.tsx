@@ -9,6 +9,7 @@ import sessionReducer from '@/store/reducers/sessionSlice';
 import proposalReducer from '@/store/reducers/proposalSlice';
 import conflictReducer from '@/store/reducers/conflictSlice';
 import simulationReducer from '@/store/reducers/simulationSlice';
+import identityReducer from '@/store/reducers/identitySlice';
 import { proposalService } from '@/services/proposalService';
 import type { Conflict, Proposal } from '@/types';
 
@@ -28,6 +29,7 @@ vi.mock('@/services/simulationService', () => ({
 const makeStore = (overrides: {
   hasUnsavedChanges?: boolean;
   conflictCount?: number;
+  role?: 'student' | 'professor';
 } = {}) =>
   configureStore({
     reducer: {
@@ -35,8 +37,15 @@ const makeStore = (overrides: {
       proposal: proposalReducer,
       conflict: conflictReducer,
       simulation: simulationReducer,
+      identity: identityReducer,
     },
     preloadedState: {
+      identity: {
+        identity: overrides.role
+          ? { role: overrides.role, professorId: null, studentGroupId: null }
+          : null,
+        hydrated: true,
+      },
       session: {
         simulationId: 'sim-test',
         lastHeartbeat: 0,
@@ -248,6 +257,28 @@ describe('SubmitProposalModal', () => {
       );
       expect(store.getState().proposal.error).toBeNull();
       expect(screen.queryByText('Home Screen')).not.toBeInTheDocument();
+    });
+
+    it('sends the current identity\'s role along with the submission', async () => {
+      const proposal: Proposal = {
+        id: 'prop-4',
+        simulationId: 'sim-test',
+        status: 'READY',
+        createdAt: new Date().toISOString(),
+      };
+      vi.mocked(proposalService.createProposal).mockResolvedValue(proposal);
+
+      render_({ hasUnsavedChanges: false, role: 'professor' });
+      fireEvent.change(screen.getByLabelText(/explain your changes/i), {
+        target: { value: 'Some changes' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /submit.*review/i }));
+
+      await waitFor(() =>
+        expect(proposalService.createProposal).toHaveBeenCalledWith(
+          expect.objectContaining({ role: 'professor' }),
+        ),
+      );
     });
 
     it('sends the simulation\'s stored baseScheduleVersion along with the submission', async () => {

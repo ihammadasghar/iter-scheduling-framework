@@ -4,6 +4,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { defineMessages, useIntl } from 'react-intl';
 import ProposalStatusChip from '@/molecules/ProposalStatusChip';
+import ProposalRoleChip from '@/molecules/ProposalRoleChip';
 import { extractUserLabel } from '@/utils/formatSimulationId';
 import { useDateFnsLocale } from '@/utils/useDateFnsLocale';
 import type { Proposal } from '@/types';
@@ -13,9 +14,9 @@ const messages = defineMessages({
     id: 'proposalCard.ageFallback',
     defaultMessage: 'some time ago',
   },
-  draftBy: {
-    id: 'proposalCard.draftBy',
-    defaultMessage: 'Draft by {label}',
+  proposedBy: {
+    id: 'proposalCard.proposedBy',
+    defaultMessage: 'Proposed by {label}',
   },
   submitted: {
     id: 'proposalCard.submitted',
@@ -63,8 +64,9 @@ export default function ProposalCard({
       <CardContent sx={{ pb: 0 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-            {intl.formatMessage(messages.draftBy, { label: userLabel })}
+            {intl.formatMessage(messages.proposedBy, { label: userLabel })}
           </Typography>
+          {proposal.role && <ProposalRoleChip role={proposal.role} />}
           <ProposalStatusChip status={proposal.status} />
         </Box>
 

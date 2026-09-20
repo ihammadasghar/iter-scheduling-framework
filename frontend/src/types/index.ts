@@ -11,6 +11,7 @@ export type {
   Suggestion,
   RoomAvailability,
   ProposalStatus,
+  ProposalRole,
   Proposal,
   ProposalDetail,
   MetricRule,
