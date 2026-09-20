@@ -4,11 +4,13 @@ import { EditOutlined } from '@mui/icons-material';
 import { defineMessages, useIntl } from 'react-intl';
 import AppShell from '@/templates/AppShell';
 import MyScheduleCalendar from '@/organisms/MyScheduleCalendar';
+import ClassDetailModal from '@/organisms/ClassDetailModal';
 import CreateSimulationDialog from '@/molecules/CreateSimulationDialog';
 import WeekNavigator from '@/molecules/WeekNavigator';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchPublishedClassesPage, resetClasses } from '@/store/reducers/classSlice';
 import { fetchPublishedScheduleThunk } from '@/store/reducers/scheduleSlice';
+import { deselectClass } from '@/store/reducers/uiSlice';
 import { initialWeekStart, excludedDaysForWeek } from '@/utils/weekNavigation';
 
 const messages = defineMessages({
@@ -36,8 +38,16 @@ export default function SimulationDashboardPage(): React.ReactElement {
   const intl = useIntl();
   const dispatch = useAppDispatch();
   const classError = useAppSelector((state) => state.class.error);
+  const classes = useAppSelector((state) => state.class.classes);
+  const selectedClassId = useAppSelector((state) => state.ui.selectedClassId);
+  const inspectorOpen = useAppSelector((state) => state.ui.inspectorOpen);
+  const selectedClass = classes.find((c) => c.id === selectedClassId);
 
-  const [createOpen, setCreateOpen] = useState(false);
+  // 'new' — the header's "Simulate a Change" button; a classId — the class
+  // detail modal's "Edit in a Simulation" button; null — closed. One value
+  // so the shared CreateSimulationDialog instance below has a single source
+  // of truth for both entry points instead of two independent booleans.
+  const [simDialogTarget, setSimDialogTarget] = useState<'new' | string | null>(null);
 
   // Independent week-nav state — this page has no sibling tabs to stay in
   // sync with (unlike TimetablePage/PublishedSchedulePage's shared tab set).
@@ -78,7 +88,7 @@ export default function SimulationDashboardPage(): React.ReactElement {
   }, [dispatch]);
 
   const handleRequestChanges = (): void => {
-    setCreateOpen(true);
+    setSimDialogTarget('new');
   };
 
   return (
@@ -126,14 +136,26 @@ export default function SimulationDashboardPage(): React.ReactElement {
             mb: 4,
           }}
         >
-          {/* This page never mounts Inspector, so the hinted click here
-              would dispatch selectClass/toggleInspector into nothing
-              (issue #28) — leave the hint to TimetablePage/BrowseSchedulePanel. */}
-          <MyScheduleCalendar excludedDays={excludedDays} eligibleForHint={false} />
+          <MyScheduleCalendar excludedDays={excludedDays} />
         </Box>
       </Container>
 
-      <CreateSimulationDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+      <ClassDetailModal
+        open={inspectorOpen}
+        classItem={selectedClass}
+        onClose={() => dispatch(deselectClass())}
+        onEditInSimulation={() => {
+          if (selectedClass === undefined) return;
+          dispatch(deselectClass());
+          setSimDialogTarget(selectedClass.id);
+        }}
+      />
+
+      <CreateSimulationDialog
+        open={simDialogTarget !== null}
+        targetClassId={typeof simDialogTarget === 'string' ? simDialogTarget : undefined}
+        onClose={() => setSimDialogTarget(null)}
+      />
     </AppShell>
   );
 }

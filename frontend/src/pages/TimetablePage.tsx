@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Box, Typography } from '@mui/material';
 import { defineMessages, useIntl } from 'react-intl';
 import AppShell from '@/templates/AppShell';
@@ -47,6 +47,8 @@ const defaultTabFor = (role: UserRole | undefined): WorkspaceTabValue =>
 export default function TimetablePage(): React.ReactElement {
   const intl = useIntl();
   const { id: simId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useAppDispatch();
   const identity = useAppSelector((s) => s.identity.identity);
   const [submitOpen, setSubmitOpen] = useState(false);
@@ -91,11 +93,13 @@ export default function TimetablePage(): React.ReactElement {
     // SubmitProposalModal/ScheduleUpdatedModal need this simulation's
     // baseScheduleVersion to be in there.
     dispatch(loadSimulationsFromStorage());
-    void dispatch(fetchScheduleThunk(simId)).then((result) => {
+
+    const loadSchedule = async (): Promise<void> => {
+      const result = await dispatch(fetchScheduleThunk(simId));
       if (fetchScheduleThunk.rejected.match(result) && result.payload?.statusCode === 404) {
         dispatch(markExpired());
       }
-    });
+    };
 
     const loadAll = async (): Promise<void> => {
       let page = 1;
@@ -114,7 +118,16 @@ export default function TimetablePage(): React.ReactElement {
       }
     };
 
-    void loadAll();
+    // Wait for both the schedule metadata and every class page before
+    // honoring an auto-edit deep link (e.g. from a fresh simulation created
+    // via "Edit in a Simulation") — EditClassPage reads both state.class and
+    // state.schedule straight from the store with no loading of its own.
+    void Promise.all([loadSchedule(), loadAll()]).then(() => {
+      const autoEditClassId = (location.state as { autoEditClassId?: string } | null)?.autoEditClassId;
+      if (autoEditClassId !== undefined) {
+        navigate(`/simulations/${simId}/classes/${autoEditClassId}/edit`, { replace: true });
+      }
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [simId]);
 
