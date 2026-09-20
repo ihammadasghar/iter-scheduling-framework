@@ -13,14 +13,14 @@ const renderTabs = (props: React.ComponentProps<typeof WorkspaceTabs>) =>
 
 describe('WorkspaceTabs', () => {
   it('highlights the active tab', () => {
-    renderTabs({ value: 'grid', onChange: vi.fn() });
-    expect(screen.getByRole('tab', { name: 'Full Schedule' })).toHaveAttribute('aria-selected', 'true');
+    renderTabs({ value: 'myschedule', onChange: vi.fn() });
+    expect(screen.getByRole('tab', { name: 'My Schedule' })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('calls onChange with "overview" when the Overview tab is clicked', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    renderTabs({ value: 'grid', onChange });
+    renderTabs({ value: 'myschedule', onChange });
     await user.click(screen.getByRole('tab', { name: 'Overview' }));
     expect(onChange).toHaveBeenCalledWith('overview');
   });
@@ -28,7 +28,7 @@ describe('WorkspaceTabs', () => {
   it('calls onChange with "myschedule" when the My Schedule tab is clicked', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    renderTabs({ value: 'grid', onChange });
+    renderTabs({ value: 'browse', onChange });
     await user.click(screen.getByRole('tab', { name: 'My Schedule' }));
     expect(onChange).toHaveBeenCalledWith('myschedule');
   });
@@ -36,7 +36,7 @@ describe('WorkspaceTabs', () => {
   it('calls onChange with "grid" when the Full Schedule tab is clicked', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    renderTabs({ value: 'myschedule', onChange });
+    renderTabs({ value: 'browse', onChange, tabs: ['grid', 'browse'] });
     await user.click(screen.getByRole('tab', { name: 'Full Schedule' }));
     expect(onChange).toHaveBeenCalledWith('grid');
   });
@@ -44,7 +44,7 @@ describe('WorkspaceTabs', () => {
   it('calls onChange with "browse" when the Browse tab is clicked', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    renderTabs({ value: 'grid', onChange });
+    renderTabs({ value: 'myschedule', onChange });
     await user.click(screen.getByRole('tab', { name: 'Browse' }));
     expect(onChange).toHaveBeenCalledWith('browse');
   });

@@ -14,11 +14,11 @@ import type { ConflictType } from '@/types';
 const messages = defineMessages({
   emptyMessage: {
     id: 'simulationOverview.emptyMessage',
-    defaultMessage: 'Nothing to show yet — add classes in Grid View to see utilisation and conflicts here.',
+    defaultMessage: 'Nothing to show yet — add classes to see utilisation and conflicts here.',
   },
   goToGridView: {
     id: 'simulationOverview.goToGridView',
-    defaultMessage: 'Go to Grid View',
+    defaultMessage: 'Back to Schedule',
   },
   roomDataError: {
     id: 'simulationOverview.roomDataError',

@@ -11,15 +11,17 @@ const messages = defineMessages({
   ariaLabel: { id: 'workspaceTabs.ariaLabel', defaultMessage: 'Timetable workspace view' },
 });
 
-const DEFAULT_TABS: readonly WorkspaceTabValue[] = ['myschedule', 'grid', 'browse', 'overview'];
+const DEFAULT_TABS: readonly WorkspaceTabValue[] = ['myschedule', 'browse', 'overview'];
 
 interface WorkspaceTabsProps {
   readonly value: WorkspaceTabValue;
   readonly onChange: (value: WorkspaceTabValue) => void;
-  // Which tabs to render, in order. Defaults to all four (the simulation
-  // workspace). PublishedSchedulePage passes a smaller subset — it has no
-  // per-simulation session, so no conflicts/metrics for Overview and no
-  // redundant "My Schedule" (the Dashboard already covers that).
+  // Which tabs to render, in order. Defaults to the simulation workspace's
+  // three tabs (no Full Schedule grid there). PublishedSchedulePage opts
+  // back into 'grid' via its own explicit subset — it has no per-simulation
+  // session, so no conflicts/metrics for Overview and no redundant "My
+  // Schedule" (the Dashboard already covers that), but it still needs the
+  // full-university grid view the Dashboard no longer links to directly.
   readonly tabs?: readonly WorkspaceTabValue[];
 }
 
