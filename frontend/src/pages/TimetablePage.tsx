@@ -1,18 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Box, Typography } from '@mui/material';
+import { Box, Chip, CircularProgress, Typography } from '@mui/material';
 import { defineMessages, useIntl } from 'react-intl';
 import AppShell from '@/templates/AppShell';
 import MyScheduleCalendar from '@/organisms/MyScheduleCalendar';
 import BrowseSchedulePanel from '@/organisms/BrowseSchedulePanel';
 import SimulationOverview from '@/organisms/SimulationOverview';
 import Inspector from '@/organisms/Inspector';
+import ChangesSoFarPanel from '@/organisms/ChangesSoFarPanel';
 import HUD from '@/organisms/HUD';
 import SessionExpiryModal from '@/organisms/SessionExpiryModal';
 import ScheduleUpdatedModal from '@/organisms/ScheduleUpdatedModal';
 import SubmitProposalModal from '@/organisms/SubmitProposalModal';
 import SaveChangesButton from '@/molecules/SaveChangesButton';
 import MetricsToolbar from '@/molecules/MetricsToolbar';
+import ConflictChip from '@/molecules/ConflictChip';
+import WeightedScoreChip from '@/molecules/WeightedScoreChip';
 import InactivityBanner from '@/molecules/InactivityBanner';
 import WorkspaceTabs, { type WorkspaceTabValue } from '@/molecules/WorkspaceTabs';
 import WeekNavigator from '@/molecules/WeekNavigator';
@@ -30,7 +33,11 @@ import type { ConflictType, UserRole } from '@/types';
 const messages = defineMessages({
   noSimId: {
     id: 'timetablePage.noSimId',
-    defaultMessage: 'No simulation ID provided.',
+    defaultMessage: 'No proposal ID provided.',
+  },
+  loadingScoreAriaLabel: {
+    id: 'timetablePage.loadingScoreAriaLabel',
+    defaultMessage: 'Loading score…',
   },
 });
 
@@ -55,6 +62,10 @@ export default function TimetablePage(): React.ReactElement {
   const [tab, setTab] = useState<WorkspaceTabValue>(() => defaultTabFor(identity?.role));
 
   const conflicts = useAppSelector((s) => s.conflict.conflicts);
+  const conflictLoading = useAppSelector((s) => s.conflict.loading);
+  const score = useAppSelector((s) => s.score.current);
+  const scoreLoading = useAppSelector((s) => s.score.loading);
+  const hasInteractedWithClass = useAppSelector((s) => s.ui.hasInteractedWithClass);
   const conflictedClassIds = useMemo(
     () => new Set(conflicts.flatMap((c) => c.classIds)),
     [conflicts],
@@ -176,8 +187,18 @@ export default function TimetablePage(): React.ReactElement {
           {tab !== 'overview' && metadata !== null && weekStart !== null && (
             <WeekNavigator weekStart={weekStart} onWeekChange={setWeekStart} timeline={metadata.timeline} />
           )}
-          <Box sx={{ flex: '1 1 auto', minWidth: 0, display: 'flex', justifyContent: 'flex-end' }}>
+          <Box sx={{ flex: '1 1 auto', minWidth: 0, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
             <MetricsToolbar />
+            <ConflictChip conflicts={conflicts} loading={conflictLoading} softened={!hasInteractedWithClass} />
+            {scoreLoading && score === null && (
+              <Chip
+                icon={<CircularProgress size={16} aria-label={intl.formatMessage(messages.loadingScoreAriaLabel)} />}
+                label={intl.formatMessage(messages.loadingScoreAriaLabel)}
+                variant="outlined"
+                sx={{ minHeight: 32 }}
+              />
+            )}
+            {score !== null && <WeightedScoreChip score={score} />}
           </Box>
           <SaveChangesButton simId={simId} />
         </Box>
@@ -187,26 +208,30 @@ export default function TimetablePage(): React.ReactElement {
           <WorkspaceTabs value={tab} onChange={setTab} />
         </Box>
 
-        {/* Main area: calendar/browse + inspector overlay, or overview */}
-        <Box sx={{ flex: 1, overflow: 'hidden', position: 'relative', display: 'flex' }}>
-          {tab === 'myschedule' ? (
-            <>
-              <MyScheduleCalendar conflictedClassIds={conflictedClassIds} excludedDays={excludedDays} />
-              <Inspector simId={simId} />
-            </>
-          ) : tab === 'browse' ? (
-            <>
-              <BrowseSchedulePanel conflictedClassIds={conflictedClassIds} excludedDays={excludedDays} />
-              <Inspector simId={simId} />
-            </>
-          ) : (
-            <Box sx={{ flex: 1, overflow: 'auto' }}>
-              <SimulationOverview
-                onGoToGridView={() => setTab(defaultTabFor(identity?.role))}
-                onSelectConflictType={handleSelectConflictType}
-              />
-            </Box>
-          )}
+        {/* Main area: calendar/browse + inspector overlay, or overview — plus a
+            persistent "Changes So Far" panel on the far right across all tabs. */}
+        <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
+          <Box sx={{ flex: 1, overflow: 'hidden', position: 'relative', display: 'flex' }}>
+            {tab === 'myschedule' ? (
+              <>
+                <MyScheduleCalendar conflictedClassIds={conflictedClassIds} excludedDays={excludedDays} />
+                <Inspector simId={simId} />
+              </>
+            ) : tab === 'browse' ? (
+              <>
+                <BrowseSchedulePanel conflictedClassIds={conflictedClassIds} excludedDays={excludedDays} />
+                <Inspector simId={simId} />
+              </>
+            ) : (
+              <Box sx={{ flex: 1, overflow: 'auto' }}>
+                <SimulationOverview
+                  onGoToGridView={() => setTab(defaultTabFor(identity?.role))}
+                  onSelectConflictType={handleSelectConflictType}
+                />
+              </Box>
+            )}
+          </Box>
+          <ChangesSoFarPanel />
         </Box>
 
         {/* HUD — bottom bar with live conflicts + metrics */}

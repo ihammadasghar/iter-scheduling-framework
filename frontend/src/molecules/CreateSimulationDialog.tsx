@@ -17,11 +17,11 @@ import { useNavigate } from 'react-router-dom';
 const messages = defineMessages({
   creatingAriaLabel: {
     id: 'createSimulationDialog.creatingAriaLabel',
-    defaultMessage: 'Creating simulation…',
+    defaultMessage: 'Creating proposal…',
   },
   title: {
     id: 'createSimulationDialog.title',
-    defaultMessage: 'Simulate a Change',
+    defaultMessage: 'Propose a Change',
   },
   description: {
     id: 'createSimulationDialog.description',
@@ -37,11 +37,11 @@ const messages = defineMessages({
   },
   nameRequiredError: {
     id: 'createSimulationDialog.nameRequiredError',
-    defaultMessage: 'Please enter your name to create a simulation.',
+    defaultMessage: 'Please enter your name to create a proposal.',
   },
   nameHelperText: {
     id: 'createSimulationDialog.nameHelperText',
-    defaultMessage: 'Used to label your draft simulation',
+    defaultMessage: 'Used to label your draft proposal',
   },
   cancel: {
     id: 'createSimulationDialog.cancel',
@@ -49,7 +49,7 @@ const messages = defineMessages({
   },
   startRequest: {
     id: 'createSimulationDialog.startRequest',
-    defaultMessage: 'Start Simulation',
+    defaultMessage: 'Start Proposal',
   },
 });
 

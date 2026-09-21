@@ -772,6 +772,60 @@ describe('SimulationService.getSchedule()', () => {
   });
 });
 
+describe('SimulationService.getDiff()', () => {
+  const SIM_ID = 'sim-alice-abc123';
+  const MAIN_JSON = JSON.stringify({
+    metadata: {},
+    courses: [], professors: [], studentGroups: [], rooms: [], timeSlots: [],
+    classes: [{ id: 'CLS_001', courseId: 'CRS_BIO101', title: 'Bio 101', professorId: 'PRF_SMITH', studentGroupId: 'GRP_BIO_Y1', roomId: 'RM_101', timeSlotIds: ['TS_MON_P1'] }],
+  });
+  const CANDIDATE_JSON = JSON.stringify({
+    metadata: {},
+    courses: [], professors: [], studentGroups: [], rooms: [], timeSlots: [],
+    classes: [{ id: 'CLS_001', courseId: 'CRS_BIO101', title: 'Bio 101', professorId: 'PRF_SMITH', studentGroupId: 'GRP_BIO_Y1', roomId: 'RM_102', timeSlotIds: ['TS_MON_P1'] }],
+  });
+
+  let github: IGitHubService;
+  let graph: IGraphService;
+  let registry: ISessionRegistry;
+  let service: SimulationService;
+
+  beforeEach(() => {
+    github = makeGitHub();
+    graph = makeGraph();
+    registry = makeRegistry(true);
+    (github.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(MAIN_JSON);
+    (graph.exportScheduleJson as ReturnType<typeof vi.fn>).mockResolvedValue(CANDIDATE_JSON);
+    service = new SimulationService(github, graph, registry);
+  });
+
+  it('throws 404 when the simulation session is not found', async () => {
+    const expiredRegistry = makeRegistry(false);
+    const svc = new SimulationService(github, graph, expiredRegistry);
+
+    await expect(svc.getDiff(SIM_ID)).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Simulation not found or expired',
+    });
+  });
+
+  it('reads main\'s schedule.json and the simulation\'s live graph export', async () => {
+    await service.getDiff(SIM_ID);
+
+    expect(github.readFile).toHaveBeenCalledWith('main', 'schedule.json');
+    expect(graph.exportScheduleJson).toHaveBeenCalledWith(SIM_ID);
+  });
+
+  it('returns the class-level diff between main and the live simulation state', async () => {
+    const result = await service.getDiff(SIM_ID);
+
+    expect(result.added).toEqual([]);
+    expect(result.removed).toEqual([]);
+    expect(result.changed).toHaveLength(1);
+    expect(result.changed[0]?.fieldChanges).toEqual([{ field: 'roomId', before: 'RM_101', after: 'RM_102' }]);
+  });
+});
+
 describe('SimulationService.getSuggestions()', () => {
   const SIM_ID = 'sim-alice-abc123';
   const CLASS_ID = 'CLS_001';

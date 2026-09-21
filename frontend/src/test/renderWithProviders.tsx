@@ -7,6 +7,7 @@ import { MemoryRouter } from 'react-router-dom';
 import simulationReducer from '@/store/reducers/simulationSlice';
 import classReducer from '@/store/reducers/classSlice';
 import conflictReducer from '@/store/reducers/conflictSlice';
+import diffReducer from '@/store/reducers/diffSlice';
 import metricReducer from '@/store/reducers/metricSlice';
 import scoreReducer from '@/store/reducers/scoreSlice';
 import proposalReducer from '@/store/reducers/proposalSlice';
@@ -25,6 +26,7 @@ const rootReducer = {
   simulation: simulationReducer,
   class: classReducer,
   conflict: conflictReducer,
+  diff: diffReducer,
   metric: metricReducer,
   score: scoreReducer,
   proposal: proposalReducer,

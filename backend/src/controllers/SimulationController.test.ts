@@ -17,6 +17,7 @@ const makeService = (): ISimulationService => ({
   getScore: vi.fn(),
   previewClassUpdate: vi.fn(),
   getSchedule: vi.fn(),
+  getDiff: vi.fn(),
   delete: vi.fn(),
 });
 
@@ -92,6 +93,39 @@ describe('SimulationController.getSchedule()', () => {
     const next: NextFunction = vi.fn();
 
     await controller.getSchedule(req, res, next);
+
+    expect(next).toHaveBeenCalledWith(error);
+  });
+});
+
+describe('SimulationController.getDiff()', () => {
+  it('returns 200 with the diff from the service', async () => {
+    const service = makeService();
+    const diff = { added: [], removed: [], changed: [] };
+    (service.getDiff as ReturnType<typeof vi.fn>).mockResolvedValue(diff);
+    const controller = new SimulationController(service);
+    const req = { params: { id: 'sim-1' } } as unknown as Request;
+    const res = makeRes();
+    const next: NextFunction = vi.fn();
+
+    await controller.getDiff(req, res, next);
+
+    expect(service.getDiff).toHaveBeenCalledWith('sim-1');
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(diff);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('passes errors to next()', async () => {
+    const service = makeService();
+    const error = new Error('boom');
+    (service.getDiff as ReturnType<typeof vi.fn>).mockRejectedValue(error);
+    const controller = new SimulationController(service);
+    const req = { params: { id: 'sim-1' } } as unknown as Request;
+    const res = makeRes();
+    const next: NextFunction = vi.fn();
+
+    await controller.getDiff(req, res, next);
 
     expect(next).toHaveBeenCalledWith(error);
   });

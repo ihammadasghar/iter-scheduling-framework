@@ -32,7 +32,7 @@ const messages = defineMessages({
   },
   invalidUrl: {
     id: 'editClassPage.invalidUrl',
-    defaultMessage: 'No simulation or class specified.',
+    defaultMessage: 'No proposal or class specified.',
   },
   classNotFound: {
     id: 'editClassPage.classNotFound',
@@ -124,11 +124,11 @@ const messages = defineMessages({
   },
   applying: {
     id: 'editClassPage.applying',
-    defaultMessage: 'Applying…',
+    defaultMessage: 'Adding…',
   },
   applyChanges: {
     id: 'editClassPage.applyChanges',
-    defaultMessage: 'Apply Changes',
+    defaultMessage: 'Add to Proposal',
   },
 });
 

@@ -9,7 +9,9 @@ import TimetablePage from './TimetablePage';
 import { simulationService } from '@/services/simulationService';
 import classReducer from '@/store/reducers/classSlice';
 import conflictReducer from '@/store/reducers/conflictSlice';
+import diffReducer from '@/store/reducers/diffSlice';
 import metricReducer from '@/store/reducers/metricSlice';
+import scoreReducer from '@/store/reducers/scoreSlice';
 import scheduleReducer from '@/store/reducers/scheduleSlice';
 import sessionReducer from '@/store/reducers/sessionSlice';
 import uiReducer from '@/store/reducers/uiSlice';
@@ -43,6 +45,7 @@ vi.mock('@/organisms/SimulationOverview', () => ({
   ),
 }));
 vi.mock('@/organisms/Inspector', () => ({ default: () => null }));
+vi.mock('@/organisms/ChangesSoFarPanel', () => ({ default: () => null }));
 vi.mock('@/organisms/HUD', () => ({ default: () => null }));
 vi.mock('@/organisms/SessionExpiryModal', () => ({ default: () => null }));
 vi.mock('@/organisms/ScheduleUpdatedModal', () => ({ default: () => null }));
@@ -68,7 +71,9 @@ vi.mock('@/services/simulationService', () => ({
 const rootReducer = combineReducers({
   class: classReducer,
   conflict: conflictReducer,
+  diff: diffReducer,
   metric: metricReducer,
+  score: scoreReducer,
   schedule: scheduleReducer,
   session: sessionReducer,
   ui: uiReducer,
@@ -188,6 +193,38 @@ describe('TimetablePage — workspace tabs', () => {
     const { store } = renderPage();
 
     await waitFor(() => expect(store.getState().session.expired).toBe(true));
+  });
+});
+
+describe('TimetablePage — toolbar chips', () => {
+  it('shows the conflicts chip softened before any class has been selected', () => {
+    renderPage({
+      conflict: {
+        conflicts: [
+          { id: 'c1', type: 'ROOM_DOUBLE_BOOK', classIds: ['CLS_001', 'CLS_002'], message: '' },
+        ],
+        loading: false,
+        lastFetchedAt: null,
+        error: null,
+      },
+    });
+    expect(screen.getByText(/1 scheduling conflict/i).closest('.MuiChip-root')).toHaveClass('MuiChip-colorDefault');
+  });
+
+  it('shows the schedule quality score chip in the toolbar', () => {
+    renderPage({
+      score: {
+        current: {
+          score: 82,
+          breakdown: [
+            { name: 'Room Utilisation', value: 82, unit: '%', weight: 1, threshold: 90, normalizedScore: 82 },
+          ],
+        },
+        loading: false,
+        error: null,
+      },
+    });
+    expect(screen.getByText(/schedule quality: 82\/100/i)).toBeInTheDocument();
   });
 });
 

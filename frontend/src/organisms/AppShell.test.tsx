@@ -66,14 +66,14 @@ describe('TopAppBar', () => {
     expect(screen.getByText('ITER')).toBeInTheDocument();
   });
 
-  it('shows "My Simulations" nav link for a professor', () => {
+  it('shows "My Proposals" nav link for a professor', () => {
     renderWithRouter(<TopAppBar />, { role: 'professor' });
-    expect(screen.getByText('My Simulations')).toBeInTheDocument();
+    expect(screen.getByText('My Proposals')).toBeInTheDocument();
   });
 
-  it('shows "My Simulations" nav link for a student', () => {
+  it('shows "My Proposals" nav link for a student', () => {
     renderWithRouter(<TopAppBar />, { role: 'student' });
-    expect(screen.getByText('My Simulations')).toBeInTheDocument();
+    expect(screen.getByText('My Proposals')).toBeInTheDocument();
   });
 
   it('does not show admin nav links for a professor', () => {
@@ -88,14 +88,14 @@ describe('TopAppBar', () => {
     expect(screen.getByText('Rules')).toBeInTheDocument();
   });
 
-  it('does not show "My Simulations" for an admin', () => {
+  it('does not show "My Proposals" for an admin', () => {
     renderWithRouter(<TopAppBar />, { role: 'admin' });
-    expect(screen.queryByText('My Simulations')).not.toBeInTheDocument();
+    expect(screen.queryByText('My Proposals')).not.toBeInTheDocument();
   });
 
   it('shows no nav links when no identity has been chosen yet', () => {
     renderWithRouter(<TopAppBar />);
-    expect(screen.queryByText('My Simulations')).not.toBeInTheDocument();
+    expect(screen.queryByText('My Proposals')).not.toBeInTheDocument();
     expect(screen.queryByText('Proposals')).not.toBeInTheDocument();
   });
 

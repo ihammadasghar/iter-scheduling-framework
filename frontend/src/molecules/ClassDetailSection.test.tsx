@@ -191,21 +191,21 @@ describe('ClassDetailSection', () => {
     expect(store.getState().ui.inspectorOpen).toBe(true);
   });
 
-  it('does not show an Edit button in read-only mode (no simId)', () => {
+  it('does not show a Propose a Change button in read-only mode (no simId)', () => {
     renderSection();
-    expect(screen.queryByRole('button', { name: /^edit$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^propose a change$/i })).not.toBeInTheDocument();
   });
 
-  it('shows an Edit button next to Current Assignment when simId is given', () => {
+  it('shows a Propose a Change button next to Current Assignment when simId is given', () => {
     renderSection({ simId: 'sim-1' });
-    expect(screen.getByRole('button', { name: /^edit$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^propose a change$/i })).toBeInTheDocument();
   });
 
-  it('clicking Edit navigates to the class edit page', async () => {
+  it('clicking Propose a Change navigates to the class edit page', async () => {
     const user = userEvent.setup();
     renderSection({ simId: 'sim-1', classItem: classA });
 
-    await user.click(screen.getByRole('button', { name: /^edit$/i }));
+    await user.click(screen.getByRole('button', { name: /^propose a change$/i }));
 
     expect(await screen.findByText('Edit Class Page')).toBeInTheDocument();
   });

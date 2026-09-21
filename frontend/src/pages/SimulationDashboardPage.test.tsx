@@ -93,10 +93,10 @@ describe('SimulationDashboardPage', () => {
     expect(screen.getByRole('heading', { name: /dashboard/i })).toBeInTheDocument();
   });
 
-  it('renders "Simulate a Change" button', () => {
+  it('renders "Propose Changes" button', () => {
     renderPage();
     expect(
-      screen.getByRole('button', { name: /simulate a change/i }),
+      screen.getByRole('button', { name: /propose changes/i }),
     ).toBeInTheDocument();
   });
 
@@ -113,9 +113,9 @@ describe('SimulationDashboardPage', () => {
     expect(await screen.findByText(/could not load your schedule/i)).toBeInTheDocument();
   });
 
-  it('opens CreateSimulationDialog when "Simulate a Change" is clicked', () => {
+  it('opens CreateSimulationDialog when "Propose Changes" is clicked', () => {
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: /simulate a change/i }));
+    fireEvent.click(screen.getByRole('button', { name: /propose changes/i }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByLabelText(/your name/i)).toBeInTheDocument();
   });

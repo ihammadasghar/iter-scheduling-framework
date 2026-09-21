@@ -2,6 +2,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import simulationReducer from './reducers/simulationSlice';
 import classReducer from './reducers/classSlice';
 import conflictReducer from './reducers/conflictSlice';
+import diffReducer from './reducers/diffSlice';
 import metricReducer from './reducers/metricSlice';
 import scoreReducer from './reducers/scoreSlice';
 import proposalReducer from './reducers/proposalSlice';
@@ -17,6 +18,7 @@ export const store = configureStore({
     simulation: simulationReducer,
     class: classReducer,
     conflict: conflictReducer,
+    diff: diffReducer,
     metric: metricReducer,
     score: scoreReducer,
     proposal: proposalReducer,

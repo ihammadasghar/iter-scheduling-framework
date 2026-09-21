@@ -21,6 +21,7 @@ import type {
   MetricRule,
   WeightedScoreResult,
   RebaseResult,
+  ScheduleDiff,
 } from '../types/domain.js';
 import { parseRulesJson } from '../types/rulesJson.js';
 import { isPolicyConstraint } from '../utils/ConstraintTranslator.js';
@@ -331,6 +332,20 @@ export class SimulationService implements ISimulationService {
     } finally {
       await this.graph.flush(previewBranchId);
     }
+  }
+
+  async getDiff(simulationId: string): Promise<ScheduleDiff> {
+    const touched = this.registry.touch(simulationId);
+    if (!touched) {
+      throw ApiError.notFound('Simulation not found or expired');
+    }
+
+    const [mainRaw, exportedJson] = await Promise.all([
+      this.github.readFile(SOURCE_BRANCH, SCHEDULE_JSON_PATH),
+      this.graph.exportScheduleJson(simulationId),
+    ]);
+
+    return diffSchedules(parseScheduleJson(mainRaw), parseScheduleJson(exportedJson));
   }
 
   async getSchedule(simulationId: string): Promise<ScheduleJson> {
