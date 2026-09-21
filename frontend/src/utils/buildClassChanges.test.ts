@@ -73,7 +73,7 @@ describe('buildClassChanges', () => {
     expect(result[0]?.changes).toEqual([
       { field: 'Course', from: 'Biology 101', to: 'Biology 102' },
       { field: 'Title', from: 'Intro to Biology', to: 'Advanced Biology' },
-      { field: 'Lecturer', from: 'Dr. Smith', to: 'Dr. Jones' },
+      { field: 'Professor', from: 'Dr. Smith', to: 'Dr. Jones' },
       { field: 'Group', from: 'Bio Year 1', to: 'Bio Year 2' },
     ]);
   });

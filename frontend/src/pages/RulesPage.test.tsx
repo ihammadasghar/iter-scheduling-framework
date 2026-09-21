@@ -87,18 +87,18 @@ const renderPage = (overrides: Record<string, unknown> = {}) =>
 describe('RulesPage', () => {
   it('renders page heading', () => {
     renderPage();
-    expect(screen.getByRole('heading', { name: /rules.*constraints/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /institutional preferences.*scheduling rules/i })).toBeInTheDocument();
   });
 
-  it('explains the difference between metric rules and hard constraints', () => {
+  it('explains the difference between institutional preferences and scheduling rules', () => {
     renderPage();
-    expect(screen.getByText(/influence the schedule quality score/i)).toBeInTheDocument();
+    expect(screen.getByText(/influence the institutional preference score/i)).toBeInTheDocument();
     expect(screen.getByText(/blocks the proposal outright/i)).toBeInTheDocument();
   });
 
   it('explains how metric weights compose into the overall score', () => {
     renderPage();
-    expect(screen.getByText(/schedule quality = weighted average/i)).toBeInTheDocument();
+    expect(screen.getByText(/institutional preference score = weighted average/i)).toBeInTheDocument();
   });
 
   it('shows unavailable alert when service returns 501', () => {
@@ -108,14 +108,14 @@ describe('RulesPage', () => {
 
   it('disables Add buttons when service is unavailable', () => {
     renderPage({ unavailable: true });
-    expect(screen.getByRole('button', { name: /add metric/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /add constraint/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /add preference/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /add rule/i })).toBeDisabled();
   });
 
-  it('renders metric rule cards with human-readable labels', () => {
+  it('renders institutional preference cards with human-readable labels', () => {
     renderPage({ metrics: [fakeMetric] });
     expect(screen.getByText('Max daily load')).toBeInTheDocument();
-    expect(screen.getByText(/maximum classes any lecturer/i)).toBeInTheDocument();
+    expect(screen.getByText(/maximum classes any professor/i)).toBeInTheDocument();
     expect(screen.queryByText('max_classes_per_day')).not.toBeInTheDocument();
   });
 
@@ -126,32 +126,32 @@ describe('RulesPage', () => {
     expect(screen.queryByText('room_double_book')).not.toBeInTheDocument();
   });
 
-  it('opens Add Metric dialog on button click', async () => {
+  it('opens Add Preference dialog on button click', async () => {
     renderPage();
     const btn = await waitFor(() => {
-      const b = screen.getByRole('button', { name: /add metric/i });
+      const b = screen.getByRole('button', { name: /add preference/i });
       expect(b).not.toBeDisabled();
       return b;
     });
     fireEvent.click(btn);
-    expect(screen.getByRole('heading', { name: /add metric rule/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /add institutional preference/i })).toBeInTheDocument();
   });
 
-  it('opens Add Constraint dialog on button click', async () => {
+  it('opens Add Rule dialog on button click', async () => {
     renderPage();
     const btn = await waitFor(() => {
-      const b = screen.getByRole('button', { name: /add constraint/i });
+      const b = screen.getByRole('button', { name: /add rule/i });
       expect(b).not.toBeDisabled();
       return b;
     });
     fireEvent.click(btn);
-    expect(screen.getByRole('heading', { name: /add hard constraint/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /add scheduling rule/i })).toBeInTheDocument();
   });
 
   it('opens delete confirmation dialog when delete icon is clicked', () => {
     renderPage({ metrics: [fakeMetric] });
-    fireEvent.click(screen.getByRole('button', { name: /delete metric rule: max daily load/i }));
-    expect(screen.getByRole('heading', { name: /delete metric rule/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /delete institutional preference: max daily load/i }));
+    expect(screen.getByRole('heading', { name: /delete institutional preference/i })).toBeInTheDocument();
     // "max daily load" appears both in card and in dialog — just check the dialog heading is there
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
@@ -159,31 +159,31 @@ describe('RulesPage', () => {
   it('dispatches delete thunk and shows snackbar on confirm', async () => {
     vi.mocked(rulesService.rulesService.deleteMetricRule).mockResolvedValueOnce(undefined);
     renderPage({ metrics: [fakeMetric] });
-    fireEvent.click(screen.getByRole('button', { name: /delete metric rule: max daily load/i }));
+    fireEvent.click(screen.getByRole('button', { name: /delete institutional preference: max daily load/i }));
     fireEvent.click(screen.getByRole('button', { name: /yes, delete/i }));
     await waitFor(() =>
       expect(vi.mocked(rulesService.rulesService.deleteMetricRule)).toHaveBeenCalledWith('m1'),
     );
     await waitFor(() =>
-      expect(screen.getByText(/rule deleted/i)).toBeInTheDocument(),
+      expect(screen.getByText(/preference deleted/i)).toBeInTheDocument(),
     );
   });
 
   it('each delete icon button has an aria-label', () => {
     renderPage({ metrics: [fakeMetric], constraints: [fakeConstraint] });
     expect(
-      screen.getByRole('button', { name: /delete metric rule: max daily load/i }),
+      screen.getByRole('button', { name: /delete institutional preference: max daily load/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: /delete constraint: no room double booking/i }),
+      screen.getByRole('button', { name: /delete scheduling rule: no room double booking/i }),
     ).toBeInTheDocument();
   });
 
   it('opens the Edit Metric dialog pre-filled when a metric card\'s edit icon is clicked', () => {
     renderPage({ metrics: [fakeMetric] });
-    fireEvent.click(screen.getByRole('button', { name: /edit metric rule: max daily load/i }));
+    fireEvent.click(screen.getByRole('button', { name: /edit institutional preference: max daily load/i }));
 
-    expect(screen.getByRole('heading', { name: /edit metric rule/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /edit institutional preference/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/^name/i)).toHaveValue('Max daily load');
   });
 
@@ -198,21 +198,21 @@ describe('RulesPage', () => {
     });
     renderPage({ metrics: [fakeMetric] });
 
-    fireEvent.click(screen.getByRole('button', { name: /edit metric rule: max daily load/i }));
+    fireEvent.click(screen.getByRole('button', { name: /edit institutional preference: max daily load/i }));
     fireEvent.change(screen.getByLabelText(/^name/i), { target: { value: 'Max daily load (revised)' } });
     fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
 
     await waitFor(() => expect(screen.getByText('Max daily load (revised)')).toBeInTheDocument());
     expect(screen.queryByText('Max daily load')).not.toBeInTheDocument();
-    expect(screen.getAllByText(/maximum classes any lecturer/i)).toHaveLength(1);
-    await waitFor(() => expect(screen.getByText(/metric rule updated/i)).toBeInTheDocument());
+    expect(screen.getAllByText(/maximum classes any professor/i)).toHaveLength(1);
+    await waitFor(() => expect(screen.getByText(/institutional preference updated/i)).toBeInTheDocument());
   });
 
   it('opens the Edit Constraint dialog pre-filled when a constraint card\'s edit icon is clicked', () => {
     renderPage({ constraints: [fakeConstraint] });
-    fireEvent.click(screen.getByRole('button', { name: /edit constraint: no room double booking/i }));
+    fireEvent.click(screen.getByRole('button', { name: /edit scheduling rule: no room double booking/i }));
 
-    expect(screen.getByRole('heading', { name: /edit hard constraint/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /edit scheduling rule/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/^name/i)).toHaveValue('No room double booking');
   });
 });

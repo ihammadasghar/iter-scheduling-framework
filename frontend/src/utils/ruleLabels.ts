@@ -32,20 +32,20 @@ export interface ConditionOption {
 
 const targetMessages = defineMessages({
   Class: { id: 'ruleLabels.target.class', defaultMessage: 'Classes' },
-  Professor: { id: 'ruleLabels.target.professor', defaultMessage: 'Lecturers' },
+  Professor: { id: 'ruleLabels.target.professor', defaultMessage: 'Professors' },
   Room: { id: 'ruleLabels.target.room', defaultMessage: 'Rooms' },
   StudentGroup: { id: 'ruleLabels.target.studentGroup', defaultMessage: 'Student Groups' },
 });
 
 const conditionMessages = defineMessages({
   count: { id: 'ruleLabels.condition.count', defaultMessage: 'Total number of classes' },
-  avg_classes_per_day: { id: 'ruleLabels.condition.avgClassesPerDay', defaultMessage: 'Average classes per lecturer per day' },
-  max_classes_per_day: { id: 'ruleLabels.condition.maxClassesPerDay', defaultMessage: 'Maximum classes any lecturer teaches in one day' },
+  avg_classes_per_day: { id: 'ruleLabels.condition.avgClassesPerDay', defaultMessage: 'Average classes per professor per day' },
+  max_classes_per_day: { id: 'ruleLabels.condition.maxClassesPerDay', defaultMessage: 'Maximum classes any professor teaches in one day' },
   utilization: { id: 'ruleLabels.condition.utilization', defaultMessage: 'Percentage of rooms in use' },
-  back_to_back_ratio: { id: 'ruleLabels.condition.backToBackRatio', defaultMessage: "Share of a lecturer's classes scheduled back-to-back" },
-  room_consistency: { id: 'ruleLabels.condition.roomConsistency', defaultMessage: "Share of a lecturer's classes held in their most-used room" },
+  back_to_back_ratio: { id: 'ruleLabels.condition.backToBackRatio', defaultMessage: "Share of a professor's classes scheduled back-to-back" },
+  room_consistency: { id: 'ruleLabels.condition.roomConsistency', defaultMessage: "Share of a professor's classes held in their most-used room" },
   free_day_ratio: { id: 'ruleLabels.condition.freeDayRatio', defaultMessage: 'Share of student groups with at least one free day' },
-  avg_gap_length: { id: 'ruleLabels.condition.avgGapLength', defaultMessage: "Average idle gap between a lecturer's classes" },
+  avg_gap_length: { id: 'ruleLabels.condition.avgGapLength', defaultMessage: "Average idle gap between a professor's classes" },
 });
 
 const unitMessages = defineMessages({
@@ -56,11 +56,11 @@ const unitMessages = defineMessages({
 });
 
 const violationMessages = defineMessages({
-  professor_overlap: { id: 'ruleLabels.violation.professorOverlap', defaultMessage: 'Lecturer teaches two classes at the same time' },
+  professor_overlap: { id: 'ruleLabels.violation.professorOverlap', defaultMessage: 'Professor teaches two classes at the same time' },
   room_double_book: { id: 'ruleLabels.violation.roomDoubleBook', defaultMessage: 'Room booked for two classes at the same time' },
   group_overlap: { id: 'ruleLabels.violation.groupOverlap', defaultMessage: 'Student group in two classes at once' },
-  consecutive_limit: { id: 'ruleLabels.violation.consecutiveLimit', defaultMessage: 'Lecturer teaches more than allowed consecutive periods' },
-  gap_limit: { id: 'ruleLabels.violation.gapLimit', defaultMessage: "Gap between a lecturer's classes exceeds the allowed maximum" },
+  consecutive_limit: { id: 'ruleLabels.violation.consecutiveLimit', defaultMessage: 'Professor teaches more than allowed consecutive periods' },
+  gap_limit: { id: 'ruleLabels.violation.gapLimit', defaultMessage: "Gap between a professor's classes exceeds the allowed maximum" },
   room_capacity_exceeded: { id: 'ruleLabels.violation.roomCapacityExceeded', defaultMessage: 'Room assigned to a class smaller than the group it holds' },
 });
 
@@ -147,7 +147,7 @@ export const needsLimit = (violationCondition: string): boolean =>
 
 // Like getViolationConditionLabel, but folds in the constraint's limit for
 // the 2 conditions that have one, e.g. "more than 3 consecutive periods"
-// instead of the generic "Lecturer teaches more than allowed consecutive
+// instead of the generic "Professor teaches more than allowed consecutive
 // periods". Falls back to the plain label when limit is absent (e.g. the
 // dropdown option list, which has no constraint instance to read a limit
 // from) or the condition isn't limit-based.

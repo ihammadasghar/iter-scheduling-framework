@@ -148,7 +148,7 @@ const rulesSlice = createSlice({
         if (is501(action.payload)) {
           state.unavailable = true;
         } else {
-          state.error = action.payload?.message ?? 'Failed to load metric rules';
+          state.error = action.payload?.message ?? 'Failed to load institutional preferences';
         }
       })
       .addCase(createMetricRuleThunk.pending, (state) => {
@@ -164,7 +164,7 @@ const rulesSlice = createSlice({
         if (is501(action.payload)) {
           state.unavailable = true;
         } else {
-          state.error = action.payload?.message ?? 'Failed to create metric rule';
+          state.error = action.payload?.message ?? 'Failed to create institutional preference';
         }
       })
       .addCase(updateMetricRuleThunk.fulfilled, (state, action) => {
@@ -173,13 +173,13 @@ const rulesSlice = createSlice({
       })
       .addCase(updateMetricRuleThunk.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload?.message ?? 'Failed to update metric rule';
+        state.error = action.payload?.message ?? 'Failed to update institutional preference';
       })
       .addCase(deleteMetricRuleThunk.fulfilled, (state, action) => {
         state.metrics = state.metrics.filter((m) => m.id !== action.payload);
       })
       .addCase(deleteMetricRuleThunk.rejected, (state, action) => {
-        state.error = action.payload?.message ?? 'Failed to delete metric rule';
+        state.error = action.payload?.message ?? 'Failed to delete institutional preference';
       })
       // Constraints
       .addCase(fetchConstraintsThunk.pending, (state) => {
@@ -195,26 +195,26 @@ const rulesSlice = createSlice({
         if (is501(action.payload)) {
           state.unavailable = true;
         } else {
-          state.error = action.payload?.message ?? 'Failed to load constraints';
+          state.error = action.payload?.message ?? 'Failed to load scheduling rules';
         }
       })
       .addCase(createConstraintThunk.fulfilled, (state, action) => {
         state.constraints = [...state.constraints, action.payload];
       })
       .addCase(createConstraintThunk.rejected, (state, action) => {
-        state.error = action.payload?.message ?? 'Failed to create constraint';
+        state.error = action.payload?.message ?? 'Failed to create scheduling rule';
       })
       .addCase(updateConstraintThunk.fulfilled, (state, action) => {
         state.constraints = state.constraints.map((c) => (c.id === action.payload.id ? action.payload : c));
       })
       .addCase(updateConstraintThunk.rejected, (state, action) => {
-        state.error = action.payload?.message ?? 'Failed to update constraint';
+        state.error = action.payload?.message ?? 'Failed to update scheduling rule';
       })
       .addCase(deleteConstraintThunk.fulfilled, (state, action) => {
         state.constraints = state.constraints.filter((c) => c.id !== action.payload);
       })
       .addCase(deleteConstraintThunk.rejected, (state, action) => {
-        state.error = action.payload?.message ?? 'Failed to delete constraint';
+        state.error = action.payload?.message ?? 'Failed to delete scheduling rule';
       });
   },
 });

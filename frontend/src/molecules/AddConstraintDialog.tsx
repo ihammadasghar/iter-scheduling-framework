@@ -23,11 +23,11 @@ import type { Constraint } from '@/types';
 const messages = defineMessages({
   editTitle: {
     id: 'addConstraintDialog.editTitle',
-    defaultMessage: 'Edit Hard Constraint',
+    defaultMessage: 'Edit Scheduling Rule',
   },
   addTitle: {
     id: 'addConstraintDialog.addTitle',
-    defaultMessage: 'Add Hard Constraint',
+    defaultMessage: 'Add Scheduling Rule',
   },
   nameLabel: {
     id: 'addConstraintDialog.nameLabel',
@@ -67,7 +67,7 @@ const messages = defineMessages({
   },
   addConstraint: {
     id: 'addConstraintDialog.addConstraint',
-    defaultMessage: 'Add Constraint',
+    defaultMessage: 'Add Rule',
   },
 });
 

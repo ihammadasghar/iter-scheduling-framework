@@ -9,7 +9,7 @@ export interface ConflictTypeCount {
 
 const messages = defineMessages({
   ROOM_DOUBLE_BOOK: { id: 'groupConflictsByType.roomDoubleBook', defaultMessage: 'Room double-booked' },
-  PROFESSOR_OVERLAP: { id: 'groupConflictsByType.professorOverlap', defaultMessage: 'Lecturer double-booked' },
+  PROFESSOR_OVERLAP: { id: 'groupConflictsByType.professorOverlap', defaultMessage: 'Professor double-booked' },
   GROUP_OVERLAP: { id: 'groupConflictsByType.groupOverlap', defaultMessage: 'Student group overlap' },
   ROOM_CAPACITY_EXCEEDED: { id: 'groupConflictsByType.roomCapacityExceeded', defaultMessage: 'Room over capacity' },
   CONSECUTIVE_LIMIT_EXCEEDED: { id: 'groupConflictsByType.consecutiveLimitExceeded', defaultMessage: 'Consecutive periods exceeded' },
@@ -28,7 +28,7 @@ const CONFLICT_TYPE_ORDER: readonly ConflictType[] = [
 // Institution-authored policy constraints (consecutive_limit/gap_limit, set
 // via the Rule Builder) vs. the other 4 always-on structural checks
 // (physical impossibilities like double-booking) — lets the UI label the
-// two kinds distinctly, e.g. ConflictsComparisonPanel's "Institution rule
+// two kinds distinctly, e.g. ConflictsComparisonPanel's "Scheduling rule
 // violated:" prefix.
 const POLICY_CONFLICT_TYPES: ReadonlySet<ConflictType> = new Set([
   'CONSECUTIVE_LIMIT_EXCEEDED',

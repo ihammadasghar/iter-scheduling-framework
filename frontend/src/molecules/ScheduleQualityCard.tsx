@@ -7,15 +7,15 @@ import type { WeightedScoreResult } from '@/types';
 const messages = defineMessages({
   heading: {
     id: 'scheduleQualityCard.heading',
-    defaultMessage: 'Schedule Quality',
+    defaultMessage: 'Institutional Preference Score',
   },
   tooltipExplainer: {
     id: 'scheduleQualityCard.tooltipExplainer',
-    defaultMessage: 'A weighted average of how close each metric is to its target — 100 means every metric is right on target.',
+    defaultMessage: "A weighted average of how close each metric is to its goal, reflecting how well this schedule aligns with institutional preferences — 100 means every metric is right on goal.",
   },
   ariaLabel: {
     id: 'scheduleQualityCard.ariaLabel',
-    defaultMessage: 'Schedule Quality: {baseline} to {candidate}, {delta}',
+    defaultMessage: 'Institutional Preference Score: {baseline} to {candidate}, {delta}',
   },
   deltaImproved: {
     id: 'scheduleQualityCard.deltaImproved',
@@ -31,7 +31,7 @@ const messages = defineMessages({
   },
   unavailable: {
     id: 'scheduleQualityCard.unavailable',
-    defaultMessage: 'Not available — no metric rules are configured yet.',
+    defaultMessage: 'Not available — no institutional preferences are configured yet.',
   },
 });
 

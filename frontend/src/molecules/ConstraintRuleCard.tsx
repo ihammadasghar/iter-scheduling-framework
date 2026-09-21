@@ -16,11 +16,11 @@ const messages = defineMessages({
   },
   editTooltip: {
     id: 'constraintRuleCard.editTooltip',
-    defaultMessage: 'Edit this constraint',
+    defaultMessage: 'Edit this rule',
   },
   editAriaLabel: {
     id: 'constraintRuleCard.editAriaLabel',
-    defaultMessage: 'Edit constraint: {name}',
+    defaultMessage: 'Edit scheduling rule: {name}',
   },
   deleteTooltip: {
     id: 'constraintRuleCard.deleteTooltip',
@@ -28,7 +28,7 @@ const messages = defineMessages({
   },
   deleteAriaLabel: {
     id: 'constraintRuleCard.deleteAriaLabel',
-    defaultMessage: 'Delete constraint: {name}',
+    defaultMessage: 'Delete scheduling rule: {name}',
   },
 });
 

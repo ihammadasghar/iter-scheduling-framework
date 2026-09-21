@@ -209,7 +209,7 @@ describe('ProposalReviewPage', () => {
   it('shows the candidate weighted score chip in the metrics comparison panel', async () => {
     renderPage();
     await waitFor(() =>
-      expect(screen.getByText(/schedule quality: 82\/100/i)).toBeInTheDocument(),
+      expect(screen.getByText(/institutional preference score: 82\/100/i)).toBeInTheDocument(),
     );
   });
 
@@ -281,8 +281,8 @@ describe('ProposalReviewPage', () => {
     renderPage();
     // Baseline has no breakdown in this fixture, so its chip reads
     // "no metrics defined" rather than a numeric score — see WeightedScoreChip.
-    await waitFor(() => expect(screen.getByText(/schedule quality: no metrics defined/i)).toBeInTheDocument());
-    expect(screen.getByText('Schedule Quality: 82/100')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/institutional preference score: no preferences defined/i)).toBeInTheDocument());
+    expect(screen.getByText('Institutional Preference Score: 82/100')).toBeInTheDocument();
   });
 
   it('renders health tiles for the conflicts comparison', async () => {
@@ -351,7 +351,7 @@ describe('ProposalReviewPage', () => {
     );
     const overviewContent = screen.getByText(/this proposal can be approved/i);
     expect(overviewContent.closest('[role="tabpanel"]')).toHaveAttribute('hidden');
-    const metricsContent = screen.getByText(/schedule quality: 82\/100/i);
+    const metricsContent = screen.getByText(/institutional preference score: 82\/100/i);
     expect(metricsContent.closest('[role="tabpanel"]')).not.toHaveAttribute('hidden');
   });
 

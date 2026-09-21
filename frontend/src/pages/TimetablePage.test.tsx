@@ -211,7 +211,7 @@ describe('TimetablePage — toolbar chips', () => {
     expect(screen.getByText(/1 scheduling conflict/i).closest('.MuiChip-root')).toHaveClass('MuiChip-colorDefault');
   });
 
-  it('shows the schedule quality score chip in the toolbar', () => {
+  it('shows the institutional preference score chip in the toolbar', () => {
     renderPage({
       score: {
         current: {
@@ -224,7 +224,7 @@ describe('TimetablePage — toolbar chips', () => {
         error: null,
       },
     });
-    expect(screen.getByText(/schedule quality: 82\/100/i)).toBeInTheDocument();
+    expect(screen.getByText(/institutional preference score: 82\/100/i)).toBeInTheDocument();
   });
 });
 

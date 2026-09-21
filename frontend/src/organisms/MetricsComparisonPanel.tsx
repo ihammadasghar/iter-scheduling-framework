@@ -16,7 +16,7 @@ const messages = defineMessages({
   },
   noComparison: {
     id: 'metricsComparisonPanel.noComparison',
-    defaultMessage: 'No institution metric rules are configured, so no per-metric comparison is available.',
+    defaultMessage: 'No institutional preferences are configured, so no per-metric comparison is available.',
   },
 });
 

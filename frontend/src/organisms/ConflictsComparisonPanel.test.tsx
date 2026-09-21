@@ -82,9 +82,9 @@ describe('ConflictsComparisonPanel', () => {
       conflictDelta: { added: [CONFLICT, POLICY_VIOLATION], resolved: [] },
     });
 
-    expect(screen.getByText(`Institution rule violated: ${POLICY_VIOLATION.message}`)).toBeInTheDocument();
+    expect(screen.getByText(`Scheduling rule violated: ${POLICY_VIOLATION.message}`)).toBeInTheDocument();
     // The structural conflict renders its plain message, with no prefix.
     expect(screen.getByText(CONFLICT.message)).toBeInTheDocument();
-    expect(screen.queryByText(`Institution rule violated: ${CONFLICT.message}`)).not.toBeInTheDocument();
+    expect(screen.queryByText(`Scheduling rule violated: ${CONFLICT.message}`)).not.toBeInTheDocument();
   });
 });

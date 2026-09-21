@@ -11,7 +11,7 @@ import type { ChangedClass, ClassChange, ClassFieldDiff, FieldChange } from '@/t
 const fieldMessages = defineMessages({
   courseId: { id: 'buildClassChanges.field.course', defaultMessage: 'Course' },
   title: { id: 'buildClassChanges.field.title', defaultMessage: 'Title' },
-  professorId: { id: 'buildClassChanges.field.professor', defaultMessage: 'Lecturer' },
+  professorId: { id: 'buildClassChanges.field.professor', defaultMessage: 'Professor' },
   studentGroupId: { id: 'buildClassChanges.field.studentGroup', defaultMessage: 'Group' },
   roomId: { id: 'buildClassChanges.field.room', defaultMessage: 'Room' },
   timeSlotIds: { id: 'buildClassChanges.field.time', defaultMessage: 'Time' },

@@ -49,7 +49,7 @@ const messages = defineMessages({
   },
   rulesTooltip: {
     id: 'topAppBar.rulesTooltip',
-    defaultMessage: 'Configure scheduling rules and constraints',
+    defaultMessage: 'Configure scheduling rules and institutional preferences',
   },
   demoOnly: {
     id: 'topAppBar.demoOnly',

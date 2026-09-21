@@ -22,8 +22,8 @@ describe('MetricsComparisonPanel', () => {
 
     renderPanel({ baselineScore: baseline, candidateScore: candidate });
 
-    expect(screen.getByText('Schedule Quality: 40/100')).toBeInTheDocument();
-    expect(screen.getByText('Schedule Quality: 60/100')).toBeInTheDocument();
+    expect(screen.getByText('Institutional Preference Score: 40/100')).toBeInTheDocument();
+    expect(screen.getByText('Institutional Preference Score: 60/100')).toBeInTheDocument();
   });
 
   it('renders a delta tile per metric', () => {
@@ -37,9 +37,9 @@ describe('MetricsComparisonPanel', () => {
     expect(screen.getByText('60%')).toBeInTheDocument();
   });
 
-  it('shows a fallback message when no metric rules are configured', () => {
+  it('shows a fallback message when no institutional preferences are configured', () => {
     const empty: WeightedScoreResult = { score: 0, breakdown: [] };
     renderPanel({ baselineScore: empty, candidateScore: empty });
-    expect(screen.getByText(/No institution metric rules are configured/)).toBeInTheDocument();
+    expect(screen.getByText(/No institutional preferences are configured/)).toBeInTheDocument();
   });
 });

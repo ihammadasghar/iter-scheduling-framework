@@ -8,7 +8,7 @@ const change: ClassChange = {
   className: 'Biology 101 Lecture',
   changes: [
     { field: 'Room', from: 'Room 101 (Block A)', to: 'Room 201 (Block B)' },
-    { field: 'Lecturer', from: 'Dr Smith', to: 'Dr Jones' },
+    { field: 'Professor', from: 'Dr Smith', to: 'Dr Jones' },
   ],
 };
 
@@ -21,7 +21,7 @@ describe('ChangeCard', () => {
   it('renders field labels', () => {
     render(<ChangeCard change={change} />);
     expect(screen.getByText('Room')).toBeInTheDocument();
-    expect(screen.getByText('Lecturer')).toBeInTheDocument();
+    expect(screen.getByText('Professor')).toBeInTheDocument();
   });
 
   it('renders from and to values', () => {

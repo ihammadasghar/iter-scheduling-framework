@@ -30,7 +30,7 @@ export interface SimulationCardData extends Simulation {
 
 // A single parsed change from the proposal diff (used in Diff Review Screen)
 export interface FieldChange {
-  readonly field: string;    // Human-readable label e.g. "Room", "Lecturer", "Time"
+  readonly field: string;    // Human-readable label e.g. "Room", "Professor", "Time"
   readonly from: string;     // Resolved name of old value
   readonly to: string;       // Resolved name of new value
 }

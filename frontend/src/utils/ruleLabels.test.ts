@@ -14,7 +14,7 @@ describe('ruleLabels', () => {
   describe('getTargetLabel', () => {
     it('returns human label for known targets', () => {
       expect(getTargetLabel(intl, 'Class')).toBe('Classes');
-      expect(getTargetLabel(intl, 'Professor')).toBe('Lecturers');
+      expect(getTargetLabel(intl, 'Professor')).toBe('Professors');
       expect(getTargetLabel(intl, 'Room')).toBe('Rooms');
       expect(getTargetLabel(intl, 'StudentGroup')).toBe('Student Groups');
     });
@@ -28,7 +28,7 @@ describe('ruleLabels', () => {
     it('returns human label for known conditions', () => {
       expect(getConditionLabel(intl, 'count')).toBe('Total number of classes');
       expect(getConditionLabel(intl, 'utilization')).toBe('Percentage of rooms in use');
-      expect(getConditionLabel(intl, 'avg_classes_per_day')).toBe('Average classes per lecturer per day');
+      expect(getConditionLabel(intl, 'avg_classes_per_day')).toBe('Average classes per professor per day');
     });
 
     it('returns the raw value for unknown conditions', () => {
@@ -79,7 +79,7 @@ describe('ruleLabels', () => {
 
   describe('getViolationConditionLabel', () => {
     it('returns human label for professor_overlap', () => {
-      expect(getViolationConditionLabel(intl, 'professor_overlap')).toContain('Lecturer teaches two');
+      expect(getViolationConditionLabel(intl, 'professor_overlap')).toContain('Professor teaches two');
     });
 
     it('returns raw value for unknown condition', () => {

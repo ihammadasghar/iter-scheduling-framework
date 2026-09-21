@@ -85,13 +85,13 @@ describe('AddConstraintDialog', () => {
 
   it('shows validation error if name is empty on submit', async () => {
     renderDialog();
-    fireEvent.click(screen.getByRole('button', { name: /add constraint/i }));
+    fireEvent.click(screen.getByRole('button', { name: /add rule/i }));
     await waitFor(() => expect(screen.getByText(/name is required/i)).toBeInTheDocument());
   });
 
   it('does not render a limit field for a structural violation condition', async () => {
     renderDialog();
-    await selectCondition(/lecturer teaches two classes at the same time/i);
+    await selectCondition(/professor teaches two classes at the same time/i);
     expect(screen.queryByLabelText(/^limit/i)).not.toBeInTheDocument();
   });
 
@@ -121,7 +121,7 @@ describe('AddConstraintDialog', () => {
     fireEvent.change(screen.getByLabelText(/^name/i), { target: { value: 'No overload' } });
     await selectCondition(/more than allowed consecutive periods/i);
 
-    fireEvent.click(screen.getByRole('button', { name: /add constraint/i }));
+    fireEvent.click(screen.getByRole('button', { name: /add rule/i }));
 
     await waitFor(() =>
       expect(screen.getByText(/limit must be a positive whole number/i)).toBeInTheDocument(),
@@ -137,9 +137,9 @@ describe('AddConstraintDialog', () => {
     renderDialog(onSuccess);
 
     fireEvent.change(screen.getByLabelText(/^name/i), { target: { value: 'No overlaps' } });
-    await selectCondition(/lecturer teaches two classes at the same time/i);
+    await selectCondition(/professor teaches two classes at the same time/i);
 
-    fireEvent.click(screen.getByRole('button', { name: /add constraint/i }));
+    fireEvent.click(screen.getByRole('button', { name: /add rule/i }));
 
     await waitFor(() => expect(onSuccess).toHaveBeenCalled());
     expect(rulesService.rulesService.createConstraint).toHaveBeenCalledWith(
@@ -160,7 +160,7 @@ describe('AddConstraintDialog', () => {
     await selectCondition(/more than allowed consecutive periods/i);
     fireEvent.change(screen.getByLabelText(/^limit/i), { target: { value: '3' } });
 
-    fireEvent.click(screen.getByRole('button', { name: /add constraint/i }));
+    fireEvent.click(screen.getByRole('button', { name: /add rule/i }));
 
     await waitFor(() =>
       expect(rulesService.rulesService.createConstraint).toHaveBeenCalledWith(
@@ -174,7 +174,7 @@ describe('AddConstraintDialog', () => {
     it('pre-fills every field from the existing constraint, including its limit, and shows the Edit title', () => {
       renderEditDialog(EXISTING_CONSTRAINT);
 
-      expect(screen.getByRole('heading', { name: /edit hard constraint/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /edit scheduling rule/i })).toBeInTheDocument();
       expect(screen.getByLabelText(/^name/i)).toHaveValue('No overload');
       expect(screen.getByLabelText(/^limit/i)).toHaveValue(3);
       expect(screen.getByRole('button', { name: /save changes/i })).toBeInTheDocument();
