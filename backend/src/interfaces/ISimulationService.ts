@@ -11,6 +11,7 @@ import type {
   MetricResult,
   WeightedScoreResult,
   RebaseResult,
+  ScheduleDiff,
 } from '../types/domain.js';
 import type { ScheduleJson } from '../types/scheduleJson.js';
 
@@ -43,4 +44,5 @@ export interface ISimulationService {
     patch: UpdateClassParams,
   ): Promise<PreviewClassUpdateResult>;
   getSchedule(simulationId: string): Promise<ScheduleJson>;
+  getDiff(simulationId: string): Promise<ScheduleDiff>;
 }

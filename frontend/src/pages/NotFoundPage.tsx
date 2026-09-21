@@ -15,7 +15,7 @@ const messages = defineMessages({
   },
   goHome: {
     id: 'notFoundPage.goHome',
-    defaultMessage: 'Go to My Simulations',
+    defaultMessage: 'Go to My Proposals',
   },
 });
 

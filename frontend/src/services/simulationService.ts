@@ -12,6 +12,7 @@ import type {
   ApiError,
   ScheduleJson,
   RebaseResponse,
+  ScheduleDiff,
 } from '@/types';
 
 export interface PreviewClassUpdateResponse {
@@ -97,6 +98,12 @@ export const simulationService = {
   getSchedule(simId: string): Promise<ScheduleJson> {
     return apiClient
       .get<ScheduleJson>(`/simulations/${simId}/schedule`)
+      .then((r) => r.data);
+  },
+
+  getDiff(simId: string): Promise<ScheduleDiff> {
+    return apiClient
+      .get<ScheduleDiff>(`/simulations/${simId}/diff`)
       .then((r) => r.data);
   },
 

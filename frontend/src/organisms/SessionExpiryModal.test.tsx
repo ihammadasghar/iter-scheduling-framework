@@ -73,17 +73,17 @@ describe('SessionExpiryModal', () => {
     expect(screen.getByText(/any changes you saved are still there/i)).toBeInTheDocument();
   });
 
-  it('"Go Back to My Simulations" clears session state', () => {
+  it('"Go Back to My Proposals" clears session state', () => {
     const { store } = renderModal(true);
-    fireEvent.click(screen.getByRole('button', { name: /go back to my simulations/i }));
+    fireEvent.click(screen.getByRole('button', { name: /go back to my proposals/i }));
     expect(store.getState().session.simulationId).toBeNull();
     expect(store.getState().session.expired).toBe(false);
   });
 
-  it('"Go Back to My Simulations" deletes the now-stale draft so it stops appearing on the dashboard', async () => {
+  it('"Go Back to My Proposals" deletes the now-stale draft so it stops appearing on the dashboard', async () => {
     const { simulationService } = await import('@/services/simulationService');
     renderModal(true);
-    fireEvent.click(screen.getByRole('button', { name: /go back to my simulations/i }));
+    fireEvent.click(screen.getByRole('button', { name: /go back to my proposals/i }));
     expect(simulationService.deleteSimulation).toHaveBeenCalledWith('sim-1');
   });
 
@@ -97,6 +97,6 @@ describe('SessionExpiryModal', () => {
   it('"Start a New Draft" opens the CreateSimulationDialog', () => {
     renderModal(true);
     fireEvent.click(screen.getByRole('button', { name: /start a new draft/i }));
-    expect(screen.getByRole('heading', { name: /simulate a change/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /propose a change/i })).toBeInTheDocument();
   });
 });

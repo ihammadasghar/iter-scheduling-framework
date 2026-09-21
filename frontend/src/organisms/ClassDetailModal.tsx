@@ -20,11 +20,11 @@ const messages = defineMessages({
   },
   editInSimulation: {
     id: 'classDetailModal.editInSimulation',
-    defaultMessage: 'Edit in a Simulation',
+    defaultMessage: 'Propose a Change',
   },
   editInSimulationSubtext: {
     id: 'classDetailModal.editInSimulationSubtext',
-    defaultMessage: 'If you improve this schedule in the simulation, you can send those changes as a proposal to the scheduling office.',
+    defaultMessage: 'Draft your improvement to this schedule and send it as a proposal to the scheduling office.',
   },
 });
 

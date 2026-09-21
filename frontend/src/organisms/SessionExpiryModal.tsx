@@ -18,7 +18,7 @@ const messages = defineMessages({
   },
   goHome: {
     id: 'sessionExpiryModal.goHome',
-    defaultMessage: 'Go Back to My Simulations',
+    defaultMessage: 'Go Back to My Proposals',
   },
   newDraft: {
     id: 'sessionExpiryModal.newDraft',

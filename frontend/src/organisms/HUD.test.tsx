@@ -5,6 +5,7 @@ import { IntlProvider } from 'react-intl';
 import { configureStore } from '@reduxjs/toolkit';
 import HUD from './HUD';
 import conflictReducer from '@/store/reducers/conflictSlice';
+import diffReducer from '@/store/reducers/diffSlice';
 import metricReducer from '@/store/reducers/metricSlice';
 import scoreReducer from '@/store/reducers/scoreSlice';
 import sessionReducer from '@/store/reducers/sessionSlice';
@@ -12,13 +13,13 @@ import classReducer from '@/store/reducers/classSlice';
 import uiReducer from '@/store/reducers/uiSlice';
 import scheduleReducer from '@/store/reducers/scheduleSlice';
 import { simulationService } from '@/services/simulationService';
-import type { Conflict, MetricResult, WeightedScoreResult } from '@/types';
 
 vi.mock('@/services/simulationService', () => ({
   simulationService: {
     getConflicts: vi.fn().mockResolvedValue([]),
     getMetrics: vi.fn().mockResolvedValue([]),
     getScore: vi.fn().mockResolvedValue({ score: 0, breakdown: [] }),
+    getDiff: vi.fn().mockResolvedValue({ added: [], removed: [], changed: [] }),
   },
 }));
 
@@ -26,6 +27,7 @@ const makeStore = () =>
   configureStore({
     reducer: {
       conflict: conflictReducer,
+      diff: diffReducer,
       metric: metricReducer,
       score: scoreReducer,
       session: sessionReducer,
@@ -35,15 +37,13 @@ const makeStore = () =>
     },
   });
 
-const render_ = async (
-  conflicts: Conflict[] = [],
-  metrics: MetricResult[] = [],
-  onSubmit = vi.fn(),
-  score: WeightedScoreResult = { score: 0, breakdown: [] },
-) => {
-  vi.mocked(simulationService.getConflicts).mockResolvedValue(conflicts);
-  vi.mocked(simulationService.getMetrics).mockResolvedValue(metrics);
-  vi.mocked(simulationService.getScore).mockResolvedValue(score);
+// HUD itself now only renders the "Submit Proposal" footer button — the
+// conflicts/score chips it used to render moved up into TimetablePage's
+// toolbar (see TimetablePage.test.tsx's "toolbar chips" describe block for
+// that behavior). HUD still owns triggering the on-mount/post-patch fetches
+// those chips (and ChangesSoFarPanel) read from, so that wiring is what's
+// covered here.
+const render_ = async (onSubmit = vi.fn()) => {
   render(
     <Provider store={makeStore()}>
       <IntlProvider locale="en" messages={{}}>
@@ -51,52 +51,11 @@ const render_ = async (
       </IntlProvider>
     </Provider>,
   );
-  // Wait for on-mount fetches to resolve and loading chip to disappear
-  await waitFor(
-    () => expect(screen.queryByText(/checking conflicts/i)).not.toBeInTheDocument(),
-    { timeout: 2000 },
-  );
+  await waitFor(() => expect(simulationService.getConflicts).toHaveBeenCalled());
 };
 
 describe('HUD', () => {
   beforeEach(() => vi.clearAllMocks());
-
-  it('shows "No scheduling conflicts" chip when there are no conflicts', async () => {
-    await render_([]);
-    expect(screen.getByText(/no scheduling conflicts/i)).toBeInTheDocument();
-  });
-
-  it('shows error chip with singular count when 1 conflict exists', async () => {
-    const conflicts: Conflict[] = [
-      {
-        id: 'c1',
-        type: 'ROOM_DOUBLE_BOOK',
-        classIds: ['CLS_001', 'CLS_002'] as unknown as readonly [string, string],
-        message: '',
-      },
-    ];
-    await render_(conflicts);
-    expect(screen.getByText(/1 scheduling conflict/i)).toBeInTheDocument();
-  });
-
-  it('shows plural conflicts count when >1 conflicts exist', async () => {
-    const conflicts: Conflict[] = [
-      {
-        id: 'c1',
-        type: 'ROOM_DOUBLE_BOOK',
-        classIds: ['CLS_001', 'CLS_002'] as unknown as readonly [string, string],
-        message: '',
-      },
-      {
-        id: 'c2',
-        type: 'PROFESSOR_OVERLAP',
-        classIds: ['CLS_003', 'CLS_004'] as unknown as readonly [string, string],
-        message: '',
-      },
-    ];
-    await render_(conflicts);
-    expect(screen.getByText(/2 scheduling conflicts/i)).toBeInTheDocument();
-  });
 
   it('renders "Submit Proposal" button', async () => {
     await render_();
@@ -105,51 +64,16 @@ describe('HUD', () => {
 
   it('calls onSubmitProposal when submit button is clicked', async () => {
     const onSubmit = vi.fn();
-    await render_([], [], onSubmit);
+    await render_(onSubmit);
     screen.getByRole('button', { name: /submit proposal/i }).click();
     expect(onSubmit).toHaveBeenCalledOnce();
   });
 
-  it('renders the institution-defined score chip when metrics are configured', async () => {
-    await render_([], [], vi.fn(), {
-      score: 82,
-      breakdown: [
-        { name: 'Room Utilisation', value: 82, unit: '%', weight: 1, threshold: 90, normalizedScore: 82 },
-      ],
-    });
-    expect(screen.getByText(/schedule quality: 82\/100/i)).toBeInTheDocument();
-  });
-
-  it('shows "no metrics defined" score label when no institution metrics are configured', async () => {
-    await render_([], [], vi.fn(), { score: 0, breakdown: [] });
-    expect(screen.getByText(/schedule quality: no metrics defined/i)).toBeInTheDocument();
-  });
-
-  it('renders the conflict chip softened before any class has been selected', async () => {
-    const conflicts: Conflict[] = [
-      {
-        id: 'c1',
-        type: 'ROOM_DOUBLE_BOOK',
-        classIds: ['CLS_001', 'CLS_002'] as unknown as readonly [string, string],
-        message: '',
-      },
-    ];
-    await render_(conflicts);
-    expect(screen.getByText(/1 scheduling conflict/i).closest('.MuiChip-root')).toHaveClass('MuiChip-colorDefault');
-  });
-
-  it('never displays raw conflict type codes', async () => {
-    const conflicts: Conflict[] = [
-      {
-        id: 'c1',
-        type: 'ROOM_DOUBLE_BOOK',
-        classIds: ['CLS_001', 'CLS_002'] as unknown as readonly [string, string],
-        message: '',
-      },
-    ];
-    await render_(conflicts);
-    expect(screen.queryByText(/ROOM_DOUBLE_BOOK/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/PROFESSOR_OVERLAP/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/GROUP_OVERLAP/)).not.toBeInTheDocument();
+  it('fetches conflicts, metrics, score, and the live diff on mount', async () => {
+    await render_();
+    expect(simulationService.getConflicts).toHaveBeenCalledWith('sim-test');
+    expect(simulationService.getMetrics).toHaveBeenCalledWith('sim-test');
+    expect(simulationService.getScore).toHaveBeenCalledWith('sim-test');
+    expect(simulationService.getDiff).toHaveBeenCalledWith('sim-test');
   });
 });

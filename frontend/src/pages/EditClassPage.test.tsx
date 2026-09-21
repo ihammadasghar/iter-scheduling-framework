@@ -132,7 +132,7 @@ describe('EditClassPage', () => {
 
   it('disables Apply until something actually changes', () => {
     renderPage();
-    expect(screen.getByRole('button', { name: /apply changes/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /add to proposal/i })).toBeDisabled();
   });
 
   it('shows resource details (capacity, department, size) for the current selections', () => {
@@ -158,7 +158,7 @@ describe('EditClassPage', () => {
     await user.click(screen.getByRole('menuitem', { name: /^room 102/i }));
 
     expect(screen.getByText('Room 102')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /apply changes/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /add to proposal/i })).toBeEnabled();
   });
 
   it('shows a capacity warning when the selected group is too big for the newly selected room', async () => {
@@ -190,7 +190,7 @@ describe('EditClassPage', () => {
     await user.click(screen.getByRole('button', { name: 'Use Monday Period 2' }));
 
     expect(screen.getByText('Monday Period 2')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /apply changes/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /add to proposal/i })).toBeEnabled();
   });
 
   it('Select Timeslot Manually opens Day/Period dropdowns; changing Day repopulates Period', async () => {
@@ -206,7 +206,7 @@ describe('EditClassPage', () => {
     // Close the popover before checking the page's own Apply Changes button
     // — MUI marks the rest of the page aria-hidden while the popover is open.
     await user.keyboard('{Escape}');
-    expect(await screen.findByRole('button', { name: /apply changes/i })).toBeEnabled();
+    expect(await screen.findByRole('button', { name: /add to proposal/i })).toBeEnabled();
   });
 
   it('shows the class being edited as a highlighted event at its current slot by default', () => {
@@ -233,7 +233,7 @@ describe('EditClassPage', () => {
     await user.click(await screen.findByRole('menuitem', { name: 'Chem Year 1' }));
     await user.click(screen.getByRole('button', { name: 'Use Monday Period 2' }));
 
-    await user.click(screen.getByRole('button', { name: /apply changes/i }));
+    await user.click(screen.getByRole('button', { name: /add to proposal/i }));
 
     await waitFor(() => {
       expect(simulationService.simulationService.updateClass).toHaveBeenCalledWith(
@@ -257,7 +257,7 @@ describe('EditClassPage', () => {
     renderPage();
 
     await user.click(screen.getByRole('button', { name: 'Use Monday Period 2' }));
-    await user.click(screen.getByRole('button', { name: /apply changes/i }));
+    await user.click(screen.getByRole('button', { name: /add to proposal/i }));
 
     expect(await screen.findByText(/failed to apply suggestion/i)).toBeInTheDocument();
     expect(screen.queryByText('Timetable Page')).not.toBeInTheDocument();
@@ -314,7 +314,7 @@ describe('EditClassPage', () => {
       expect(screen.getByText('Room 102')).toBeInTheDocument();
       expect(screen.getByText('Tuesday Period 1')).toBeInTheDocument();
       expect(simulationService.simulationService.updateClass).not.toHaveBeenCalled();
-      expect(screen.getByRole('button', { name: /apply changes/i })).toBeEnabled();
+      expect(screen.getByRole('button', { name: /add to proposal/i })).toBeEnabled();
     });
   });
 });

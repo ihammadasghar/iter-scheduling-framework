@@ -29,11 +29,11 @@ const messages = defineMessages({
   },
   mySimulations: {
     id: 'topAppBar.mySimulations',
-    defaultMessage: 'My Simulations',
+    defaultMessage: 'My Proposals',
   },
   mySimulationsTooltip: {
     id: 'topAppBar.mySimulationsTooltip',
-    defaultMessage: 'View and manage your draft simulations',
+    defaultMessage: 'View and manage your draft proposals',
   },
   proposals: {
     id: 'topAppBar.proposals',

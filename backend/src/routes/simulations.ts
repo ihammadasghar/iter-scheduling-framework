@@ -55,6 +55,9 @@ export function createSimulationsRouter(controller: SimulationController): IRout
   // GET /simulations/:id/schedule — the in-progress schedule for this simulation (Overview tab)
   router.get('/:id/schedule', (req, res, next) => controller.getSchedule(req, res, next));
 
+  // GET /simulations/:id/diff — added/removed/changed classes vs. the published schedule
+  router.get('/:id/diff', (req, res, next) => controller.getDiff(req, res, next));
+
   return router;
 }
 

@@ -35,11 +35,11 @@ const messages = defineMessages({
   },
   editHint: {
     id: 'classDetailSection.editHint',
-    defaultMessage: 'Click Edit to move this class or change its room, professor, or group',
+    defaultMessage: 'Click Propose a Change to move this class or change its room, professor, or group',
   },
   edit: {
     id: 'classDetailSection.edit',
-    defaultMessage: 'Edit',
+    defaultMessage: 'Propose a Change',
   },
   professor: {
     id: 'classDetailSection.professor',
