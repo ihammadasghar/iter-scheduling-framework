@@ -44,7 +44,7 @@ const messages = defineMessages({
   },
   institutionRuleViolated: {
     id: 'conflictsComparisonPanel.institutionRuleViolated',
-    defaultMessage: 'Institution rule violated: {message}',
+    defaultMessage: 'Scheduling rule violated: {message}',
   },
 });
 

@@ -97,11 +97,11 @@ const messages = defineMessages({
   },
   gateAcceptableScoreChanged: {
     id: 'proposalReviewPage.gateAcceptableScoreChanged',
-    defaultMessage: 'This proposal can be approved: it keeps the same number of scheduling conflicts as published ({count}), and changes the overall Schedule Quality score.',
+    defaultMessage: 'This proposal can be approved: it keeps the same number of scheduling conflicts as published ({count}), and changes the overall Institutional Preference Score.',
   },
   gateBlocked: {
     id: 'proposalReviewPage.gateBlocked',
-    defaultMessage: "This proposal likely can't be approved yet: it has {candidate} scheduling conflict(s) vs {baseline} currently published, with no change to the Schedule Quality score. Proposals are only accepted if they reduce conflicts or change the Schedule Quality score.",
+    defaultMessage: "This proposal likely can't be approved yet: it has {candidate} scheduling conflict(s) vs {baseline} currently published, with no change to the Institutional Preference Score. Proposals are only accepted if they reduce conflicts or change the Institutional Preference Score.",
   },
   metricsHeading: {
     id: 'proposalReviewPage.metricsHeading',
@@ -109,7 +109,7 @@ const messages = defineMessages({
   },
   conflictsHeading: {
     id: 'proposalReviewPage.conflictsHeading',
-    defaultMessage: 'Constraint Violations: Published vs. This Proposal',
+    defaultMessage: 'Scheduling Rule Violations: Published vs. This Proposal',
   },
   changesHeading: {
     id: 'proposalReviewPage.changesHeading',
@@ -129,7 +129,7 @@ const messages = defineMessages({
   },
   publishDialogBody: {
     id: 'proposalReviewPage.publishDialogBody',
-    defaultMessage: 'You are about to publish these changes to the live timetable. This will affect students and lecturers. Are you sure?',
+    defaultMessage: 'You are about to publish these changes to the live timetable. This will affect students and professors. Are you sure?',
   },
   cancel: {
     id: 'proposalReviewPage.cancel',
@@ -145,7 +145,7 @@ const messages = defineMessages({
   },
   closeDialogBody: {
     id: 'proposalReviewPage.closeDialogBody',
-    defaultMessage: "Are you sure you want to close this proposal? The lecturer's draft will be kept and they can make adjustments and resubmit.",
+    defaultMessage: "Are you sure you want to close this proposal? The professor's draft will be kept and they can make adjustments and resubmit.",
   },
   yesClose: {
     id: 'proposalReviewPage.yesClose',

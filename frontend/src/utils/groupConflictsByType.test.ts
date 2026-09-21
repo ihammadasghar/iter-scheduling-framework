@@ -16,7 +16,7 @@ describe('groupConflictsByType', () => {
   it('returns all 6 types with count 0 when there are no conflicts', () => {
     expect(groupConflictsByType(intl, [])).toEqual([
       { type: 'ROOM_DOUBLE_BOOK', label: 'Room double-booked', count: 0 },
-      { type: 'PROFESSOR_OVERLAP', label: 'Lecturer double-booked', count: 0 },
+      { type: 'PROFESSOR_OVERLAP', label: 'Professor double-booked', count: 0 },
       { type: 'GROUP_OVERLAP', label: 'Student group overlap', count: 0 },
       { type: 'ROOM_CAPACITY_EXCEEDED', label: 'Room over capacity', count: 0 },
       { type: 'CONSECUTIVE_LIMIT_EXCEEDED', label: 'Consecutive periods exceeded', count: 0 },
@@ -33,7 +33,7 @@ describe('groupConflictsByType', () => {
     ];
     expect(groupConflictsByType(intl, conflicts)).toEqual([
       { type: 'ROOM_DOUBLE_BOOK', label: 'Room double-booked', count: 2 },
-      { type: 'PROFESSOR_OVERLAP', label: 'Lecturer double-booked', count: 0 },
+      { type: 'PROFESSOR_OVERLAP', label: 'Professor double-booked', count: 0 },
       { type: 'GROUP_OVERLAP', label: 'Student group overlap', count: 1 },
       { type: 'ROOM_CAPACITY_EXCEEDED', label: 'Room over capacity', count: 0 },
       { type: 'CONSECUTIVE_LIMIT_EXCEEDED', label: 'Consecutive periods exceeded', count: 1 },

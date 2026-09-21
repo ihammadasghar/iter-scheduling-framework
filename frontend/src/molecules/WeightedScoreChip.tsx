@@ -5,27 +5,27 @@ import type { WeightedScoreResult } from '@/types';
 const messages = defineMessages({
   scoreLabel: {
     id: 'weightedScoreChip.scoreLabel',
-    defaultMessage: 'Schedule Quality: {score}/100',
+    defaultMessage: 'Institutional Preference Score: {score}/100',
   },
   noMetrics: {
     id: 'weightedScoreChip.noMetrics',
-    defaultMessage: 'Schedule Quality: no metrics defined',
+    defaultMessage: 'Institutional Preference Score: no preferences defined',
   },
   tooltipTitle: {
     id: 'weightedScoreChip.tooltipTitle',
-    defaultMessage: 'Schedule Quality',
+    defaultMessage: 'Institutional Preference Score',
   },
   tooltipExplainer: {
     id: 'weightedScoreChip.tooltipExplainer',
-    defaultMessage: 'A weighted average of how close each metric below is to its target — 100 means every metric is right on target.',
+    defaultMessage: "A weighted average of how close each metric below is to its goal, reflecting how well this schedule aligns with institutional preferences — 100 means every metric is right on goal.",
   },
   breakdownLine: {
     id: 'weightedScoreChip.breakdownLine',
-    defaultMessage: '{name}: {value}{unit} (target {threshold}{unit}, Quality Score influence {weight})',
+    defaultMessage: '{name}: {value}{unit} (goal {threshold}{unit}, Institutional Preference Score influence {weight})',
   },
   noMetricsTooltip: {
     id: 'weightedScoreChip.noMetricsTooltip',
-    defaultMessage: 'No institution metric rules are configured, so no Schedule Quality score can be computed yet.',
+    defaultMessage: 'No institutional preferences are configured, so no Institutional Preference Score can be computed yet.',
   },
 });
 

@@ -31,11 +31,11 @@ import type { MetricDirection, MetricRule } from '@/types';
 const messages = defineMessages({
   editTitle: {
     id: 'addMetricDialog.editTitle',
-    defaultMessage: 'Edit Metric Rule',
+    defaultMessage: 'Edit Institutional Preference',
   },
   addTitle: {
     id: 'addMetricDialog.addTitle',
-    defaultMessage: 'Add Metric Rule',
+    defaultMessage: 'Add Institutional Preference',
   },
   nameLabel: {
     id: 'addMetricDialog.nameLabel',
@@ -67,7 +67,7 @@ const messages = defineMessages({
   },
   directionTooltip: {
     id: 'addMetricDialog.directionTooltip',
-    defaultMessage: "Whether a higher or lower value is preferable — leave as 'No preference' for a value that should stay close to the target",
+    defaultMessage: "Whether a higher or lower value is preferable — leave as 'No preference' for a value that should stay close to the goal",
   },
   directionLabel: {
     id: 'addMetricDialog.directionLabel',
@@ -83,23 +83,23 @@ const messages = defineMessages({
   },
   targetValueWithUnit: {
     id: 'addMetricDialog.targetValueWithUnit',
-    defaultMessage: 'Target value ({unit})',
+    defaultMessage: 'Goal value ({unit})',
   },
   targetValue: {
     id: 'addMetricDialog.targetValue',
-    defaultMessage: 'Target value',
+    defaultMessage: 'Goal value',
   },
   weightTooltip: {
     id: 'addMetricDialog.weightTooltip',
-    defaultMessage: 'How much this metric should count toward the overall Schedule Quality score, relative to other metrics',
+    defaultMessage: 'How much this metric should count toward the overall Institutional Preference Score, relative to other metrics',
   },
   weightLabel: {
     id: 'addMetricDialog.weightLabel',
-    defaultMessage: 'Quality Score influence',
+    defaultMessage: 'Institutional Preference Score influence',
   },
   weightError: {
     id: 'addMetricDialog.weightError',
-    defaultMessage: 'Quality Score influence must be a positive number',
+    defaultMessage: 'Institutional Preference Score influence must be a positive number',
   },
   cancel: {
     id: 'addMetricDialog.cancel',
@@ -111,7 +111,7 @@ const messages = defineMessages({
   },
   addThisMetric: {
     id: 'addMetricDialog.addThisMetric',
-    defaultMessage: 'Add This Metric',
+    defaultMessage: 'Add This Preference',
   },
 });
 

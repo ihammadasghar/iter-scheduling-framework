@@ -32,35 +32,35 @@ import type { MetricRule, Constraint } from '@/types';
 const messages = defineMessages({
   ruleDeleted: {
     id: 'rulesPage.ruleDeleted',
-    defaultMessage: 'Rule deleted',
+    defaultMessage: 'Preference deleted',
   },
   constraintDeleted: {
     id: 'rulesPage.constraintDeleted',
-    defaultMessage: 'Constraint deleted',
+    defaultMessage: 'Rule deleted',
   },
   metricRulesHeading: {
     id: 'rulesPage.metricRulesHeading',
-    defaultMessage: 'Metric Rules',
+    defaultMessage: 'Institutional Preferences',
   },
   metricRulesSubtitle: {
     id: 'rulesPage.metricRulesSubtitle',
-    defaultMessage: "Influence the Schedule Quality score — a proposal can still be submitted if it scores poorly on these.",
+    defaultMessage: "Influence the Institutional Preference Score, which reflects how closely a proposal aligns with institutional preferences — a proposal can still be submitted if it scores poorly on these.",
   },
   scoreFormula: {
     id: 'rulesPage.scoreFormula',
-    defaultMessage: 'Schedule Quality = weighted average of how close each metric gets to its target (100 = right on target). Quality Score influence controls how much a metric counts relative to the others below.',
+    defaultMessage: 'Institutional Preference Score = weighted average of how close each metric gets to its goal (100 = right on goal). Institutional Preference Score influence controls how much a metric counts relative to the others below.',
   },
   addMetric: {
     id: 'rulesPage.addMetric',
-    defaultMessage: '+ Add Metric',
+    defaultMessage: '+ Add Preference',
   },
   noMetricRules: {
     id: 'rulesPage.noMetricRules',
-    defaultMessage: 'No metric rules configured yet.',
+    defaultMessage: 'No institutional preferences configured yet.',
   },
   constraintsHeading: {
     id: 'rulesPage.constraintsHeading',
-    defaultMessage: 'Hard Constraints',
+    defaultMessage: 'Scheduling Rules',
   },
   constraintsSubtitle: {
     id: 'rulesPage.constraintsSubtitle',
@@ -68,15 +68,15 @@ const messages = defineMessages({
   },
   addConstraint: {
     id: 'rulesPage.addConstraint',
-    defaultMessage: '+ Add Constraint',
+    defaultMessage: '+ Add Rule',
   },
   noConstraints: {
     id: 'rulesPage.noConstraints',
-    defaultMessage: 'No hard constraints configured yet.',
+    defaultMessage: 'No scheduling rules configured yet.',
   },
   title: {
     id: 'rulesPage.title',
-    defaultMessage: 'Rules & Constraints',
+    defaultMessage: 'Institutional Preferences & Scheduling Rules',
   },
   unavailable: {
     id: 'rulesPage.unavailable',
@@ -84,27 +84,27 @@ const messages = defineMessages({
   },
   metricRuleUpdated: {
     id: 'rulesPage.metricRuleUpdated',
-    defaultMessage: 'Metric rule updated',
+    defaultMessage: 'Institutional preference updated',
   },
   metricRuleAdded: {
     id: 'rulesPage.metricRuleAdded',
-    defaultMessage: 'Metric rule added',
+    defaultMessage: 'Institutional preference added',
   },
   constraintUpdated: {
     id: 'rulesPage.constraintUpdated',
-    defaultMessage: 'Constraint updated',
+    defaultMessage: 'Scheduling rule updated',
   },
   constraintAdded: {
     id: 'rulesPage.constraintAdded',
-    defaultMessage: 'Constraint added',
+    defaultMessage: 'Scheduling rule added',
   },
   deleteMetricRuleTitle: {
     id: 'rulesPage.deleteMetricRuleTitle',
-    defaultMessage: 'Delete Metric Rule?',
+    defaultMessage: 'Delete Institutional Preference?',
   },
   deleteConstraintTitle: {
     id: 'rulesPage.deleteConstraintTitle',
-    defaultMessage: 'Delete Constraint?',
+    defaultMessage: 'Delete Scheduling Rule?',
   },
   deleteConfirmBody: {
     id: 'rulesPage.deleteConfirmBody',

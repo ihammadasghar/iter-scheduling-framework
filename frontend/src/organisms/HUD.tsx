@@ -11,7 +11,7 @@ import { fetchSimulationDiffThunk } from '@/store/reducers/diffSlice';
 const messages = defineMessages({
   ariaLabel: {
     id: 'hud.ariaLabel',
-    defaultMessage: 'Conflicts and Schedule Quality HUD',
+    defaultMessage: 'Conflicts and Institutional Preference Score HUD',
   },
   submitTooltip: {
     id: 'hud.submitTooltip',

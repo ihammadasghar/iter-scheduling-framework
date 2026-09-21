@@ -75,7 +75,7 @@ describe('AddMetricDialog', () => {
 
   it('shows validation error if name is empty on submit', async () => {
     renderDialog();
-    fireEvent.click(screen.getByRole('button', { name: /add this metric/i }));
+    fireEvent.click(screen.getByRole('button', { name: /add this preference/i }));
     await waitFor(() =>
       expect(screen.getByText(/name is required/i)).toBeInTheDocument(),
     );
@@ -94,26 +94,26 @@ describe('AddMetricDialog', () => {
     await waitFor(() => screen.getByRole('option', { name: /total number/i }));
     fireEvent.click(screen.getByRole('option', { name: /total number/i }));
 
-    fireEvent.click(screen.getByRole('button', { name: /add this metric/i }));
+    fireEvent.click(screen.getByRole('button', { name: /add this preference/i }));
     await waitFor(() => expect(onSuccess).toHaveBeenCalled());
   });
 
   it('renders a weight field defaulting to 1', () => {
     renderDialog();
-    expect(screen.getByLabelText(/quality score influence/i)).toHaveValue(1);
+    expect(screen.getByLabelText(/institutional preference score influence/i)).toHaveValue(1);
   });
 
   it('shows validation error if weight is 0 or negative on submit', async () => {
     renderDialog();
     fireEvent.change(screen.getByLabelText(/^name/i), { target: { value: 'My Rule' } });
-    fireEvent.change(screen.getByLabelText(/quality score influence/i), { target: { value: '0' } });
+    fireEvent.change(screen.getByLabelText(/institutional preference score influence/i), { target: { value: '0' } });
     fireEvent.mouseDown(screen.getByLabelText(/how to measure it/i));
     await waitFor(() => screen.getByRole('option', { name: /total number/i }));
     fireEvent.click(screen.getByRole('option', { name: /total number/i }));
 
-    fireEvent.click(screen.getByRole('button', { name: /add this metric/i }));
+    fireEvent.click(screen.getByRole('button', { name: /add this preference/i }));
     await waitFor(() =>
-      expect(screen.getByText(/quality score influence must be a positive number/i)).toBeInTheDocument(),
+      expect(screen.getByText(/institutional preference score influence must be a positive number/i)).toBeInTheDocument(),
     );
     expect(rulesService.rulesService.createMetricRule).not.toHaveBeenCalled();
   });
@@ -125,12 +125,12 @@ describe('AddMetricDialog', () => {
     renderDialog();
 
     fireEvent.change(screen.getByLabelText(/^name/i), { target: { value: 'My Rule' } });
-    fireEvent.change(screen.getByLabelText(/quality score influence/i), { target: { value: '3' } });
+    fireEvent.change(screen.getByLabelText(/institutional preference score influence/i), { target: { value: '3' } });
     fireEvent.mouseDown(screen.getByLabelText(/how to measure it/i));
     await waitFor(() => screen.getByRole('option', { name: /total number/i }));
     fireEvent.click(screen.getByRole('option', { name: /total number/i }));
 
-    fireEvent.click(screen.getByRole('button', { name: /add this metric/i }));
+    fireEvent.click(screen.getByRole('button', { name: /add this preference/i }));
 
     await waitFor(() =>
       expect(rulesService.rulesService.createMetricRule).toHaveBeenCalledWith(
@@ -143,8 +143,8 @@ describe('AddMetricDialog', () => {
     renderDialog();
 
     fireEvent.mouseDown(screen.getByLabelText(/what to measure/i));
-    await waitFor(() => screen.getByRole('option', { name: /lecturers/i }));
-    fireEvent.click(screen.getByRole('option', { name: /lecturers/i }));
+    await waitFor(() => screen.getByRole('option', { name: /professors/i }));
+    fireEvent.click(screen.getByRole('option', { name: /professors/i }));
 
     fireEvent.mouseDown(screen.getByLabelText(/how to measure it/i));
     await waitFor(() => screen.getByRole('option', { name: /average idle gap/i }));
@@ -163,8 +163,8 @@ describe('AddMetricDialog', () => {
     fireEvent.change(screen.getByLabelText(/^name/i), { target: { value: 'Gap' } });
 
     fireEvent.mouseDown(screen.getByLabelText(/what to measure/i));
-    await waitFor(() => screen.getByRole('option', { name: /lecturers/i }));
-    fireEvent.click(screen.getByRole('option', { name: /lecturers/i }));
+    await waitFor(() => screen.getByRole('option', { name: /professors/i }));
+    fireEvent.click(screen.getByRole('option', { name: /professors/i }));
 
     fireEvent.mouseDown(screen.getByLabelText(/how to measure it/i));
     await waitFor(() => screen.getByRole('option', { name: /average idle gap/i }));
@@ -175,7 +175,7 @@ describe('AddMetricDialog', () => {
     await waitFor(() => screen.getByRole('option', { name: /^higher is better/i }));
     fireEvent.click(screen.getByRole('option', { name: /^higher is better/i }));
 
-    fireEvent.click(screen.getByRole('button', { name: /add this metric/i }));
+    fireEvent.click(screen.getByRole('button', { name: /add this preference/i }));
 
     await waitFor(() =>
       expect(rulesService.rulesService.createMetricRule).toHaveBeenCalledWith(
@@ -195,7 +195,7 @@ describe('AddMetricDialog', () => {
     await waitFor(() => screen.getByRole('option', { name: /total number/i }));
     fireEvent.click(screen.getByRole('option', { name: /total number/i }));
 
-    fireEvent.click(screen.getByRole('button', { name: /add this metric/i }));
+    fireEvent.click(screen.getByRole('button', { name: /add this preference/i }));
 
     await waitFor(() => expect(rulesService.rulesService.createMetricRule).toHaveBeenCalled());
     const payload = vi.mocked(rulesService.rulesService.createMetricRule).mock.calls[0]![0];
@@ -206,8 +206,8 @@ describe('AddMetricDialog', () => {
     renderDialog();
 
     fireEvent.mouseDown(screen.getByLabelText(/what to measure/i));
-    await waitFor(() => screen.getByRole('option', { name: /lecturers/i }));
-    fireEvent.click(screen.getByRole('option', { name: /lecturers/i }));
+    await waitFor(() => screen.getByRole('option', { name: /professors/i }));
+    fireEvent.click(screen.getByRole('option', { name: /professors/i }));
 
     fireEvent.mouseDown(screen.getByLabelText(/how to measure it/i));
     await waitFor(() => screen.getByRole('option', { name: /average idle gap/i }));
@@ -232,8 +232,8 @@ describe('AddMetricDialog', () => {
     renderDialog();
 
     fireEvent.mouseDown(screen.getByLabelText(/what to measure/i));
-    await waitFor(() => screen.getByRole('option', { name: /lecturers/i }));
-    fireEvent.click(screen.getByRole('option', { name: /lecturers/i }));
+    await waitFor(() => screen.getByRole('option', { name: /professors/i }));
+    fireEvent.click(screen.getByRole('option', { name: /professors/i }));
 
     fireEvent.mouseDown(screen.getByLabelText(/how to measure it/i));
     await waitFor(() => screen.getByRole('option', { name: /average idle gap/i }));
@@ -254,10 +254,10 @@ describe('AddMetricDialog', () => {
     it('pre-fills every field from the existing rule and shows the Edit title', () => {
       renderEditDialog(EXISTING_RULE);
 
-      expect(screen.getByRole('heading', { name: /edit metric rule/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /edit institutional preference/i })).toBeInTheDocument();
       expect(screen.getByLabelText(/^name/i)).toHaveValue('Idle Gap');
-      expect(screen.getByLabelText(/quality score influence/i)).toHaveValue(3);
-      expect(screen.getByLabelText(/target value/i)).toHaveValue(2);
+      expect(screen.getByLabelText(/institutional preference score influence/i)).toHaveValue(3);
+      expect(screen.getByLabelText(/goal value/i)).toHaveValue(2);
       expect(screen.getByLabelText(/^prefer/i)).toHaveTextContent('Lower is better');
       expect(screen.getByRole('button', { name: /save changes/i })).toBeInTheDocument();
     });
@@ -270,7 +270,7 @@ describe('AddMetricDialog', () => {
       const onSuccess = vi.fn();
       renderEditDialog(EXISTING_RULE, onSuccess);
 
-      fireEvent.change(screen.getByLabelText(/quality score influence/i), { target: { value: '5' } });
+      fireEvent.change(screen.getByLabelText(/institutional preference score influence/i), { target: { value: '5' } });
       fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
 
       await waitFor(() => expect(onSuccess).toHaveBeenCalled());

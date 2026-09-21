@@ -16,7 +16,7 @@ const messages = defineMessages({
   },
   targetValue: {
     id: 'metricRuleCard.targetValue',
-    defaultMessage: 'Target value: {value}',
+    defaultMessage: 'Goal value: {value}',
   },
   direction: {
     id: 'metricRuleCard.direction',
@@ -24,23 +24,23 @@ const messages = defineMessages({
   },
   weight: {
     id: 'metricRuleCard.weight',
-    defaultMessage: 'Quality Score influence: {value}',
+    defaultMessage: 'Institutional Preference Score influence: {value}',
   },
   editTooltip: {
     id: 'metricRuleCard.editTooltip',
-    defaultMessage: 'Edit this rule',
+    defaultMessage: 'Edit this preference',
   },
   editAriaLabel: {
     id: 'metricRuleCard.editAriaLabel',
-    defaultMessage: 'Edit metric rule: {name}',
+    defaultMessage: 'Edit institutional preference: {name}',
   },
   deleteTooltip: {
     id: 'metricRuleCard.deleteTooltip',
-    defaultMessage: 'Delete this rule',
+    defaultMessage: 'Delete this preference',
   },
   deleteAriaLabel: {
     id: 'metricRuleCard.deleteAriaLabel',
-    defaultMessage: 'Delete metric rule: {name}',
+    defaultMessage: 'Delete institutional preference: {name}',
   },
 });
 

@@ -22,13 +22,13 @@ const renderChip = (score: WeightedScoreResult) =>
 describe('WeightedScoreChip', () => {
   it('shows the score out of 100', () => {
     renderChip(SCORE);
-    expect(screen.getByText(/schedule quality: 82\/100/i)).toBeInTheDocument();
+    expect(screen.getByText(/institutional preference score: 82\/100/i)).toBeInTheDocument();
   });
 
   it('explains what the score means and how metrics compose into it, on hover', async () => {
     const user = userEvent.setup();
     renderChip(SCORE);
-    await user.hover(screen.getByText(/schedule quality: 82\/100/i));
+    await user.hover(screen.getByText(/institutional preference score: 82\/100/i));
     const tooltip = await screen.findByRole('tooltip');
     expect(tooltip).toHaveTextContent(/weighted average/i);
     expect(tooltip).toHaveTextContent(/room utilisation/i);
@@ -36,6 +36,6 @@ describe('WeightedScoreChip', () => {
 
   it('explains that no score can be computed when no metrics are configured', () => {
     renderChip({ score: 0, breakdown: [] });
-    expect(screen.getByText(/no metrics defined/i)).toBeInTheDocument();
+    expect(screen.getByText(/no preferences defined/i)).toBeInTheDocument();
   });
 });
