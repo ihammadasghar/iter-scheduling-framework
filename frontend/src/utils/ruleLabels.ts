@@ -69,6 +69,19 @@ const directionMessages = defineMessages({
   lower_is_better: { id: 'ruleLabels.direction.lowerIsBetter', defaultMessage: 'Lower is better' },
 });
 
+// Shared by WeightedScoreChip and ScheduleQualityCard, which both explain
+// the same Institutional Preference Score to the user — kept in one place
+// so the two surfaces can't drift apart.
+const scoreMessages = defineMessages({
+  explainer: {
+    id: 'ruleLabels.score.explainer',
+    defaultMessage: 'How well this schedule matches your institutional preferences, from 0–100. 100 means every preference is exactly met; it drops as the schedule drifts from those goals.',
+  },
+});
+
+export const getScoreExplainer = (intl: IntlShape): string =>
+  intl.formatMessage(scoreMessages.explainer);
+
 const describeMessages = defineMessages({
   consecutiveLimit: {
     id: 'ruleLabels.describe.consecutiveLimit',

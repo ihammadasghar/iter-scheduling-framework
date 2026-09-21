@@ -100,20 +100,20 @@ describe('AddMetricDialog', () => {
 
   it('renders a weight field defaulting to 1', () => {
     renderDialog();
-    expect(screen.getByLabelText(/institutional preference score influence/i)).toHaveValue(1);
+    expect(screen.getByLabelText(/^importance/i)).toHaveValue(1);
   });
 
   it('shows validation error if weight is 0 or negative on submit', async () => {
     renderDialog();
     fireEvent.change(screen.getByLabelText(/^name/i), { target: { value: 'My Rule' } });
-    fireEvent.change(screen.getByLabelText(/institutional preference score influence/i), { target: { value: '0' } });
+    fireEvent.change(screen.getByLabelText(/^importance/i), { target: { value: '0' } });
     fireEvent.mouseDown(screen.getByLabelText(/how to measure it/i));
     await waitFor(() => screen.getByRole('option', { name: /total number/i }));
     fireEvent.click(screen.getByRole('option', { name: /total number/i }));
 
     fireEvent.click(screen.getByRole('button', { name: /add this preference/i }));
     await waitFor(() =>
-      expect(screen.getByText(/institutional preference score influence must be a positive number/i)).toBeInTheDocument(),
+      expect(screen.getByText(/importance must be a positive number/i)).toBeInTheDocument(),
     );
     expect(rulesService.rulesService.createMetricRule).not.toHaveBeenCalled();
   });
@@ -125,7 +125,7 @@ describe('AddMetricDialog', () => {
     renderDialog();
 
     fireEvent.change(screen.getByLabelText(/^name/i), { target: { value: 'My Rule' } });
-    fireEvent.change(screen.getByLabelText(/institutional preference score influence/i), { target: { value: '3' } });
+    fireEvent.change(screen.getByLabelText(/^importance/i), { target: { value: '3' } });
     fireEvent.mouseDown(screen.getByLabelText(/how to measure it/i));
     await waitFor(() => screen.getByRole('option', { name: /total number/i }));
     fireEvent.click(screen.getByRole('option', { name: /total number/i }));
@@ -256,7 +256,7 @@ describe('AddMetricDialog', () => {
 
       expect(screen.getByRole('heading', { name: /edit institutional preference/i })).toBeInTheDocument();
       expect(screen.getByLabelText(/^name/i)).toHaveValue('Idle Gap');
-      expect(screen.getByLabelText(/institutional preference score influence/i)).toHaveValue(3);
+      expect(screen.getByLabelText(/^importance/i)).toHaveValue(3);
       expect(screen.getByLabelText(/goal value/i)).toHaveValue(2);
       expect(screen.getByLabelText(/^prefer/i)).toHaveTextContent('Lower is better');
       expect(screen.getByRole('button', { name: /save changes/i })).toBeInTheDocument();
@@ -270,7 +270,7 @@ describe('AddMetricDialog', () => {
       const onSuccess = vi.fn();
       renderEditDialog(EXISTING_RULE, onSuccess);
 
-      fireEvent.change(screen.getByLabelText(/institutional preference score influence/i), { target: { value: '5' } });
+      fireEvent.change(screen.getByLabelText(/^importance/i), { target: { value: '5' } });
       fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
 
       await waitFor(() => expect(onSuccess).toHaveBeenCalled());
