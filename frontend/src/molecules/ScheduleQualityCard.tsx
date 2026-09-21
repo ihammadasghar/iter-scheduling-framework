@@ -2,16 +2,13 @@ import { Box, Card, CardContent, Tooltip, Typography } from '@mui/material';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { defineMessages, useIntl } from 'react-intl';
 import { colorForScore } from '@/molecules/WeightedScoreChip';
+import { getScoreExplainer } from '@/utils/ruleLabels';
 import type { WeightedScoreResult } from '@/types';
 
 const messages = defineMessages({
   heading: {
     id: 'scheduleQualityCard.heading',
     defaultMessage: 'Institutional Preference Score',
-  },
-  tooltipExplainer: {
-    id: 'scheduleQualityCard.tooltipExplainer',
-    defaultMessage: "A weighted average of how close each metric is to its goal, reflecting how well this schedule aligns with institutional preferences — 100 means every metric is right on goal.",
   },
   ariaLabel: {
     id: 'scheduleQualityCard.ariaLabel',
@@ -77,7 +74,7 @@ export default function ScheduleQualityCard({
             <Typography variant="overline" color="text.secondary" component="div">
               {intl.formatMessage(messages.heading)}
             </Typography>
-            <Tooltip title={intl.formatMessage(messages.tooltipExplainer)} enterDelay={300}>
+            <Tooltip title={getScoreExplainer(intl)} enterDelay={300}>
               <InfoOutlinedIcon fontSize="inherit" color="disabled" sx={{ fontSize: '1rem' }} />
             </Tooltip>
           </Box>

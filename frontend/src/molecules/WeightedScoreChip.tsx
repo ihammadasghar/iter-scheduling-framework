@@ -1,5 +1,6 @@
 import { Box, Chip, Tooltip, Typography } from '@mui/material';
 import { defineMessages, useIntl } from 'react-intl';
+import { getScoreExplainer } from '@/utils/ruleLabels';
 import type { WeightedScoreResult } from '@/types';
 
 const messages = defineMessages({
@@ -15,13 +16,9 @@ const messages = defineMessages({
     id: 'weightedScoreChip.tooltipTitle',
     defaultMessage: 'Institutional Preference Score',
   },
-  tooltipExplainer: {
-    id: 'weightedScoreChip.tooltipExplainer',
-    defaultMessage: "A weighted average of how close each metric below is to its goal, reflecting how well this schedule aligns with institutional preferences — 100 means every metric is right on goal.",
-  },
   breakdownLine: {
     id: 'weightedScoreChip.breakdownLine',
-    defaultMessage: '{name}: {value}{unit} (goal {threshold}{unit}, Institutional Preference Score influence {weight})',
+    defaultMessage: '{name}: {value}{unit} (goal {threshold}{unit}, importance {weight})',
   },
   noMetricsTooltip: {
     id: 'weightedScoreChip.noMetricsTooltip',
@@ -54,7 +51,7 @@ export default function WeightedScoreChip({ score }: WeightedScoreChipProps): Re
         {intl.formatMessage(messages.tooltipTitle)}
       </Typography>
       <Typography variant="caption" component="div" sx={{ mb: 0.5 }}>
-        {intl.formatMessage(messages.tooltipExplainer)}
+        {getScoreExplainer(intl)}
       </Typography>
       {score.breakdown.map((entry) => (
         <Typography key={entry.name} variant="caption" component="div">

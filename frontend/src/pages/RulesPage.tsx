@@ -44,11 +44,11 @@ const messages = defineMessages({
   },
   metricRulesSubtitle: {
     id: 'rulesPage.metricRulesSubtitle',
-    defaultMessage: "Influence the Institutional Preference Score, which reflects how closely a proposal aligns with institutional preferences — a proposal can still be submitted if it scores poorly on these.",
+    defaultMessage: "A goal for what a good schedule looks like. Doesn't block a proposal — it shapes its quality score instead.",
   },
   scoreFormula: {
     id: 'rulesPage.scoreFormula',
-    defaultMessage: 'Institutional Preference Score = weighted average of how close each metric gets to its goal (100 = right on goal). Institutional Preference Score influence controls how much a metric counts relative to the others below.',
+    defaultMessage: "The Institutional Preference Score reflects how close each preference is to its goal (100 = every preference met). Each preference's Importance controls how much it counts toward that score.",
   },
   addMetric: {
     id: 'rulesPage.addMetric',
@@ -64,7 +64,7 @@ const messages = defineMessages({
   },
   constraintsSubtitle: {
     id: 'rulesPage.constraintsSubtitle',
-    defaultMessage: 'Violating one blocks the proposal outright — it cannot be submitted.',
+    defaultMessage: "A requirement your schedule must satisfy. Breaking one blocks the proposal until it's fixed.",
   },
   addConstraint: {
     id: 'rulesPage.addConstraint',

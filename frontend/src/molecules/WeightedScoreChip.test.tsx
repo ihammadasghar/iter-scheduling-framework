@@ -30,7 +30,7 @@ describe('WeightedScoreChip', () => {
     renderChip(SCORE);
     await user.hover(screen.getByText(/institutional preference score: 82\/100/i));
     const tooltip = await screen.findByRole('tooltip');
-    expect(tooltip).toHaveTextContent(/weighted average/i);
+    expect(tooltip).toHaveTextContent(/matches your institutional preferences/i);
     expect(tooltip).toHaveTextContent(/room utilisation/i);
   });
 

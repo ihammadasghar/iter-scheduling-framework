@@ -92,13 +92,13 @@ describe('RulesPage', () => {
 
   it('explains the difference between institutional preferences and scheduling rules', () => {
     renderPage();
-    expect(screen.getByText(/influence the institutional preference score/i)).toBeInTheDocument();
-    expect(screen.getByText(/blocks the proposal outright/i)).toBeInTheDocument();
+    expect(screen.getByText(/doesn't block a proposal.*shapes its quality score instead/i)).toBeInTheDocument();
+    expect(screen.getByText(/breaking one blocks the proposal/i)).toBeInTheDocument();
   });
 
   it('explains how metric weights compose into the overall score', () => {
     renderPage();
-    expect(screen.getByText(/institutional preference score = weighted average/i)).toBeInTheDocument();
+    expect(screen.getByText(/each preference's importance controls how much it counts/i)).toBeInTheDocument();
   });
 
   it('shows unavailable alert when service returns 501', () => {

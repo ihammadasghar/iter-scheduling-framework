@@ -47,7 +47,7 @@ const messages = defineMessages({
   },
   whatToMeasureTooltip: {
     id: 'addMetricDialog.whatToMeasureTooltip',
-    defaultMessage: 'Choose the type of resource this metric measures',
+    defaultMessage: 'Choose what this preference measures — classes, professors, rooms, or student groups',
   },
   whatToMeasureLabel: {
     id: 'addMetricDialog.whatToMeasureLabel',
@@ -91,15 +91,15 @@ const messages = defineMessages({
   },
   weightTooltip: {
     id: 'addMetricDialog.weightTooltip',
-    defaultMessage: 'How much this metric should count toward the overall Institutional Preference Score, relative to other metrics',
+    defaultMessage: 'How much this preference counts toward the Institutional Preference Score, compared to your other preferences',
   },
   weightLabel: {
     id: 'addMetricDialog.weightLabel',
-    defaultMessage: 'Institutional Preference Score influence',
+    defaultMessage: 'Importance',
   },
   weightError: {
     id: 'addMetricDialog.weightError',
-    defaultMessage: 'Institutional Preference Score influence must be a positive number',
+    defaultMessage: 'Importance must be a positive number',
   },
   cancel: {
     id: 'addMetricDialog.cancel',
