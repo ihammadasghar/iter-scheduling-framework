@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -266,10 +266,19 @@ describe('TimetablePage — default tab by identity', () => {
 });
 
 describe('TimetablePage — week navigation', () => {
+  // Pin "today" before this fixture's Sep 7 2026 semester start so the
+  // initial week reliably clamps to the semester's first week, regardless
+  // of the real wall-clock date the suite happens to run on.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-08-01T00:00:00.000Z'));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('shows the WeekNavigator once the roster metadata has loaded, clamped to the semester start', async () => {
     renderPage();
-    // Real "today" is well before this fixture's Sep 7 2026 semester start,
-    // so the initial week should clamp to the semester's first week.
     expect(await screen.findByText('Sep 7 – Sep 13, 2026')).toBeInTheDocument();
   });
 

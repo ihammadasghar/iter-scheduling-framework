@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
@@ -88,6 +88,10 @@ describe('SimulationDashboardPage', () => {
     vi.restoreAllMocks();
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('renders page heading', () => {
     renderPage();
     expect(screen.getByRole('heading', { name: /dashboard/i })).toBeInTheDocument();
@@ -121,6 +125,11 @@ describe('SimulationDashboardPage', () => {
   });
 
   it('shows the WeekNavigator above the calendar once metadata has loaded, clamped to the semester start', async () => {
+    // Pin "today" before this fixture's Sep 7 2026 semester start so the
+    // initial week reliably clamps to the semester's first week, regardless
+    // of the real wall-clock date the suite happens to run on.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-08-01T00:00:00.000Z'));
     renderPage();
     expect(await screen.findByText('Sep 7 – Sep 13, 2026')).toBeInTheDocument();
   });

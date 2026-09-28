@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -98,6 +98,17 @@ describe('PublishedSchedulePage — tabs', () => {
 });
 
 describe('PublishedSchedulePage — week navigation', () => {
+  // Pin "today" before this fixture's Sep 7 2026 semester start so the
+  // initial week reliably clamps to the semester's first week, regardless
+  // of the real wall-clock date the suite happens to run on.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-08-01T00:00:00.000Z'));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('shows the WeekNavigator once metadata has loaded, clamped to the semester start', async () => {
     renderPage();
     expect(await screen.findByText('Sep 7 – Sep 13, 2026')).toBeInTheDocument();
