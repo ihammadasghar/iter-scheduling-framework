@@ -16,7 +16,8 @@
     "import:iscte": "tsx src/scripts/importIsteDataset.ts",
     "seed:blocked-proposal": "tsx src/scripts/seedBlockedProposal.ts",
     "lint": "tsc --noEmit",
-    "benchmark": "tsx src/scripts/benchmark.ts"
+    "benchmark": "tsx src/scripts/benchmark.ts",
+    "compare:relational": "tsx src/scripts/relationalComparison.ts"
   },
   "engines": {
     "node": ">=20.0.0"

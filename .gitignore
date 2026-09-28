@@ -33,6 +33,7 @@ coverage/
 
 # Benchmark run output (see docs/benchmark.md) — reproducible from source, not archived by default
 backend/benchmark-results/
+backend/relational-comparison-results/
 
 # Test run artifacts
 backend/allure-results/
