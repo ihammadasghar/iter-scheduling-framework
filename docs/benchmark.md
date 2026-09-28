@@ -117,7 +117,21 @@ architecture doc already discusses as a known trade-off.
 - **No concurrency.** This benchmarks one sequential session; it does not
   measure multiple simultaneous users (that's RQ3's stated non-goal at this
   scope level, not RQ1's).
-- **Numbers below are still not filled in.** This script has not yet been run
-  against a real Memgraph instance to produce a citable result — do that
-  before citing a number in the thesis's evaluation chapter (see the
-  `timingsMs` shape above for what to record).
+- **Numbers filled in.** Run on a personal development machine (Intel Core
+  i5-1135G7, 8 logical cores @ 2.40GHz, 2.8GiB RAM under WSL2) on 2026-09-28,
+  seed 42:
+
+  | Scale | Hydration | `queryConflicts()` | `scoreTimetable()` | Conflicts | Score |
+  |---|---|---|---|---|---|
+  | 2,000 | 6,502.93 ms | 55.64 ms | 11.58 ms | 2,813 | 60.87 |
+  | 10,000 | 164,414.39 ms | 286.32 ms | 42.89 ms | 13,360 | 61.32 |
+  | 30,000 | 1,655,704.12 ms (~27.6 min) | 875.81 ms | 145.43 ms | 40,394 | 61.32 |
+
+  `queryConflicts()`/`scoreTimetable()` stay well under a second even at
+  30,000 classes; hydration scales close to quadratically (an empirical
+  exponent of ~2.0–2.1 across both the 2k→10k and 10k→30k comparisons), an
+  open engineering finding rather than a settled property of the design —
+  see `thesis/chapters/05_evaluation.tex` §"Performance benchmark" and
+  `thesis/chapters/06_conclusion.tex` for the full writeup and the
+  UNWIND-batching optimization this motivates as future work. Raw result
+  files: `backend/benchmark-results/*.json` (gitignored, not committed).
