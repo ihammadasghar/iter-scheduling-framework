@@ -118,20 +118,59 @@ architecture doc already discusses as a known trade-off.
   measure multiple simultaneous users (that's RQ3's stated non-goal at this
   scope level, not RQ1's).
 - **Numbers filled in.** Run on a personal development machine (Intel Core
-  i5-1135G7, 8 logical cores @ 2.40GHz, 2.8GiB RAM under WSL2) on 2026-09-28,
-  seed 42:
+  i5-1135G7, 8 logical cores @ 2.40GHz, 2.8GiB RAM under WSL2) on 2026-09-29,
+  seed 42, median of 3 runs per scale on a freshly-flushed Memgraph instance:
 
   | Scale | Hydration | `queryConflicts()` | `scoreTimetable()` | Conflicts | Score |
   |---|---|---|---|---|---|
-  | 2,000 | 6,502.93 ms | 55.64 ms | 11.58 ms | 2,813 | 60.87 |
-  | 10,000 | 164,414.39 ms | 286.32 ms | 42.89 ms | 13,360 | 61.32 |
-  | 30,000 | 1,655,704.12 ms (~27.6 min) | 875.81 ms | 145.43 ms | 40,394 | 61.32 |
+  | 2,000 | 692.26 ms | 74.56 ms | 10.70 ms | 2,813 | 60.87 |
+  | 10,000 | 1,263.40 ms | 350.32 ms | 35.68 ms | 13,360 | 61.32 |
+  | 30,000 | 2,776.00 ms | 1,163.88 ms | 92.34 ms | 40,394 | 61.32 |
 
-  `queryConflicts()`/`scoreTimetable()` stay well under a second even at
-  30,000 classes; hydration scales close to quadratically (an empirical
-  exponent of ~2.0–2.1 across both the 2k→10k and 10k→30k comparisons), an
-  open engineering finding rather than a settled property of the design —
-  see `thesis/chapters/05_evaluation.tex` §"Performance benchmark" and
-  `thesis/chapters/06_conclusion.tex` for the full writeup and the
-  UNWIND-batching optimization this motivates as future work. Raw result
-  files: `backend/benchmark-results/*.json` (gitignored, not committed).
+  These numbers supersede an earlier 2026-09-28 table that reported
+  1,655,704.12 ms hydration and 875.81 ms `queryConflicts()` at 30,000
+  classes. Both figures were real at the time but are no longer reproducible,
+  for two independent reasons:
+
+  - **Hydration** — the 2026-09-28 table predates commit `c5eb036` (composite
+    `(id, branchId)` index on every hydrated label), which fixed hydration's
+    quadratic MERGE-by-scan cost. Hydration now scales close to linearly;
+    the "open engineering finding" / UNWIND-batching future-work note that
+    used to live here (and still appears in
+    `thesis/chapters/05_evaluation.tex` / `06_conclusion.tex`) is stale and
+    needs a documentation/thesis pass of its own.
+  - **`queryConflicts()`** — investigated 2026-09-29 after a ~25–30x
+    regression was observed on a *re-run* of the 2026-09-28 figures (same
+    code, same seed). Root cause: the 3 pairwise conflict queries in
+    `GraphService.queryConflicts()` write two consecutive `MATCH` clauses
+    (resource hop, then `SCHEDULED_AT`→`TimeSlot` hop) with nothing between
+    them, so Memgraph's planner is free to pick either as the scan entry
+    point. Its cost estimate uses raw per-branch label+property index
+    cardinality, not post-expansion fan-out — and because `TimeSlot` count is
+    fixed (~40, a day×period grid) while `Room`/`Professor`/`StudentGroup`
+    counts scale with class count, the planner sometimes anchors on
+    `TimeSlot` at institution scale, where each of the ~40 slots fans out to
+    `scale/40` classes (750 at 30,000). `PROFILE` confirmed this directly:
+    the professor/group queries anchored on `TimeSlot`
+    (`ScanAllByLabelProperties (t :TimeSlot {branchId})`, ~41 hits) and took
+    ~18.2s / ~18.3s each at 30,000-class scale, while the room query happened
+    to anchor correctly on `Room` and took ~0.7s. Fix: insert a `WITH`
+    barrier (and hoist `WHERE c1.id < c2.id` above it) between the two
+    `MATCH` clauses in all 3 queries, forcing the planner to materialize the
+    resource-anchored candidate set before considering the time-slot join —
+    a semantics-preserving rewrite verified against the backend integration
+    suite. Confirmed via `PROFILE` that this reliably forces the
+    `Room`/`Professor`/`StudentGroup` entry point instead.
+  - Separately, the shared Memgraph instance used for local development had
+    accumulated 92 orphaned branches (~75,563 stray nodes) from interrupted
+    debug/test sessions; these were flushed before this table was measured.
+    This alone did not explain the regression (the bad plan reproduced
+    identically on a freshly-flushed instance), but is worth keeping clean
+    for benchmark reproducibility regardless.
+
+  `queryConflicts()`/`scoreTimetable()` stay in the low-single-digit-second
+  range (well under a second below 10,000 classes, ~1.2s at 30,000) — fast
+  enough for the interactive, per-edit use RQ1 asks about, though the
+  30,000-class `queryConflicts()` figure is now modestly higher than the
+  original (misleading) 875.81 ms figure. Raw result files:
+  `backend/benchmark-results/*.json` (gitignored, not committed).

@@ -399,24 +399,40 @@ export class GraphService implements IGraphService {
     const branchId = simulationId;
 
     const [roomRows, professorRows, groupRows, capacityRows] = await Promise.all([
+      // The WITH barrier (and pulling WHERE c1.id < c2.id above it) is load-bearing,
+      // not stylistic: without it, Memgraph's planner treats both MATCHes as one
+      // joint pattern and is free to pick either as the scan entry point. It
+      // estimates cost from raw per-branch label+property index cardinality, and
+      // Room/Professor/StudentGroup counts scale with class count while TimeSlot
+      // stays fixed (~40, a school's day x period grid) regardless of scale — so at
+      // institution scale the planner sees TimeSlot as the "smaller" index and
+      // anchors there, missing that this makes SCHEDULED_AT fan out to
+      // classes/40 per slot (growing with scale) instead of the constant
+      // classes/room|professor|group fan-out anchoring on the resource label gives.
+      // Confirmed via PROFILE: anchoring on TimeSlot took ~18s per query at 30k
+      // classes; the WITH barrier forces the resource-label plan and drops that to
+      // ~0.4-0.7s. See docs/benchmark.md for the corrected benchmark numbers.
       this.client.run<ConflictRow>(
         `MATCH (c1:Class {branchId: $branchId})-[:HELD_IN]->(r:Room {branchId: $branchId})<-[:HELD_IN]-(c2:Class {branchId: $branchId})
-         MATCH (c1)-[:SCHEDULED_AT]->(t:TimeSlot {branchId: $branchId})<-[:SCHEDULED_AT]-(c2)
          WHERE c1.id < c2.id
+         WITH c1, c2, r
+         MATCH (c1)-[:SCHEDULED_AT]->(t:TimeSlot {branchId: $branchId})<-[:SCHEDULED_AT]-(c2)
          RETURN c1.id AS classId1, c2.id AS classId2, r.name AS resourceName`.trim(),
         { branchId },
       ),
       this.client.run<ConflictRow>(
         `MATCH (c1:Class {branchId: $branchId})-[:TAUGHT_BY]->(p:Professor {branchId: $branchId})<-[:TAUGHT_BY]-(c2:Class {branchId: $branchId})
-         MATCH (c1)-[:SCHEDULED_AT]->(t:TimeSlot {branchId: $branchId})<-[:SCHEDULED_AT]-(c2)
          WHERE c1.id < c2.id
+         WITH c1, c2, p
+         MATCH (c1)-[:SCHEDULED_AT]->(t:TimeSlot {branchId: $branchId})<-[:SCHEDULED_AT]-(c2)
          RETURN c1.id AS classId1, c2.id AS classId2, p.name AS resourceName`.trim(),
         { branchId },
       ),
       this.client.run<ConflictRow>(
         `MATCH (c1:Class {branchId: $branchId})-[:ATTENDED_BY]->(g:StudentGroup {branchId: $branchId})<-[:ATTENDED_BY]-(c2:Class {branchId: $branchId})
-         MATCH (c1)-[:SCHEDULED_AT]->(t:TimeSlot {branchId: $branchId})<-[:SCHEDULED_AT]-(c2)
          WHERE c1.id < c2.id
+         WITH c1, c2, g
+         MATCH (c1)-[:SCHEDULED_AT]->(t:TimeSlot {branchId: $branchId})<-[:SCHEDULED_AT]-(c2)
          RETURN c1.id AS classId1, c2.id AS classId2, g.name AS resourceName`.trim(),
         { branchId },
       ),
