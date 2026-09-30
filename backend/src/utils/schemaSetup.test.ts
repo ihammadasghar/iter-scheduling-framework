@@ -5,7 +5,7 @@ import type { IMemgraphClient } from '../clients/IMemgraphClient.js';
 const HYDRATED_LABELS = ['Course', 'Professor', 'StudentGroup', 'Room', 'TimeSlot', 'Class'];
 
 describe('ensureIndexes()', () => {
-  it('creates one branchId index per hydrated label', async () => {
+  it('creates a branchId index and a composite (id, branchId) index per hydrated label, in that order', async () => {
     const client: IMemgraphClient = {
       run: vi.fn().mockResolvedValue([]),
       close: vi.fn(),
@@ -13,10 +13,12 @@ describe('ensureIndexes()', () => {
 
     await ensureIndexes(client);
 
-    expect(client.run).toHaveBeenCalledTimes(HYDRATED_LABELS.length);
-    for (const label of HYDRATED_LABELS) {
-      expect(client.run).toHaveBeenCalledWith(`CREATE INDEX ON :${label}(branchId);`);
-    }
+    const calls = vi.mocked(client.run).mock.calls.map(([cypher]) => cypher);
+    expect(calls).toHaveLength(HYDRATED_LABELS.length * 2);
+    HYDRATED_LABELS.forEach((label, i) => {
+      expect(calls[i * 2]).toBe(`CREATE INDEX ON :${label}(branchId);`);
+      expect(calls[i * 2 + 1]).toBe(`CREATE INDEX ON :${label}(id, branchId);`);
+    });
   });
 
   it('propagates an error if a CREATE INDEX call fails', async () => {
