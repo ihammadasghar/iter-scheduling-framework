@@ -12,6 +12,15 @@ const FAKE_CONFLICT: Conflict = {
   message: 'Room RM_101 is double-booked at TS_MON_P1',
 };
 
+// Distinct id from FAKE_CONFLICT so tests can construct a baseline with two
+// genuinely different conflicts, one of which the candidate resolves.
+const OTHER_CONFLICT: Conflict = {
+  id: 'ROOM_DOUBLE_BOOK_CLS_003_CLS_004',
+  type: 'ROOM_DOUBLE_BOOK',
+  classIds: ['CLS_003', 'CLS_004'],
+  message: 'Room RM_102 is double-booked at TS_TUE_P1',
+};
+
 const FAKE_SCHEDULE_JSON = JSON.stringify({
   metadata: [],
   timeSlots: [],
@@ -195,7 +204,7 @@ describe('CiPipelineService.run()', () => {
   });
 
   it('returns READY when the candidate strictly reduces conflicts vs. main, even if not zero', async () => {
-    graph = makeGraph({ baselineConflicts: [FAKE_CONFLICT, FAKE_CONFLICT], candidateConflicts: [FAKE_CONFLICT] });
+    graph = makeGraph({ baselineConflicts: [FAKE_CONFLICT, OTHER_CONFLICT], candidateConflicts: [FAKE_CONFLICT] });
     service = new CiPipelineService(github, graph, rules);
 
     const result = await service.run(PARAMS);
@@ -229,7 +238,7 @@ describe('CiPipelineService.run()', () => {
     expect(result.status).toBe('BLOCKED');
   });
 
-  it('returns READY when conflicts are unchanged but the score changed', async () => {
+  it('returns BLOCKED when a conflict persists unchanged even though the score changed', async () => {
     graph = makeGraph({
       baselineConflicts: [FAKE_CONFLICT],
       candidateConflicts: [FAKE_CONFLICT],
@@ -240,7 +249,7 @@ describe('CiPipelineService.run()', () => {
 
     const result = await service.run(PARAMS);
 
-    expect(result.status).toBe('READY');
+    expect(result.status).toBe('BLOCKED');
   });
 
   it('returns BLOCKED when only a policy constraint violation is present (no structural conflict)', async () => {

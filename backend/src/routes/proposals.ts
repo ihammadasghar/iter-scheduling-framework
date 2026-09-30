@@ -9,11 +9,12 @@ export function createProposalsRouter(controller: ProposalController): IRouter {
   router.post('/', (req, res, next) => controller.submit(req, res, next));
 
   // POST /proposals/seed — facilitator/demo-only: create a proposal that
-  // skips the "must not make the published schedule worse" gate, so a
-  // genuinely BLOCKED proposal can exist to review (see
-  // ProposalService.submitUnchecked for why the normal submit path can
-  // never produce one). Only registered when GITHUB_PROVIDER=mock — never
-  // reachable against a real repo.
+  // skips the pre-PR "not a no-op" gate entirely, for the one case that gate
+  // still rejects outright — a literal no-op, or a candidate strictly worse
+  // than main (a normal submit already reaches CI as BLOCKED in the more
+  // common case of an unresolved conflict; see
+  // ProposalService.submitUnchecked). Only registered when
+  // GITHUB_PROVIDER=mock — never reachable against a real repo.
   if (process.env['GITHUB_PROVIDER'] === 'mock') {
     router.post('/seed', (req, res, next) => controller.seed(req, res, next));
   }

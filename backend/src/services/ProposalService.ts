@@ -6,7 +6,7 @@ import type { IProposalService } from '../interfaces/IProposalService.js';
 import type { IRulesService } from '../interfaces/IRulesService.js';
 import { parseScheduleJson } from '../utils/ScheduleHydrator.js';
 import { diffConflictsById, diffSchedules } from '../utils/ScheduleDiffer.js';
-import { computeConflictsAndScore, isProposalAcceptable } from '../utils/ProposalGate.js';
+import { computeConflictsAndScore, isSubmissionWorthwhile } from '../utils/ProposalGate.js';
 import type { ConflictsAndScore } from '../utils/ProposalGate.js';
 import { isPolicyConstraint } from '../utils/ConstraintTranslator.js';
 import type {
@@ -47,12 +47,14 @@ export class ProposalService implements IProposalService {
   }
 
   // Facilitator/demo-only: creates a real, reviewable proposal without the
-  // "must not make the published schedule worse" gate `submit()` enforces.
-  // Exists because that gate (assertImprovesOnPublished) and the CI
-  // pipeline's READY/BLOCKED label both run the same isProposalAcceptable
-  // check — so a candidate that would come out BLOCKED is rejected before
-  // a PR is ever opened, and a genuinely-BLOCKED proposal can never be
-  // created through the normal submit path. Only reachable via HTTP when
+  // pre-PR "not a no-op" gate `submit()` enforces (assertImprovesOnPublished /
+  // isSubmissionWorthwhile). That gate is deliberately looser than CI's
+  // identity-based isProposalAcceptable check, so a BLOCKED proposal is
+  // already reachable through the normal submit path — a candidate that
+  // changes the score without actually resolving its conflicts clears the
+  // gate but still comes back BLOCKED from CI. This method exists for the
+  // case the gate still rejects outright: a literal no-op, or a candidate
+  // that's strictly worse than main. Only reachable via HTTP when
   // GITHUB_PROVIDER=mock (see routes/proposals.ts) — never wired against a
   // real repo.
   async submitUnchecked(params: CreateProposalParams): Promise<Proposal> {
@@ -197,12 +199,14 @@ export class ProposalService implements IProposalService {
     }
   }
 
-  // A proposal is only allowed through if it doesn't make the published
-  // schedule worse (see ProposalGate.isProposalAcceptable for the exact
-  // rule — same one CiPipelineService uses for the ci:ready/ci:blocked
-  // label, so the two gates never disagree). Anything else is rejected
-  // before a PR is ever opened, so a blocked attempt never leaves a stray
-  // PR behind.
+  // A proposal is only allowed through if it isn't a literal no-op vs.
+  // published (see ProposalGate.isSubmissionWorthwhile for the exact,
+  // deliberately loose rule — CiPipelineService.run's ci:ready/ci:blocked
+  // label uses the stricter, identity-based isProposalAcceptable instead,
+  // so this gate and that label can legitimately disagree: a candidate that
+  // clears this gate can still come back BLOCKED from CI). Anything that
+  // fails this gate is rejected before a PR is ever opened, so a rejected
+  // attempt never leaves a stray PR behind.
   private async assertImprovesOnPublished(simulationId: string): Promise<void> {
     const metricRules = await this.rulesService.listMetrics();
     const policyConstraints = await this.listPolicyConstraints();
@@ -216,7 +220,7 @@ export class ProposalService implements IProposalService {
     const baseline = await this.computeConflictsAndScore(SOURCE_BRANCH, metricRules, policyConstraints);
     const candidate = await this.computeConflictsAndScore(simulationId, metricRules, policyConstraints);
 
-    if (isProposalAcceptable(baseline, candidate)) {
+    if (isSubmissionWorthwhile(baseline, candidate)) {
       return;
     }
 

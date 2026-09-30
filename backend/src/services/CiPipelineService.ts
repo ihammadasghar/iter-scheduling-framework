@@ -57,10 +57,12 @@ export class CiPipelineService implements ICiPipelineService {
     }
 
     return {
-      // Same rule ProposalService.assertImprovesOnPublished gates PR
-      // creation with: not more conflicts than main, and not a no-op when
-      // conflicts are unchanged. Keeps this label consistent with the
-      // pre-PR gate instead of the old absolute "zero conflicts" check.
+      // Stricter than ProposalService.assertImprovesOnPublished's pre-PR
+      // "not a no-op" gate: identity-based, not count-based, so a candidate
+      // that reaches CI still carrying a conflict it never actually
+      // resolved is BLOCKED even if an unrelated score change was enough to
+      // clear the looser submission gate. See ProposalGate.ts for both
+      // rules side by side.
       status: isProposalAcceptable(baseline, { conflicts, score }) ? 'READY' : 'BLOCKED',
       conflicts,
       score,
